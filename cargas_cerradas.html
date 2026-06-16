@@ -1,0 +1,450 @@
+<div id="contenedor-historial-cerradas" class="w-full min-h-[80vh] flex flex-col p-6 transition-all duration-300">
+    
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+        .hidden { display: none !important; }
+
+        .titulo-seccion {
+            font-size: 1.875rem; 
+            font-weight: 800; 
+            color: #1e293b; 
+            letter-spacing: -0.025em; 
+        }
+
+        /* --- CONTENEDOR DE TABLA CON SCROLL --- */
+        .tabla-scroll-container {
+            height: 100%; 
+            overflow-y: auto;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* Estilos de Tabla Principal */
+        .historial-table { width: 100%; border-collapse: collapse; font-size: 0.9em; position: relative; }
+        .historial-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1); }
+        .historial-table th { text-align: left; color: #475569; padding: 8px 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; }
+        .historial-table td { padding: 8px 11px; border-bottom: 1px solid #f1f5f9; color: #1e293b; font-weight: 500; transition: background-color 0.2s; }
+        
+        .fila-historial { cursor: pointer; }
+        .fila-historial:hover td { background-color: #f8fafc; }
+        .fila-historial.seleccionada td { background-color: #eff6ff; border-bottom-color: #bfdbfe; }
+
+        /* Botones de acción en tabla */
+        .btn-detalle {
+            background-color: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn-detalle:hover { background-color: #f1f5f9; color: #1e293b; border-color: #94a3b8; }
+        .btn-detalle.activo { background-color: #3b82f6; color: white; border-color: #2563eb; }
+
+        /* Botón de retroceso */
+        .btn-volver { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; width: fit-content; }
+        .btn-volver:hover { background: #cbd5e1; color: #1e293b; }
+
+        /* Tarjetas de Totales Siempre Visibles */
+        .barra-totales { display: flex; gap: 10px; background: #f1f5f9; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 20px; }
+        .total-mini-card { flex: 1; background: white; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #f59e0b; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .total-mini-label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+        .total-mini-valor { font-size: 1.25rem; font-weight: 900; color: #1e293b; margin-top: 4px; transition: color 0.3s; }
+        .valor-credito { color: #ef4444; } 
+        .valor-contado { color: #10b981; }
+
+        /* Paneles */
+        .panel-estilizado { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 0.75rem !important; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025) !important; overflow: hidden !important; }
+
+        .pnl-contenedor { padding: 24px; }
+        .pnl-header { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+        .pnl-titulo { font-size: 1.125rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin: 0; }
+        .pnl-cuerpo { font-size: 0.875rem; color: #475569; }
+        
+        .pnl-resumen-box { margin-bottom: 20px; display: flex; align-items: baseline; }
+        .pnl-label { font-weight: 800; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; }
+        .pnl-valor-azul { font-weight: 900; color: #2563eb; font-size: 1.25rem; margin-left: 8px; }
+        .pnl-valor-rojo { font-weight: 900; color: #dc2626; font-size: 1.25rem; margin-left: 8px; }
+        
+        .pnl-subtitulo { font-weight: 800; color: #334155; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+        .pnl-vacio { font-style: italic; color: #94a3b8; font-size: 0.8rem; text-align: center; margin-top: 20px; }
+        
+        .panel-json-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .panel-json-item:last-child { border-bottom: none; }
+        
+        .pnl-item-col { display: flex; flex-direction: column; gap: 2px; }
+        .pnl-item-nombre { font-weight: 700; font-size: 0.8rem; color: #334155; }
+        .pnl-item-fecha { font-size: 0.65rem; color: #94a3b8; font-weight: 600; }
+        
+        .badge-cant { background: #dbeafe; color: #1d4ed8; font-weight: 900; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; }
+        .badge-merma { background: #fee2e2; color: #b91c1c; font-weight: 900; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; }
+
+        /* --- TABLA EXCEL SOLO LECTURA --- */
+        .excel-table-ro { width: 100%; border-collapse: collapse; min-width: 900px; }
+        .excel-table-ro th { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 8px; color: #475569; font-weight: 800; text-align: center; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 5;}
+        .excel-table-ro td { border: 1px solid #cbd5e1; padding: 10px 8px; text-align: center; color: #1e293b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+        .excel-table-ro tr:hover td { background-color: #f8fafc; }
+        .row-subfila-ro td { background-color: #f8fafc; border-style: dashed; }
+    </style>
+
+    <div id="vista-principal-historial" class="w-full animate-fadeIn">
+        <div class="mb-6 border-b border-slate-200 pb-4">
+            <h1 class="titulo-seccion">Historial de Cargas Cerradas</h1>
+            <p class="text-slate-500 mt-1 font-medium">Consulta los registros de mercancía y mermas procesadas</p>
+        </div>
+
+        <div id="area-interactiva" style="display: flex; justify-content: space-between; width: 100%; padding-bottom: 8px; gap: 15px;">
+            
+            <div id="cuadro-tabla" class="panel-estilizado flex-shrink-0" style="width: calc(75% - 15px); height: 620px;">
+                <div class="tabla-scroll-container custom-scrollbar">
+                    <table class="historial-table">
+                        <thead>
+                            <tr>
+                                <th>Nº Cierre</th>
+                                <th>Unidad</th>
+                                <th>F. Entrada</th>
+                                <th>F. Cierre</th>
+                                <th style="text-align: center;">Acciones y Consultas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cerradas-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="cuadro-detalle" class="panel-estilizado flex-shrink-0 flex flex-col overflow-y-auto" style="width: 25%; height: 620px;">
+                <div id="contenido-detalle" class="pnl-contenedor">
+                    <div class="pnl-header">
+                        <i id="icono-detalle" class="material-icons" style="font-size: 24px; color: #94a3b8;">info</i>
+                        <h2 id="titulo-detalle" class="pnl-titulo">Detalles</h2>
+                    </div>
+                    <div id="cuerpo-detalle" class="pnl-cuerpo">
+                        <p class="pnl-vacio">Selecciona una opción en la tabla para ver los detalles.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tarjetas-resumen" class="barra-totales">
+            <div class="total-mini-card" style="border-left-color: #3b82f6;">
+                <span class="total-mini-label">Total en Venta General</span>
+                <span id="card-total-venta" class="total-mini-valor">0.00 $</span>
+            </div>
+            <div class="total-mini-card" style="border-left-color: #ef4444;">
+                <span class="total-mini-label">Recaudado Crédito</span>
+                <span id="card-total-credito" class="total-mini-valor valor-credito">0.00 $</span>
+            </div>
+            <div class="total-mini-card" style="border-left-color: #10b981;">
+                <span class="total-mini-label">Recaudado Contado</span>
+                <span id="card-total-contado" class="total-mini-valor valor-contado">0.00 $</span>
+            </div>
+            <div class="total-mini-card" style="border-left-color: #8b5cf6; flex-direction: column;">
+                <span class="total-mini-label">Promedio de venta por producto</span>
+                <div id="contenedor-promedios" style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 60px; overflow-y: auto; padding-right: 4px;" class="custom-scrollbar">
+                    <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Seleccione una carga...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="vista-detalle-planilla" class="hidden w-full animate-fadeIn">
+        <button onclick="volverAlHistorial()" class="btn-volver mb-6">
+            <i class="material-icons">arrow_back</i> Volver al Historial
+        </button>
+        
+        <div class="mb-6 flex items-center gap-4">
+            <i class="material-icons text-5xl text-blue-500">table_chart</i>
+            <div>
+                <h2 class="text-2xl font-black text-slate-800 uppercase tracking-wide">
+                    Planilla de Ventas: <span id="lbl-planilla-vehiculo" class="text-blue-600">---</span>
+                </h2>
+                <p class="text-slate-500 font-medium mt-1">
+                    <span style="background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; margin-right: 8px;">CIERRE N° <span id="lbl-planilla-cierre"></span></span> 
+                    Fecha de cierre: <span id="lbl-planilla-fecha" class="font-bold text-slate-700"></span>
+                </p>
+            </div>
+        </div>
+
+        <div class="barra-totales mb-6" style="margin-top: 0;">
+            <div class="total-mini-card" style="border-left-color: #f59e0b;">
+                <span class="total-mini-label">Total en Venta General</span>
+                <span id="lbl-planilla-venta" class="total-mini-valor" style="color: #d97706;">0.00 $</span>
+            </div>
+            <div class="total-mini-card" style="border-left-color: #ef4444;">
+                <span class="total-mini-label">Recaudado Crédito</span>
+                <span id="lbl-planilla-credito" class="total-mini-valor valor-credito">0.00 $</span>
+            </div>
+            <div class="total-mini-card" style="border-left-color: #10b981;">
+                <span class="total-mini-label">Recaudado Contado</span>
+                <span id="lbl-planilla-contado" class="total-mini-valor valor-contado">0.00 $</span>
+            </div>
+        </div>
+
+        <div class="panel-estilizado" style="padding: 0;">
+            <div style="padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider m-0">Detalle de líneas de venta (Modo Lectura)</h3>
+            </div>
+            <div class="tabla-scroll-container custom-scrollbar" style="max-height: 500px; padding: 20px; background: #f8fafc;">
+                <table class="excel-table-ro" style="background: white;">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;"># Fila</th>
+                            <th style="width: 80px;">Cant.</th>
+                            <th style="width: 120px;">Precio U.</th>
+                            <th>Tipo Cesta / Producto</th>
+                            <th style="width: 25%;">Cliente</th>
+                            <th style="width: 140px;">Método</th>
+                            <th style="width: 140px;">Banco Receptor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-planilla-ro-body">
+                        <tr><td colspan="7" class="text-center p-6 text-slate-400">Cargando datos de la planilla...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+{
+    let ipc;
+    try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("IPC offline"); }
+
+    let historialCargas = [];
+
+    // Referencias DOM Vista Principal
+    const cuerpoDetalle = document.getElementById('cuerpo-detalle');
+    const tituloDetalle = document.getElementById('titulo-detalle');
+    const iconoDetalle = document.getElementById('icono-detalle');
+
+    async function cargarHistorial() {
+        if (!ipc) return;
+        const tbody = document.getElementById('tabla-cerradas-body');
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 p-6">Cargando historial...</td></tr>';
+        
+        historialCargas = await ipc.invoke('obtener-historial-cerradas');
+        
+        if(historialCargas.length === 0){
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 p-6">No hay cargas cerradas en el historial.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = historialCargas.map(c => {
+            const fEntrada = new Date(c.fecha_entrada).toLocaleString();
+            const fCierre = new Date(c.fecha_cierre).toLocaleString();
+
+            return `
+                <tr id="fila-${c.id_cierre}" class="fila-historial" onclick="seleccionarFila(${c.id_cierre})">
+                    <td class="font-bold text-slate-600">#${c.id_cierre}</td>
+                    <td class="font-extrabold uppercase text-slate-800">${c.vehiculo_nombre || 'Desconocido'}</td>
+                    <td class="text-xs text-slate-500">${fEntrada}</td>
+                    <td class="text-xs font-bold text-slate-600">${fCierre}</td>
+                    <td style="text-align: center; display: flex; justify-content: center; gap: 8px; padding-top: 12px; padding-bottom: 12px;">
+                        
+                        <button class="btn-detalle" style="background-color: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;" onclick="verPlanillaCompleta(${c.id_cierre}, ${c.id_carga}, event)" title="Ver Planilla de Ventas">
+                            <i class="material-icons" style="font-size:16px;">table_chart</i> Planilla Completa
+                        </button>
+                        
+                        <button class="btn-detalle" onclick="verEspecificaciones('mercancia', ${c.id_cierre}, event)" title="Resumen de Inventario y Sobrantes">
+                            <i class="material-icons" style="font-size:18px;">inventory_2</i>
+                        </button>
+                        
+                        <button class="btn-detalle" onclick="verEspecificaciones('merma', ${c.id_cierre}, event)" title="Mermas Declaradas">
+                            <i class="material-icons" style="font-size:18px;">delete_sweep</i>
+                        </button>
+
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    window.seleccionarFila = function(idCierre) {
+        document.querySelectorAll('.fila-historial').forEach(fila => fila.classList.remove('seleccionada'));
+        const filaActual = document.getElementById(`fila-${idCierre}`);
+        if(filaActual) filaActual.classList.add('seleccionada');
+
+        const datosCierre = historialCargas.find(c => c.id_cierre === idCierre);
+        if(!datosCierre) return;
+
+        const cardVenta = document.getElementById('card-total-venta');
+        if (cardVenta) cardVenta.innerText = `${(datosCierre.total_venta || 0).toFixed(2)} $`;
+
+        const cardCredito = document.getElementById('card-total-credito');
+        if (cardCredito) cardCredito.innerText = `${(datosCierre.total_credito || 0).toFixed(2)} $`;
+
+        const cardContado = document.getElementById('card-total-contado');
+        if (cardContado) cardContado.innerText = `${(datosCierre.total_contado || 0).toFixed(2)} $`;
+        
+        const contenedorPromedios = document.getElementById('contenedor-promedios');
+        if (contenedorPromedios) {
+            contenedorPromedios.innerHTML = ''; 
+
+            let promedios = datosCierre.promedios_por_producto;
+            if (!promedios && datosCierre.mercancia_json) {
+                try {
+                    const mercJSON = JSON.parse(datosCierre.mercancia_json);
+                    promedios = mercJSON.promedios_por_producto;
+                } catch(e) {
+                    console.warn("No se pudo extraer los promedios del JSON");
+                }
+            }
+
+            if (promedios && Object.keys(promedios).length > 0) {
+                for (const [producto, promedio] of Object.entries(promedios)) {
+                    contenedorPromedios.innerHTML += `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px;">
+                            <span style="font-size: 0.75rem; color: #475569; font-weight: 700;">${producto}</span>
+                            <span style="font-size: 0.85rem; font-weight: 900; color: #6d28d9;">${parseFloat(promedio).toFixed(2)} $</span>
+                        </div>
+                    `;
+                }
+            } else {
+                contenedorPromedios.innerHTML = `<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Sin datos detallados</span>`;
+            }
+        }
+    };
+
+    window.verEspecificaciones = function(tipo, idCierre, event) {
+        event.stopPropagation(); 
+        seleccionarFila(idCierre);
+        
+        document.querySelectorAll('.btn-detalle').forEach(btn => btn.classList.remove('activo'));
+        event.currentTarget.classList.add('activo');
+
+        const datosCierre = historialCargas.find(c => c.id_cierre === idCierre);
+        if(!datosCierre) return;
+        
+        cuerpoDetalle.innerHTML = '';
+        
+        if (tipo === 'mercancia') {
+            tituloDetalle.innerText = 'Resumen de Inventario';
+            iconoDetalle.innerText = 'inventory_2';
+            iconoDetalle.style.color = '#3b82f6';
+            
+            try {
+                const mercJSON = JSON.parse(datosCierre.mercancia_json || "{}");
+                
+                let html = `<div class="pnl-resumen-box"><span class="pnl-label">Unidades Vendidas:</span> <span class="pnl-valor-azul">${mercJSON.unidades_vendidas || 0}</span></div>`;
+                
+                html += `<h3 class="pnl-subtitulo">Sobrantes Declarados</h3>`;
+                const sobrantes = mercJSON.sobrantes || {};
+                
+                if (Object.keys(sobrantes).length === 0) {
+                    html += `<p class="pnl-vacio">No quedaron sobrantes en inventario.</p>`;
+                } else {
+                    for (const [producto, cant] of Object.entries(sobrantes)) {
+                        html += `<div class="panel-json-item"><span class="pnl-item-nombre">${producto}</span> <span class="badge-cant">${cant}</span></div>`;
+                    }
+                }
+                cuerpoDetalle.innerHTML = html;
+            } catch(e) {
+                cuerpoDetalle.innerHTML = `<p style="color:red;">Error leyendo JSON</p>`;
+            }
+
+        } else if (tipo === 'merma') {
+            tituloDetalle.innerText = 'Registro de Mermas';
+            iconoDetalle.innerText = 'delete_sweep';
+            iconoDetalle.style.color = '#ef4444';
+
+            try {
+                const mermaJSON = JSON.parse(datosCierre.mermas_json || "[]");
+                
+                if (mermaJSON.length === 0) {
+                    cuerpoDetalle.innerHTML = `<p class="pnl-vacio">Sin mermas registradas en esta carga.</p>`;
+                } else {
+                    let totalMermas = 0;
+                    let htmlList = '';
+                    mermaJSON.forEach(m => {
+                        totalMermas += m.cantidad;
+                        htmlList += `<div class="panel-json-item">
+                            <div class="pnl-item-col">
+                                <span class="pnl-item-nombre">${m.tipo_medida} ${m.sub_medida}</span>
+                                <span class="pnl-item-fecha">${new Date(m.fecha_registro).toLocaleString()}</span>
+                            </div>
+                            <span class="badge-merma">-${m.cantidad}</span>
+                        </div>`;
+                    });
+                    
+                    cuerpoDetalle.innerHTML = `
+                        <div class="pnl-resumen-box"><span class="pnl-label">Total Mermado:</span> <span class="pnl-valor-rojo">${totalMermas}</span></div>
+                        <h3 class="pnl-subtitulo">Detalle de Salidas</h3>
+                        ${htmlList}
+                    `;
+                }
+            } catch(e) {
+                cuerpoDetalle.innerHTML = `<p style="color:red;">Error leyendo JSON</p>`;
+            }
+        }
+    };
+
+    // ==============================================
+    // LÓGICA DE LA VISTA DETALLE PLANILLA COMPLETA
+    // ==============================================
+    window.verPlanillaCompleta = async function(id_cierre, id_carga, event) {
+        event.stopPropagation();
+        const datosCierre = historialCargas.find(c => c.id_cierre === id_cierre);
+        if(!datosCierre) return;
+
+        // Ocultar principal y mostrar detalle
+        document.getElementById('vista-principal-historial').classList.add('hidden');
+        document.getElementById('vista-detalle-planilla').classList.remove('hidden');
+
+        // Llenar datos informativos de cabecera
+        document.getElementById('lbl-planilla-vehiculo').innerText = datosCierre.vehiculo_nombre || 'Desconocido';
+        document.getElementById('lbl-planilla-cierre').innerText = id_cierre;
+        document.getElementById('lbl-planilla-fecha').innerText = new Date(datosCierre.fecha_cierre).toLocaleString();
+
+        // Llenar tarjetas con los totales del cierre histórico
+        document.getElementById('lbl-planilla-venta').innerText = `${(datosCierre.total_venta || 0).toFixed(2)} $`;
+        document.getElementById('lbl-planilla-credito').innerText = `${(datosCierre.total_credito || 0).toFixed(2)} $`;
+        document.getElementById('lbl-planilla-contado').innerText = `${(datosCierre.total_contado || 0).toFixed(2)} $`;
+
+        // Llenar tabla de modo lectura
+        const tbody = document.getElementById('tabla-planilla-ro-body');
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-slate-400">Consultando líneas de venta en la base de datos...</td></tr>';
+
+        if (ipc) {
+            const lineasVenta = await ipc.invoke('obtener-ventas-carga', id_carga);
+            
+            // Filtramos las líneas vacías para dejar un reporte limpio y fácil de auditar
+            // Mostramos si el usuario llenó la cantidad, puso un cliente o estableció un precio
+            const lineasValidas = lineasVenta.filter(l => (parseInt(l.cantidad) > 0) || (l.cliente && l.cliente.trim() !== '') || (l.precio && l.precio.trim() !== ''));
+
+            if (lineasValidas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-slate-400 font-bold">No se registraron transacciones manuales en la planilla de esta carga.</td></tr>';
+                return;
+            }
+
+            // Ordenamos lógicamente por fila_id (Para que sub-líneas como "1_1" queden debajo de "1")
+            lineasValidas.sort((a, b) => a.fila_id.localeCompare(b.fila_id, undefined, {numeric: true}));
+
+            tbody.innerHTML = lineasValidas.map(l => {
+                const esSubfila = l.fila_id.includes('_');
+                const badgeSub = esSubfila ? `<span style="background: #e2e8f0; color: #64748b; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">SUB</span>` : '';
+                const mercancia = `${l.tipo_medida || ''} ${l.sub_medida || ''}`.trim();
+                
+                return `
+                    <tr class="${esSubfila ? 'row-subfila-ro' : ''}">
+                        <td style="color: #64748b; font-weight: 800; background: ${esSubfila ? 'transparent' : '#f1f5f9'};">${l.fila_id} ${badgeSub}</td>
+                        <td style="color: #2563eb; font-weight: 900; font-size: 1rem;">${l.cantidad || '-'}</td>
+                        <td style="color: #059669; font-weight: 800;">${l.precio || '-'}</td>
+                        <td style="font-weight: 800; color: #334155; text-align: left; padding-left: 15px;">${mercancia || '-'}</td>
+                        <td style="font-weight: 900; color: #1e293b; text-align: left; padding-left: 15px;">${l.cliente || '<span style="color:#94a3b8">---</span>'}</td>
+                        <td style="color: #d97706; font-weight: 800;">${l.metodo_pago || '-'}</td>
+                        <td style="color: #475569; font-weight: 700;">${l.banco || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    };
+
+    window.volverAlHistorial = function() {
+        document.getElementById('vista-detalle-planilla').classList.add('hidden');
+        document.getElementById('vista-principal-historial').classList.remove('hidden');
+    };
+
+    cargarHistorial();
+}
+</script>
+</div>

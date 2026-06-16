@@ -1,0 +1,877 @@
+<div id="contenedor-deuda-clientes" class="contenedor-deudas">
+    
+    <style>
+        /* --- ANIMACIONES Y UTILIDADES --- */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
+        .hidden { display: none !important; }
+
+        /* --- LAYOUT PRINCIPAL --- */
+        .contenedor-deudas { width: 100%; min-height: 80vh; display: flex; flex-direction: column; padding: 24px; transition: all 0.3s; box-sizing: border-box; }
+        .deudas-header { display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+        @media (min-width: 768px) { .deudas-header { flex-direction: row; align-items: center; } }
+
+        /* --- TIPOGRAFÍA Y CABECERAS --- */
+        .deudas-titulo { font-size: 1.875rem; font-weight: 800; color: #1e293b; letter-spacing: -0.025em; margin: 0; display: flex; align-items: center; gap: 12px; }
+        .deudas-titulo i { color: #ef4444; font-size: 2.25rem; }
+        .deudas-subtitulo { color: #64748b; margin-top: 4px; font-weight: 500; font-size: 1rem; margin-bottom: 0; }
+        
+        .panel-principal { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 20px;}
+        .panel-margen-top { margin-top: 24px; }
+
+        .titulo-panel { font-size: 1.25rem; font-weight: 700; color: #334155; margin-top: 0; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
+        .titulo-panel-icono { color: #ef4444; }
+        .titulo-panel-icono-gris { color: #94a3b8; }
+        
+        .nombre-cliente-destacado { color: #dc2626; font-weight: 900; text-transform: uppercase; margin-left: 8px; }
+        .nombre-cliente-espera { color: #94a3b8; font-weight: 500; font-style: italic; text-transform: none; margin-left: 8px; font-size: 1.05rem; }
+
+        .cabecera-tabla-detalle { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .cabecera-tabla-detalle .titulo-panel { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+        .etiqueta-carga { background: #ef4444; color: white; padding: 4px 12px; border-radius: 99px; font-weight: 800; font-size: 0.8rem; }
+
+        /* --- BARRA DE BÚSQUEDA --- */
+        .barra-cliente-nueva { display: flex; align-items: center; gap: 10px; background-color: #f8fafc; padding: 12px 18px; border-radius: 12px; border: 2px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.02); max-width: 500px; margin-bottom: 15px; }
+        .barra-cliente-icono { color: #94a3b8; }
+        .barra-cliente-label { font-size: 0.85rem; font-weight: 800; color: #64748b; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+        
+        .cliente-search-container { position: relative; width: 100%; }
+        .barra-cliente-input { background: #ffffff; border: 2px solid #cbd5e1; border-radius: 8px; padding: 8px 15px; height: 42px; width: 100%; outline: none; transition: all 0.2s; font-weight: 700; text-transform: uppercase; font-size: 0.95rem; color: #334155; box-sizing: border-box; }
+        .barra-cliente-input:focus { border-color: #ef4444; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
+        
+        .cliente-results { position: absolute; top: calc(100% + 5px); left: 0; right: 0; background-color: white; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 9999; display: none; border: 1px solid #fca5a5; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .cliente-results.activo { display: block; }
+        .cliente-item { padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #fef2f2; font-size: 0.9em; font-weight: 700; color: #1f2937; text-transform: uppercase; }
+        .cliente-item:last-child { border-bottom: none; }
+        .cliente-item:hover, .cliente-item.autocomplete-active { background-color: #fef2f2 !important; color: #991b1b !important; border-left: 4px solid #dc2626 !important; }
+
+        /* --- TARJETAS DE ESTADÍSTICAS GLOBALES --- */
+        .barra-totales { display: flex; gap: 15px; background: #f1f5f9; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+        .total-mini-card { flex: 1; background: white; padding: 16px 20px; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .total-mini-label { font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+        .total-mini-valor { font-size: 1.5rem; font-weight: 900; margin-top: 6px; }
+        .borde-rojo { border-left: 5px solid #ef4444; }
+        .borde-naranja { border-left: 5px solid #f59e0b; }
+        .color-deuda { color: #dc2626; }
+        .color-dias { color: #d97706; }
+
+        /* --- TABLA (MÁS FINA Y ESTILO EXCEL) --- */
+        .tabla-container-fijo { width: 100%; overflow-x: auto; margin-top: 15px; }
+        .tabla-detalles { width: 100%; border-collapse: collapse; text-align: left; }
+        
+        .tabla-detalles th, .tabla-detalles td { border: 1px solid #cbd5e1; }
+        .tabla-detalles thead th { background: #f1f5f9; padding: 10px 14px; color: #475569; font-weight: 800; text-transform: uppercase; font-size: 0.75rem; }
+        .tabla-detalles td { padding: 6px 14px; color: #1e293b; font-size: 0.85rem; font-weight: 600; vertical-align: middle; height: 32px; }
+        
+        .tabla-detalles tr:hover td { background-color: #f8fafc; }
+        .chip-producto { display: inline-block; background-color: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; border: 1px solid #bae6fd; }
+
+        /* --- ESTADOS Y MENSAJES --- */
+        .mensaje-estado { grid-column: 1 / -1; width: 100%; text-align: center; padding: 24px; color: #64748b; font-weight: 700; }
+        .mensaje-estado-exito { grid-column: 1 / -1; width: 100%; text-align: center; padding: 24px; color: #059669; font-weight: 700; font-size: 1.125rem; }
+        .mensaje-tabla-vacia { text-align: center; color: #94a3b8; padding: 12px; font-style: italic; background-color: #ffffff; }
+        .alinear-medio { vertical-align: middle; }
+        .margen-derecha { margin-right: 8px; }
+
+        /* --- TOAST NOTIFICACIONES --- */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { color: white; padding: 12px 20px; border-radius: 8px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; transform: translateX(120%); opacity: 0; transition: all 0.3s ease-in-out; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .toast.success { background-color: #10b981; }
+        .toast.error { background-color: #ef4444; }
+        .toast.show { transform: translateX(0); opacity: 1; }
+
+        .hoja-cuaderno {
+            background-color: #fdfbf7;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.05);
+            padding: 10px 20px 20px 50px; /* Espacio para el margen */
+            position: relative;
+            overflow-x: auto;
+        }
+        /* La línea roja del margen del cuaderno */
+        .hoja-cuaderno::before {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0; left: 40px;
+            border-left: 2px solid #fca5a5;
+            z-index: 1;
+        }
+        .tabla-cuaderno { width: 100%; border-collapse: collapse; position: relative; z-index: 2; min-width: 800px; }
+        .tabla-cuaderno th {
+            border-bottom: 3px solid #60a5fa; /* Línea azul fuerte superior */
+            padding: 12px 10px;
+            text-align: left;
+            color: #1e293b;
+            font-weight: 900;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+        .tabla-cuaderno td {
+            border-bottom: 1px solid #93c5fd; /* Líneas azules de escritura */
+            padding: 10px;
+            color: #334155;
+            font-weight: 700;
+            font-size: 0.95rem;
+            vertical-align: bottom;
+            height: 40px;
+        }
+        .tabla-cuaderno tr:hover td { background-color: rgba(219, 234, 254, 0.4); }
+        
+        .libreta-input {
+            width: 100%; border: none; background: transparent; border-bottom: 2px dashed #94a3b8; outline: none; font-weight: 800; color: #1e293b; padding: 2px; font-size: 0.9rem; text-transform: uppercase;
+        }
+        .libreta-input:focus { border-bottom-color: #2563eb; background: #fffbeb; }
+        .monto-cargo { color: #dc2626; font-weight: 900; }
+        .monto-abono { color: #10b981; font-weight: 900; }
+        .monto-saldo { color: #0f172a; font-weight: 900; font-size: 1.1rem; }
+    </style>
+
+    <div class="animate-fadeIn">
+        <div id="toast-container"></div>
+        <div class="deudas-header flex flex-col sm:flex-row justify-between items-start sm:items-center w-full mb-6 gap-4">
+            <div>
+                <h1 class="deudas-titulo">
+                    <i class="material-icons">account_box</i> Deuda por Clientes
+                </h1>
+                <p class="deudas-subtitulo">Consulta el historial de deudas pendientes agrupadas por cliente y carga.</p>
+            </div>
+            
+            <button onclick="toggleVistaAdjudicacion()" id="btn-cambiar-vista" style="display: flex; align-items: center; justify-content: center; gap: 8px; background-color: #1e293b; color: white; height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 700; border: none; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin: 0; flex-shrink: 0;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 10px 15px -3px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)';">
+                <i class="material-icons" style="font-size: 20px; transition: transform 0.3s ease;">add_circle</i>
+                <span>Adjudicar Deuda Antigua</span>
+            </button>
+        </div>
+
+        <div class="barra-cliente-nueva">
+            <i class="material-icons barra-cliente-icono">search</i>
+            <span class="barra-cliente-label">Buscar Cliente:</span>
+            <div class="cliente-search-container">
+                <input type="text" id="buscador-cliente-global" class="barra-cliente-input" placeholder="Escribe el nombre..." autocomplete="off" oninput="buscarClienteGeneral(this)" onkeydown="navegarBuscadorGeneral(event, this)">
+                <div id="resultados-cliente-global" class="cliente-results"></div>
+            </div>
+        </div>
+
+        <button id="btn-volver-global" onclick="volverAListaGlobal()" class="hidden" style="background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px; transition: 0.2s;">
+            <i class="material-icons">arrow_back</i> Volver a la Lista de Deudores
+        </button>
+
+        <div id="panel-tabla-global" class="panel-principal panel-margen-top animate-fadeIn" style="margin-top: 0;">
+            <h3 class="titulo-panel">
+                <i class="material-icons titulo-panel-icono-gris">groups</i> Resumen General de Deudores
+            </h3>
+            <div class="tabla-container-fijo custom-scrollbar" style="max-height: 500px; overflow-y: auto;">
+                <table class="tabla-detalles" style="width: 100%;">
+                    <thead style="position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <tr>
+                            <th style="width: 60%;">Nombre del Cliente</th>
+                            <th style="width: 25%; text-align: right;">Deuda Total Consolidada</th>
+                            <th style="width: 15%; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-global-body">
+                        <tr><td colspan="3" class="mensaje-estado"><i class="material-icons animate-spin alinear-medio margen-derecha">refresh</i> Cargando lista de deudores...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="panel-adjudicacion-manual" class="panel-principal hidden animate-fadeIn">
+            <h3 class="titulo-panel" style="color: #dc2626; border-color: #fca5a5;">
+                <i class="material-icons titulo-panel-icono">edit_note</i> Adjudicación de Deuda Antigua al Sistema
+            </h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-5 items-end mb-4">
+                <div>
+                    <label class="barra-cliente-label" style="display:block; margin-bottom:8px; font-weight:800;">Cliente Destino:</label>
+                    <div class="cliente-search-container">
+                        <input type="text" id="buscador-cliente-manual" class="barra-cliente-input" placeholder="Escribe para buscar cliente..." autocomplete="off" oninput="buscarClienteManualForm(this)">
+                        <div id="resultados-cliente-manual" class="cliente-results"></div>
+                    </div>
+                </div>
+                <div>
+                    <label class="barra-cliente-label" style="display:block; margin-bottom:8px; font-weight:800;">Monto de la Deuda ($):</label>
+                    <input type="number" id="manual-monto" class="barra-cliente-input" placeholder="0.00" step="0.01" min="0.01">
+                </div>
+                <div>
+                    <label class="barra-cliente-label" style="display:block; margin-bottom:8px; font-weight:800;">Fecha Original de la Deuda:</label>
+                    <input type="date" id="manual-fecha" class="barra-cliente-input">
+                </div>
+            </div>
+
+            <div class="mt-2">
+                <label class="barra-cliente-label" style="display:block; margin-bottom:8px; font-weight:800;">Descripción / Concepto (Opcional):</label>
+                <input type="text" id="manual-descripcion" class="barra-cliente-input" placeholder="Ej: Saldo pendiente de facturas anteriores a la instalación del sistema administrativo...">
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button onclick="guardarDeudaManualAntigua()" class="barra-cliente-btn" style="background: #dc2626; height: 44px; padding: 0 24px; font-weight: 800; border-radius: 8px;">
+                    <i class="material-icons">save</i> Guardar e Inyectar Deuda
+                </button>
+            </div>
+        </div>
+
+        <div id="panel-estadisticas-cliente" class="barra-totales hidden">
+            <div class="total-mini-card borde-rojo">
+                <span class="total-mini-label">Deuda Total Consolidada</span>
+                <span id="stat-total-deuda" class="total-mini-valor color-deuda">0.00 $</span>
+            </div>
+            <div class="total-mini-card borde-naranja">
+                <span class="total-mini-label">Antigüedad de la deuda más vieja</span>
+                <span id="stat-dias-deuda" class="total-mini-valor color-dias">0 Días</span>
+            </div>
+        </div>
+
+        <div id="panel-detalle-tabla" class="panel-principal panel-margen-top hidden" style="background-color: transparent; border: none; box-shadow: none; padding: 0;">
+            
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; font-weight: 800; color: #1e293b;"><i class="material-icons" style="font-size: 18px; vertical-align: middle; color: #3b82f6;">menu_book</i> ¿Cómo leer este cuaderno de cliente?</h4>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: #475569; line-height: 1.6;">
+                    <li><strong>Entró Deuda (+):</strong> El monto de la mercancía que el cliente se llevó a crédito (Suma a su deuda).</li>
+                    <li><strong>Pagó Abono (-):</strong> El dinero que el cliente entregó o transfirió (Resta a su deuda).</li>
+                    <li><strong>Saldo Actual:</strong> Es el cálculo exacto de cuánto debía el cliente en ese momento histórico.</li>
+                </ul>
+            </div>
+
+            <div class="hoja-cuaderno">
+                <table class="tabla-cuaderno">
+                    <thead>
+                        <tr>
+                            <th style="width: 12%;">Fecha</th>
+                            <th style="width: 33%;">Concepto / Detalle</th>
+                            <th style="width: 15%; text-align: right;">Entró Deuda (+)</th>
+                            <th style="width: 15%; text-align: right;">Pagó Abono (-)</th>
+                            <th style="width: 15%; text-align: right;">Saldo Actual</th>
+                            <th style="width: 10%; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-detalles-body">
+                        </tbody>
+                    <tfoot id="tabla-detalles-foot">
+                        <tr style="background-color: #eff6ff;">
+                            <td>
+                                <input type="date" id="lib-fecha" class="libreta-input">
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <select id="lib-tipo-op" class="libreta-input" style="width: 45%; color: #2563eb;" onchange="cambiarModoLibreta()">
+                                        <option value="VENTA">➕ SUMAR DEUDA</option>
+                                        <option value="ABONO">➖ REGISTRAR PAGO</option>
+                                    </select>
+                                    <input type="text" id="lib-concepto" class="libreta-input" style="width: 55%;" placeholder="Ej: Cestas, Efectivo...">
+                                </div>
+                                <div id="lib-opciones-pago" class="hidden" style="margin-top: 6px; display: flex; gap: 8px;">
+                                    <select id="lib-carga-ref" class="libreta-input" style="width: 50%; font-size: 0.7rem; background-color: #f1f5f9; color: #10b981; cursor: not-allowed;" disabled>
+                                        <option value="AUTO">✔️ AUTO-DISTRIBUIR (FIFO)</option>
+                                    </select>
+                                    <select id="lib-banco" class="libreta-input" style="width: 50%; font-size: 0.7rem;">
+                                        <option value="">EFECTIVO</option>
+                                        <option value="PAGO MÓVIL">PAGO MÓVIL</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="number" id="lib-cargo" class="libreta-input monto-cargo" placeholder="0.00" style="text-align: right;" step="0.01">
+                            </td>
+                            <td>
+                                <input type="number" id="lib-abono" class="libreta-input monto-abono" placeholder="0.00" style="text-align: right;" step="0.01" disabled>
+                            </td>
+                            <td style="text-align: right; color: #94a3b8; font-size: 0.8rem; font-style: italic;">
+                                Se calculará...
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <button onclick="procesarOperacionLibreta()" class="chip-producto" style="background-color: #1e293b; color: white; border: none; width: 100%; height: 30px; cursor: pointer; font-weight: 900; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    GUARDAR
+                                </button>
+                            </td>
+                        </tr>
+                        <tr style="border-top: 2px dashed #94a3b8;">
+                            <td colspan="6" id="celda-total-cuaderno" style="text-align: right; font-size: 1.1rem; padding-top: 15px;">
+                                </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div id="panel-estadisticas-cliente" class="barra-totales hidden" style="margin-top: 24px;">
+            <div class="total-mini-card borde-rojo">
+                <span class="total-mini-label">Deuda Total Consolidada</span>
+                <span id="stat-total-deuda" class="total-mini-valor color-deuda">0.00 $</span>
+            </div>
+            <div class="total-mini-card borde-naranja">
+                <span class="total-mini-label">Antigüedad de la deuda pendiente más vieja</span>
+                <span id="stat-dias-deuda" class="total-mini-valor color-dias">0 Días</span>
+            </div>
+        </div>
+
+<script>
+{
+    let ipc;
+    try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("IPC offline"); }
+
+    let clientesBaseCache = [];
+    let deudoresGlobalesCache = [];
+    let focoIndexGeneral = -1;
+    let clienteSeleccionadoActual = "";
+    let cargasDelClienteActual = [];
+    let vistaAdjudicacionActiva = false;
+    let clienteManualSeleccionado = "";
+    let estadoDeCuentaGlobal = [];
+    let asientosVisibles = 10;
+    let saldoFinalCalculado = 0;
+
+    // --- FORMATEO DE FECHAS ESTILO "Lunes, 15/05/2026" ---
+    function formatearFechaConDia(fechaISO) {
+        if (!fechaISO) return "Activa (Sin Cierre)";
+        const fecha = new Date(fechaISO);
+        const opcionesDia = { weekday: 'long' };
+        const opcionesFecha = { year: 'numeric', month: '2-digit', day: '2-digit' };
+        
+        const nombreDia = fecha.toLocaleDateString('es-ES', opcionesDia);
+        const fechaCorta = fecha.toLocaleDateString('es-ES', opcionesFecha);
+        
+        return `${nombreDia}, ${fechaCorta}`;
+    }
+
+    // --- CREADOR DE LÍNEAS EXCEL VACÍAS (Ajustado a 6 columnas) ---
+    function generarFilasVaciasExcel(cantidad) {
+        let html = '';
+        for (let i = 0; i < cantidad; i++) {
+            html += `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+        }
+        return html;
+    }
+
+    // --- INICIALIZACIÓN ---
+    async function inicializarModuloDeudas() {
+        if (ipc) {
+            clientesBaseCache = await ipc.invoke('obtener-clientes') || [];
+            await cargarDeudoresGlobales();
+        }
+    }
+
+    window.cargarDeudoresGlobales = async function() {
+        if (!ipc) return;
+        deudoresGlobalesCache = await ipc.invoke('obtener-deudores-globales');
+        renderizarTablaGlobal(deudoresGlobalesCache);
+    };
+
+    window.renderizarTablaGlobal = function(datos) {
+        const tbody = document.getElementById('tabla-global-body');
+        if (!datos || datos.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" class="mensaje-estado-exito"><i class="material-icons alinear-medio margen-derecha" style="font-size:24px;">check_circle</i> ¡Excelente! Ningún cliente mantiene deudas con la empresa.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = datos.map(d => `
+            <tr>
+                <td style="font-weight: 900; color: #1e293b; text-transform: uppercase;">${d.cliente}</td>
+                <td style="text-align: right; color: #dc2626; font-weight: 900; font-size: 1.15rem;">${parseFloat(d.total_deuda).toFixed(2)} $</td>
+                <td style="text-align: center;">
+                    <button onclick="seleccionarClienteGlobal('${d.cliente}')" style="background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 6px 16px; border-radius: 6px; font-weight: 800; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; text-transform: uppercase;" onmouseover="this.style.backgroundColor='#dbeafe'" onmouseout="this.style.backgroundColor='#eff6ff'">
+                        <i class="material-icons" style="font-size: 16px;">menu_book</i> Cuaderno
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    };
+
+    // --- LÓGICA DEL BUSCADOR ---
+    window.buscarClienteGeneral = function(input) {
+        const termino = input.value.toLowerCase().trim();
+        const contenedor = document.getElementById('resultados-cliente-global');
+        focoIndexGeneral = -1;
+
+        // FILTRO EN TIEMPO REAL PARA LA TABLA GLOBAL
+        const panelGlobal = document.getElementById('panel-tabla-global');
+        if (!panelGlobal.classList.contains('hidden')) {
+            const filtradosGlobal = deudoresGlobalesCache.filter(d => d.cliente.toLowerCase().includes(termino));
+            renderizarTablaGlobal(filtradosGlobal);
+        }
+
+        if (termino.length < 1) {
+            contenedor.classList.remove('activo');
+            return;
+        }
+
+        const filtrados = clientesBaseCache.filter(c => c.nombre.toLowerCase().includes(termino));
+
+        if (filtrados.length > 0) {
+            contenedor.classList.add('activo');
+            contenedor.innerHTML = filtrados.slice(0, 10).map(c => 
+                `<div class="cliente-item" onmousedown="seleccionarClienteGlobal('${c.nombre}')">${c.nombre}</div>`
+            ).join('');
+        } else {
+            contenedor.classList.add('activo');
+            contenedor.innerHTML = `<div class="cliente-item" style="color:#9ca3af; font-style:italic; pointer-events: none;">No encontrado</div>`;
+        }
+    };
+
+    window.navegarBuscadorGeneral = function(e, input) {
+        const contenedor = document.getElementById('resultados-cliente-global');
+        if (!contenedor.classList.contains('activo')) return;
+
+        const items = contenedor.querySelectorAll('.cliente-item:not([style*="pointer-events: none"])');
+        if (items.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault(); focoIndexGeneral++;
+            if (focoIndexGeneral >= items.length) focoIndexGeneral = 0;
+            aplicarResaltadoGlobal(items);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault(); focoIndexGeneral--;
+            if (focoIndexGeneral < 0) focoIndexGeneral = items.length - 1;
+            aplicarResaltadoGlobal(items);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoIndexGeneral > -1) items[focoIndexGeneral].dispatchEvent(new Event('mousedown'));
+            else items[0].dispatchEvent(new Event('mousedown'));
+        }
+    };
+
+    function aplicarResaltadoGlobal(items) {
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoIndexGeneral > -1) {
+            items[focoIndexGeneral].classList.add("autocomplete-active");
+            items[focoIndexGeneral].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    window.volverAListaGlobal = function() {
+        document.getElementById('buscador-cliente-global').value = '';
+        document.getElementById('resultados-cliente-global').classList.remove('activo');
+        clienteSeleccionadoActual = "";
+        
+        document.getElementById('panel-detalle-tabla').classList.add('hidden');
+        document.getElementById('panel-estadisticas-cliente').classList.add('hidden');
+        document.getElementById('btn-volver-global').classList.add('hidden');
+        
+        document.getElementById('panel-tabla-global').classList.remove('hidden');
+        cargarDeudoresGlobales(); // Refrescamos los saldos
+    };
+
+    document.getElementById('buscador-cliente-global').addEventListener('blur', () => {
+        setTimeout(() => {
+            const res = document.getElementById('resultados-cliente-global');
+            if(res) res.classList.remove('activo');
+        }, 200);
+    });
+
+
+    window.seleccionarClienteGlobal = async function(nombre) {
+        document.getElementById('buscador-cliente-global').value = nombre;
+        document.getElementById('resultados-cliente-global').classList.remove('activo');
+        clienteSeleccionadoActual = nombre;
+        
+        // INTERCAMBIO DE VISTAS: Ocultamos tabla global, mostramos botón volver
+        document.getElementById('panel-tabla-global').classList.add('hidden');
+        document.getElementById('btn-volver-global').classList.remove('hidden');
+
+        const panelEstadisticas = document.getElementById('panel-estadisticas-cliente');
+        const panelTabla = document.getElementById('panel-detalle-tabla');
+        const tbody = document.getElementById('tabla-detalles-body');
+        
+        asientosVisibles = 10;
+        tbody.innerHTML = `<tr><td colspan="6" class="mensaje-estado"><i class="material-icons animate-spin alinear-medio margen-derecha">refresh</i> Buscando estado de cuenta...</td></tr>`;
+        
+        panelTabla.classList.remove('hidden');
+        panelEstadisticas.classList.add('hidden');
+
+        document.getElementById('lib-fecha').value = new Date().toISOString().split('T')[0];
+
+        if (ipc) {
+            cargasDelClienteActual = await ipc.invoke('obtener-cargas-deuda-cliente', nombre);
+            const selectCarga = document.getElementById('lib-carga-ref');
+            selectCarga.innerHTML = '<option value="AUTO">✔️ AUTO-DISTRIBUIR (FIFO)</option>';
+
+            estadoDeCuentaGlobal = await ipc.invoke('obtener-estado-cuenta-cliente', nombre);
+            renderizarCuaderno();
+            
+            panelEstadisticas.classList.remove('hidden');
+        }
+    };
+
+    // --- FUNCIÓN QUE CONSTRUYE EL CUADERNO, SALDOS Y PAGINACIÓN ---
+window.renderizarCuaderno = function() {
+        const tbody = document.getElementById('tabla-detalles-body');
+        tbody.innerHTML = '';
+        
+        if (estadoDeCuentaGlobal.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="mensaje-estado-exito"><i class="material-icons alinear-medio margen-derecha" style="font-size: 24px;">check_circle</i> Cliente sin historial de deudas.</td></tr>`;
+            document.getElementById('celda-total-cuaderno').innerHTML = `<span style="color: #10b981; font-weight: 900; font-size: 1.2rem;">0.00 $ El cliente está solvente con la empresa</span>`;
+            saldoFinalCalculado = 0;
+            document.getElementById('stat-total-deuda').innerText = `0.00 $`;
+            document.getElementById('stat-dias-deuda').innerText = `0 Días`;
+            return;
+        }
+
+        let saldoCorriente = 0;
+        const historialConSaldo = estadoDeCuentaGlobal.map(asiento => {
+            const cargo = parseFloat(asiento.cargo) || 0;
+            const abono = parseFloat(asiento.abono) || 0;
+            saldoCorriente = saldoCorriente + cargo - abono;
+            return { ...asiento, saldo: saldoCorriente, cargo, abono };
+        });
+
+        saldoFinalCalculado = saldoCorriente;
+
+        let diasAtraso = 0;
+        if (saldoFinalCalculado > 0.01) {
+            let saldoFaltante = saldoFinalCalculado;
+            let fechaDeudaMasViejaViva = null;
+            
+            for (let i = historialConSaldo.length - 1; i >= 0; i--) {
+                const asiento = historialConSaldo[i];
+                if (asiento.cargo > 0) {
+                    saldoFaltante -= asiento.cargo;
+                    fechaDeudaMasViejaViva = asiento.fecha;
+                    if (saldoFaltante <= 0.01) break; 
+                }
+            }
+            if (fechaDeudaMasViejaViva) {
+                const hoy = new Date();
+                const fechaDeuda = new Date(fechaDeudaMasViejaViva);
+                const difMs = Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()) - Date.UTC(fechaDeuda.getFullYear(), fechaDeuda.getMonth(), fechaDeuda.getDate());
+                diasAtraso = Math.max(0, Math.floor(difMs / (1000 * 60 * 60 * 24)));
+            }
+        }
+        
+        document.getElementById('stat-total-deuda').innerText = `${Math.max(0, saldoFinalCalculado).toFixed(2)} $`;
+        document.getElementById('stat-dias-deuda').innerText = `${diasAtraso} Día${diasAtraso !== 1 ? 's' : ''}`;
+
+        const totalAsientos = historialConSaldo.length;
+        const indiceInicio = Math.max(0, totalAsientos - asientosVisibles);
+        const asientosAMostrar = historialConSaldo.slice(indiceInicio, totalAsientos);
+
+        if (indiceInicio > 0) {
+            const trMas = document.createElement('tr');
+            trMas.innerHTML = `
+                <td colspan="6" style="text-align: center; padding: 12px 5px; border-bottom: 2px dashed #cbd5e1;">
+                    <button onclick="verMasAsientosCuaderno()" style="background: transparent; color: #2563eb; border: 1px dashed #93c5fd; padding: 8px 18px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 0.85rem; transition: 0.2s;" onmouseover="this.style.backgroundColor='#eff6ff'" onmouseout="this.style.backgroundColor='transparent'">
+                        <i class="material-icons" style="font-size:18px; vertical-align:middle;">expand_less</i> 
+                        Ver ${Math.min(100, indiceInicio)} transacciones anteriores ocultas
+                    </button>
+                </td>`;
+            tbody.appendChild(trMas);
+        }
+
+        asientosAMostrar.forEach((asiento) => {
+            const fAsiento = asiento.fecha ? new Date(asiento.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) : '---';
+            const strCargo = asiento.cargo > 0 ? `${asiento.cargo.toFixed(2)} $` : '';
+            const strAbono = asiento.abono > 0 ? `${asiento.abono.toFixed(2)} $` : '';
+            
+            const tr = document.createElement('tr');
+            // AQUÍ INYECTAMOS LOS COLORES DIRECTOS (Rojo, Verde y Azul Oscuro)
+            tr.innerHTML = `
+                <td style="font-size: 0.8rem; color: #64748b;">${fAsiento}</td>
+                <td style="text-transform: uppercase;">${asiento.concepto}</td>
+                <td style="text-align: right; color: #dc2626; font-weight: 900;">${strCargo}</td>
+                <td style="text-align: right; color: #10b981; font-weight: 900;">${strAbono}</td>
+                <td style="text-align: right; color: #0f172a; font-weight: 900; font-size: 1.1rem;">${asiento.saldo.toFixed(2)} $</td>
+                <td style="text-align: center; color: #cbd5e1;">---</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const celdaTotal = document.getElementById('celda-total-cuaderno');
+        if (saldoFinalCalculado > 0.01) {
+            celdaTotal.innerHTML = `<span style="color: #64748b; font-weight: 800; text-transform: uppercase;">El cliente me debe:</span> <span style="color: #dc2626; font-weight: 900; font-size: 1.4rem; margin-left: 10px;">${saldoFinalCalculado.toFixed(2)} $</span>`;
+        } else if (saldoFinalCalculado < -0.01) {
+            celdaTotal.innerHTML = `<span style="color: #64748b; font-weight: 800; text-transform: uppercase;">Le debo al cliente:</span> <span style="color: #10b981; font-weight: 900; font-size: 1.4rem; margin-left: 10px;">${Math.abs(saldoFinalCalculado).toFixed(2)} $</span>`;
+        } else {
+            celdaTotal.innerHTML = `<span style="color: #10b981; font-weight: 900; font-size: 1.3rem;">0.00 $ El cliente está solvente con la empresa</span>`;
+        }
+    };
+
+    window.verMasAsientosCuaderno = function() {
+        asientosVisibles += 100;
+        renderizarCuaderno();
+    };
+
+    // --- INTERACTIVIDAD DE LA LIBRETA (INPUTS) ---
+    window.cambiarModoLibreta = function() {
+        const tipoOp = document.getElementById('lib-tipo-op').value;
+        const inCargo = document.getElementById('lib-cargo');
+        const inAbono = document.getElementById('lib-abono');
+        const opcionesPago = document.getElementById('lib-opciones-pago');
+
+        if (tipoOp === 'VENTA') {
+            inCargo.disabled = false;
+            inAbono.disabled = true;
+            inAbono.value = '';
+            opcionesPago.classList.add('hidden');
+        } else {
+            inCargo.disabled = true;
+            inCargo.value = '';
+            inAbono.disabled = false;
+            opcionesPago.classList.remove('hidden');
+        }
+    };
+
+    window.procesarOperacionLibreta = function() {
+        const tipoOp = document.getElementById('lib-tipo-op').value;
+        const fechaSeleccionada = document.getElementById('lib-fecha').value;
+        const concepto = document.getElementById('lib-concepto').value.trim().toUpperCase() || (tipoOp === 'VENTA' ? 'DEUDA AÑADIDA MANUALMENTE' : 'ABONO RECIBIDO');
+        
+        if (!clienteSeleccionadoActual) {
+            mostrarToast("Busca y selecciona a un cliente primero.", "error"); return;
+        }
+        if (!fechaSeleccionada) {
+            mostrarToast("La fecha es obligatoria.", "error"); return;
+        }
+
+        const ahora = new Date();
+        const fechaHoy = ahora.toISOString().split('T')[0];
+        let fechaParaBD = fechaSeleccionada === fechaHoy 
+            ? ahora.toISOString().replace('T', ' ').substring(0, 19) 
+            : `${fechaSeleccionada} ${ahora.toISOString().split('T')[1].substring(0, 8)}`;
+
+        if (tipoOp === 'VENTA') {
+            const monto = parseFloat(document.getElementById('lib-cargo').value) || 0;
+            if (monto <= 0) { mostrarToast("Ingresa un monto de deuda válido.", "error"); return; }
+            
+            let tipoDeDeuda = fechaSeleccionada < fechaHoy ? 'DEUDA ANTIGUA' : 'DEUDA';
+
+            ipc.send('guardar-deuda-antigua-sistema', {
+                cliente: clienteSeleccionadoActual, monto: monto, fecha: fechaParaBD, descripcion: concepto, tipo_medida: tipoDeDeuda
+            });
+            
+            ipc.once('guardar-deuda-antigua-resultado', (event, res) => {
+                if (res.success) {
+                    mostrarToast("Deuda agregada al cuaderno.", "success");
+                    limpiarFilaLibreta(); seleccionarClienteGlobal(clienteSeleccionadoActual);
+                } else { mostrarToast("Error: " + res.msg, "error"); }
+            });
+
+        } else if (tipoOp === 'ABONO') {
+            const abonoTotal = parseFloat(document.getElementById('lib-abono').value) || 0;
+            const banco = document.getElementById('lib-banco').value;
+
+            if (abonoTotal <= 0) { mostrarToast("Ingresa un monto de pago válido.", "error"); return; }
+
+            // ================== ALGORITMO FIFO DE DISTRIBUCIÓN ==================
+            let abonoRestante = abonoTotal;
+            let abonosAProcesar = [];
+
+            // Si el cliente no debe nada en el sistema pero entrega dinero (Saldo a Favor puro)
+            if (!cargasDelClienteActual || cargasDelClienteActual.length === 0) {
+                abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
+            } else {
+                // Ordenamos las facturas pendientes de la más vieja a la más nueva
+                const cargasPendientes = [...cargasDelClienteActual].sort((a, b) => {
+                    return new Date(a.fecha_entrada || 0).getTime() - new Date(b.fecha_entrada || 0).getTime() || a.id_carga - b.id_carga;
+                });
+
+                // Repartimos el dinero rellenando los huecos de cada factura
+                for (let carga of cargasPendientes) {
+                    if (abonoRestante <= 0.01) break;
+                    let deudaCarga = parseFloat(carga.total_deuda_carga) || 0;
+                    if (deudaCarga <= 0) continue;
+
+                    let montoAPagarAqui = Math.min(abonoRestante, deudaCarga);
+                    abonosAProcesar.push({ id_carga: carga.id_carga, monto: montoAPagarAqui });
+                    abonoRestante -= montoAPagarAqui; // Restamos lo que ya usamos
+                }
+
+                // Si pagó de más (ej. debía 8k y pagó 10k), le metemos el sobrante a la última factura
+                if (abonoRestante > 0.01) {
+                    if (abonosAProcesar.length > 0) {
+                        abonosAProcesar[abonosAProcesar.length - 1].monto += abonoRestante;
+                    } else {
+                        abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
+                    }
+                }
+            }
+
+            // ================== INYECCIÓN SECUENCIAL AL BACKEND ==================
+            // Enviamos los cortes de pago de uno en uno para evitar colisiones en la Base de Datos
+            function procesarSiguienteAbono(index) {
+                if (index >= abonosAProcesar.length) {
+                    mostrarToast(`Pago de ${abonoTotal.toFixed(2)} $ distribuido inteligentemente.`, "success");
+                    limpiarFilaLibreta();
+                    seleccionarClienteGlobal(clienteSeleccionadoActual);
+                    return;
+                }
+
+                let abonoActual = abonosAProcesar[index];
+                let movil = banco === "PAGO MÓVIL" ? abonoActual.monto : 0; 
+                let divisa = banco !== "PAGO MÓVIL" ? abonoActual.monto : 0;
+
+                ipc.send('guardar-abono-deuda', {
+                    id_carga: parseInt(abonoActual.id_carga),
+                    vehiculo_id: 0,
+                    cliente: clienteSeleccionadoActual,
+                    monto_divisa: divisa,
+                    monto_movil: movil,
+                    banco: banco === "EFECTIVO" ? "" : banco
+                });
+
+                ipc.once('guardar-abono-resultado', (event, res) => {
+                    if (res.success) {
+                        procesarSiguienteAbono(index + 1); // Llamada recursiva al siguiente pago
+                    } else {
+                        mostrarToast("Error en la distribución: " + res.msg, "error");
+                    }
+                });
+            }
+
+            // Disparamos la cadena
+            procesarSiguienteAbono(0);
+        }
+    };
+
+    function limpiarFilaLibreta() {
+        document.getElementById('lib-concepto').value = '';
+        document.getElementById('lib-cargo').value = '';
+        document.getElementById('lib-abono').value = '';
+        document.getElementById('lib-carga-ref').value = '';
+        document.getElementById('lib-banco').value = '';
+    }
+
+    window.toggleVistaAdjudicacion = function() {
+        const barraBusquedaGlobal = document.querySelector('.barra-cliente-nueva');
+        const panelEstadisticas = document.getElementById('panel-estadisticas-cliente');
+        const panelTablaDetalles = document.getElementById('panel-detalle-tabla');
+        const panelTablaGlobal = document.getElementById('panel-tabla-global');
+        const btnVolver = document.getElementById('btn-volver-global');
+        const panelManual = document.getElementById('panel-adjudicacion-manual');
+        const btnCambiar = document.getElementById('btn-cambiar-vista');
+
+        vistaAdjudicacionActiva = !vistaAdjudicacionActiva;
+
+       if (vistaAdjudicacionActiva) {
+            if(barraBusquedaGlobal) barraBusquedaGlobal.classList.add('hidden');
+            if(panelEstadisticas) panelEstadisticas.classList.add('hidden');
+            if(panelTablaDetalles) panelTablaDetalles.classList.add('hidden');
+            if(panelTablaGlobal) panelTablaGlobal.classList.add('hidden');
+            if(btnVolver) btnVolver.classList.add('hidden');
+            
+            panelManual.classList.remove('hidden');
+            btnCambiar.style.backgroundColor = '#64748b';
+            btnCambiar.innerHTML = `<i class="material-icons" style="font-size: 20px;">arrow_back</i> <span>Volver a Reportes</span>`;
+            document.getElementById('manual-fecha').value = new Date().toISOString().split('T')[0];
+        } else {
+            if(barraBusquedaGlobal) barraBusquedaGlobal.classList.remove('hidden');
+            
+            // Decidimos a qué vista retornar
+            if (clienteSeleccionadoActual) {
+                if(panelEstadisticas) panelEstadisticas.classList.remove('hidden');
+                if(panelTablaDetalles) panelTablaDetalles.classList.remove('hidden');
+                if(btnVolver) btnVolver.classList.remove('hidden');
+            } else {
+                if(panelTablaGlobal) panelTablaGlobal.classList.remove('hidden');
+                cargarDeudoresGlobales(); // Actualiza por si metimos una deuda
+            }
+            
+            panelManual.classList.add('hidden');
+            btnCambiar.style.backgroundColor = '#1e293b'; 
+            btnCambiar.innerHTML = `<i class="material-icons" style="font-size: 20px;">add_circle</i> <span>Adjudicar Deuda Antigua</span>`;
+            
+            limpiarFormularioManual();
+        }
+    };
+
+    // Buscador predictivo aislado para el formulario de deudas antiguas
+    window.buscarClienteManualForm = function(input) {
+        const termino = input.value.toLowerCase().trim();
+        const contenedor = document.getElementById('resultados-cliente-manual');
+
+        if (termino.length < 1) {
+            contenedor.classList.remove('activo');
+            return;
+        }
+
+        const filtrados = clientesBaseCache.filter(c => c.nombre.toLowerCase().includes(termino));
+
+        if (filtrados.length > 0) {
+            contenedor.classList.add('activo');
+            contenedor.innerHTML = filtrados.slice(0, 8).map(c => 
+                `<div class="cliente-item" onmousedown="seleccionarClienteManualForm('${c.nombre}')">${c.nombre}</div>`
+            ).join('');
+        } else {
+            contenedor.classList.add('activo');
+            contenedor.innerHTML = `<div class="cliente-item" style="color:#9ca3af; font-style:italic; pointer-events: none;">No encontrado</div>`;
+        }
+    };
+
+    window.seleccionarClienteManualForm = function(nombre) {
+        document.getElementById('buscador-cliente-manual').value = nombre;
+        document.getElementById('resultados-cliente-manual').classList.remove('activo');
+        clienteManualSeleccionado = nombre;
+    };
+
+    function limpiarFormularioManual() {
+        document.getElementById('buscador-cliente-manual').value = "";
+        document.getElementById('manual-monto').value = "";
+        document.getElementById('manual-descripcion').value = "";
+        clienteManualSeleccionado = "";
+    }
+
+    // Procesar y enviar la deuda manual simulando una transacción a crédito
+    window.guardarDeudaManualAntigua = function() {
+        const monto = parseFloat(document.getElementById('manual-monto').value) || 0;
+        const fechaSeleccionada = document.getElementById('manual-fecha').value;
+        const descripcion = document.getElementById('manual-descripcion').value.trim().toUpperCase() || "DEUDA ANTERIOR REGISTRADA EN SISTEMA";
+
+        if (!clienteManualSeleccionado) {
+            mostrarToast("Por favor, seleccione un cliente válido usando el buscador.", "error"); return;
+        }
+        if (monto <= 0) {
+            mostrarToast("El monto de la deuda debe ser mayor a 0.", "error"); return;
+        }
+        if (!fechaSeleccionada) {
+            mostrarToast("Seleccione la fecha de origen de la deuda.", "error"); return;
+        }
+
+        const ahora = new Date();
+        const fechaHoy = ahora.toISOString().split('T')[0];
+        let fechaParaBD = fechaSeleccionada;
+        if (fechaSeleccionada === fechaHoy) {
+            fechaParaBD = ahora.toISOString().replace('T', ' ').substring(0, 19);
+        } else {
+            fechaParaBD = `${fechaSeleccionada} ${ahora.toISOString().split('T')[1].substring(0, 8)}`;
+        }
+
+        if (ipc) {
+            ipc.send('guardar-deuda-antigua-sistema', {
+                cliente: clienteManualSeleccionado,
+                monto: monto,
+                fecha: fechaParaBD,
+                descripcion: descripcion,
+                tipo_medida: 'DEUDA ANTIGUA' // <-- Al enviarlo desde el botón oscuro de arriba siempre es antigua
+            });
+            
+            ipc.once('guardar-deuda-antigua-resultado', (event, res) => {
+                if (res.success) {
+                    mostrarToast(`¡Éxito! Se adjudicó la deuda a ${clienteManualSeleccionado}.`, "success");
+                    limpiarFormularioManual();
+                    toggleVistaAdjudicacion(); 
+                    if (clienteSeleccionadoActual === clienteManualSeleccionado) {
+                        seleccionarClienteGlobal(clienteSeleccionadoActual);
+                    }
+                } else {
+                    mostrarToast("Error en el proceso de almacenamiento: " + res.msg, "error");
+                }
+            });
+        }
+    };
+    window.mostrarToast = function(mensaje, tipo = "success") {
+        const contenedor = document.getElementById('toast-container');
+        if(!contenedor) return;
+        const toast = document.createElement('div');
+        toast.className = `toast ${tipo}`;
+        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        contenedor.appendChild(toast);
+        
+        requestAnimationFrame(() => toast.classList.add('show'));
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    };
+
+    inicializarModuloDeudas();
+}
+</script>

@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ventas "Mayorista"</title>
+    <link href="./node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="./node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="./css/tailwind.css">
+    
+    <style>
+        /* =========================================
+           1. ESTILOS GLOBALES Y SCROLLBAR
+           ========================================= */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        .app-container { display: flex; width: 100%; min-height: 100vh; }
+
+        /* =========================================
+           2. MENÚ LATERAL (SIDEBAR)
+           ========================================= */
+        .sidebar {
+            width: 280px;
+            background-color: #F8F8F8;
+            color: #4A4A4A;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: fixed; 
+            top: 0;
+            left: 0;
+            z-index: 50;
+            box-sizing: border-box;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar-nav ul li { margin-bottom: 0.25rem; }
+        .sidebar-nav ul li a {
+            display: flex;
+            align-items: center;
+            padding: 0.85rem 1rem;
+            color: #4A4A4A;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .sidebar-nav ul li a:hover {
+            background-color: #E0F2F7;
+            color: #0288D1;
+        }
+
+        .sidebar-nav ul li a i.material-icons {
+            margin-right: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        /* =========================================
+           3. BOTÓN TOGGLE
+           ========================================= */
+        .sidebar-toggle-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #4A4A4A;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle-btn:hover { color: #0288D1; }
+
+        /* =========================================
+           4. ÁREA DE CONTENIDO PRINCIPAL
+           ========================================= */
+        .main-content {
+            flex-grow: 1;
+            padding: 0 !important; 
+            margin: 0; 
+            background-color: #FFFFFF; 
+            min-height: 100vh;
+            margin-left: 280px; 
+            width: calc(100% - 280px);
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #dynamic-content-area {
+            padding: 0; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* =========================================
+           5. COMPORTAMIENTO MINIMIZADO
+           ========================================= */
+        .sidebar.collapsed { width: 56px; padding: 1.5rem 0.5rem; }
+        .sidebar.collapsed .sidebar-toggle-btn { left: 50%; transform: translateX(-50%); }
+        
+        .sidebar.collapsed .sidebar-header img { width: 35px !important; height: 35px !important; margin-top: 35px; transition: all 0.3s ease; }
+        
+        .sidebar.collapsed .sidebar-header h3,
+        .sidebar.collapsed .sidebar-header h4 {
+            opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none; height: 0; margin: 0;
+        }
+
+        .sidebar.collapsed .footer-info {
+            opacity: 0; visibility: hidden; height: 0; margin: 0; overflow: hidden; transition: all 0.3s ease;
+        }
+
+        .sidebar-header h3, .sidebar-header h4, .footer-info {
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s, height 0.3s, margin 0.3s;
+            opacity: 1; transform: translateX(0); visibility: visible;
+        }
+
+        .sidebar.collapsed .sidebar-nav ul li a {
+            font-size: 0; justify-content: center; padding-left: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar.collapsed .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; }
+        
+        .main-content.expanded { margin-left: 56px; width: calc(100% - 56px); }
+
+        /* =========================================
+           6. ESTILOS DEL MANUAL DE USUARIO (NUEVO DISEÑO ADMINISTRATIVO)
+           ========================================= */
+        .manual-container {
+            width: 100%;
+            margin: 0 auto;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        
+        .manual-header {
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        /* Malla Adaptativa */
+        .manual-steps-grid {
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 2rem;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .manual-steps-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (min-width: 1400px) {
+            .manual-steps-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* Estructura de la nueva tarjeta */
+        .manual-step-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1; /* Borde sutil general */
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            height: 100%; 
+            overflow: hidden; /* Importante para que el color de la cabecera no se salga del radio */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .manual-step-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        /* Cabecera de la tarjeta con color */
+        .manual-step-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .manual-step-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        /* Cuerpo de la tarjeta blanco */
+        .manual-step-content {
+            padding: 1.5rem;
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            flex-grow: 1; 
+        }
+
+        .manual-step-content ul {
+            margin-top: 0.75rem;
+            padding-left: 1.25rem;
+            margin-bottom: 0;
+        }
+
+        .manual-step-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Caja de ejemplo refinada */
+        .manual-example-box {
+            background-color: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.25rem;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .manual-example-box strong { color: #334155; }
+
+        /* Colores Específicos por Módulo para las Cabeceras */
+        .config-step .manual-step-header { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .config-step .manual-step-header i, .config-step .manual-step-title { color: #475569; }
+
+        .cargas-step .manual-step-header { background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; }
+        .cargas-step .manual-step-header i, .cargas-step .manual-step-title { color: #1d4ed8; }
+
+        .ventas-step .manual-step-header { background-color: #fffbeb; border-bottom: 1px solid #fde68a; }
+        .ventas-step .manual-step-header i, .ventas-step .manual-step-title { color: #b45309; }
+
+        .cobros-step .manual-step-header { background-color: #fef2f2; border-bottom: 1px solid #fecaca; }
+        .cobros-step .manual-step-header i, .cobros-step .manual-step-title { color: #b91c1c; }
+
+        .historial-step .manual-step-header { background-color: #f0fdf4; border-bottom: 1px solid #bbf7d0; }
+        .historial-step .manual-step-header i, .historial-step .manual-step-title { color: #15803d; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div>
+                <div class="sidebar-header">
+                    <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none">
+                        <i id="menu-icon-dynamic" class="material-icons">menu</i>
+                    </button>
+                    
+                    <img src="logo_redondeado.png" alt="Logo NEXUS Mayorista" class="rounded-full mx-auto mb-2 mt-8" style="display: block; width: 100px; height: 100px; object-fit: cover; transition: all 0.3s ease;">
+                    
+                    <h3 class="font-bold text-gray-800 uppercase tracking-wider text-sm mt-2">Nexus Pos Global</h3>
+                    <h4 class="font-bold text-gray-600 uppercase tracking-wider text-xs">Version "Mayorista"</h4>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li>
+                            <a href="#" onclick="loadPage('cargas.html')">
+                                <i class="material-icons">local_shipping</i>
+                                <span>Cargas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('tabla_ventas.html')">
+                                <i class="material-icons">payments</i>
+                                <span>Tabla de ventas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('cargas_cerradas.html')">
+                                <i class="material-icons">history</i>
+                                <span>Cargas Cerradas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('cuentas_cobrar.html')">
+                                <i class="material-icons">receipt_long</i>
+                                <span>Cuentas por cobrar</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('deuda_clientes.html')">
+                                <i class="material-icons">account_box</i>
+                                <span>Deuda / Clientes</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div> 
+            
+            <div>
+                <div class="footer-info mb-4 text-center px-2" style="font-size: 0.75rem; color: #6B6B6B; white-space: normal;">
+                    <p class="font-bold text-gray-700">Desarrollado por Nexus Company</p>
+                    <p class="italic text-xs mt-1">De la familia de Nexus POS Global</p>
+                    <p class="mt-2" style="font-size: 0.65rem;">Copyright © 2026<br>Todos los derechos reservados</p>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li>
+                            <a href="#" onclick="loadPage('configuracion.html')">
+                                <i class="material-icons">settings</i>
+                                <span>Configuración</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="dynamic-content-area" class="p-6 md:p-10">
+                
+                <div class="manual-container">
+                    <div class="manual-header">
+                        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Guía Rápida de Operación</h1>
+                        <p class="text-slate-500 mt-2 font-medium">Bienvenido al sistema Nexus Mayorista. Sigue el flujo de trabajo descrito a continuación para operar el sistema correctamente, de principio a fin.</p>
+                    </div>
+
+                    <div class="manual-steps-grid">
+                        
+                        <div class="manual-step-card config-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">settings</i>
+                                <h2 class="manual-step-title">1. Configuración de Datos</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Antes de iniciar cualquier operación, debes configurar las bases del sistema en el módulo de <strong>Configuración</strong> (ubicado en la parte inferior del menú izquierdo).</p>
+                                <ul>
+                                    <li><strong>Gestión de Flota:</strong> Registra los nombres o placas de los vehículos (o sucursales) que realizarán las ventas.</li>
+                                    <li><strong>Categorías (Unidad de Empaque):</strong> Define cómo viene empacado el producto (Ej. Saco, Caja, Paca).</li>
+                                    <li><strong>Variaciones (Contenido/Tamaño):</strong> Especifica qué contiene ese empaque.</li>
+                                </ul>
+                                <div class="manual-example-box">
+                                    <strong>Ejemplo de uso correcto:</strong><br>
+                                    Si vendes refrescos en paquetes, la <em>Categoría</em> (Unidad de empaque) sería <strong>"Paca"</strong> o <strong>"Bulto"</strong>, y la <em>Variación</em> (Contenido) sería <strong>"Refresco Coca-Cola"</strong>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card cargas-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">local_shipping</i>
+                                <h2 class="manual-step-title">2. Asignación de Cargas</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Una vez creados los productos y vehículos, dirígete al módulo de <strong>Cargas</strong> para asignar mercancía al camión antes de salir a ruta.</p>
+                                <ul>
+                                    <li>Haz clic en <strong>"Nueva Carga"</strong> y selecciona el vehículo disponible.</li>
+                                    <li>Agrega el detalle de la mercancía (Categoría, Variación y Cantidad).</li>
+                                    <li>Guarda el manifiesto. Al hacerlo, la carga quedará "Activa" para empezar a venderse.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card ventas-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">payments</i>
+                                <h2 class="manual-step-title">3. Operación Diaria</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Este es el núcleo del sistema. Aquí registrarás las salidas de mercancía del camión.</p>
+                                <ul>
+                                    <li>Selecciona el vehículo que tiene la carga activa.</li>
+                                    <li>Usa la planilla estilo Excel para ir anotando a quién se le vende, el precio, qué método de pago usó y la cantidad.</li>
+                                    <li>Si hubo mercancía dañada o extraviada, regístrala en la sección inferior de <strong>"Salida por Merma"</strong>.</li>
+                                    <li>Cuando el camión regrese o se quede sin mercancía, presiona <strong>"Cerrar Carga"</strong>. El sistema verificará que no queden inventarios huérfanos.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card cobros-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">receipt_long</i>
+                                <h2 class="manual-step-title">4. Cuentas por Cobrar</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Toda venta registrada como "CRÉDITO" en la Tabla de Ventas, aparecerá aquí organizada por Carga y Vehículo.</p>
+                                <ul>
+                                    <li>Selecciona la carga que deseas revisar.</li>
+                                    <li>Podrás registrar pagos (abonos) en Divisas, Transferencia o Pago Móvil a los clientes deudores.</li>
+                                    <li>El sistema cuenta con una <strong>Auditoría de Pagos</strong> para rastrear o revertir cualquier abono ingresado por error.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card historial-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">account_box</i>
+                                <h2 class="manual-step-title">5. Reportes Finales</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Para la administración general, cuentas con dos módulos de auditoría globales:</p>
+                                <ul>
+                                    <li><strong>Deuda / Clientes:</strong> Busca a un cliente por su nombre y mira su deuda total consolidada (sumando todas las cargas de todos los camiones).</li>
+                                    <li><strong>Cargas Cerradas:</strong> El archivo histórico. Aquí consultarás los ingresos generados por cada viaje, mermas declaradas, y el promedio de ganancia exacto por producto de cargas ya finalizadas.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function loadPage(url) {
+            const area = document.getElementById('dynamic-content-area');
+            area.innerHTML = '<div class="p-6 md:p-10"><p class="text-blue-500 flex items-center gap-2 font-medium"><i class="material-icons animate-spin">refresh</i> Cargando módulo...</p></div>';
+            
+            fetch(url)
+                .then(res => {
+                    if(!res.ok) throw new Error();
+                    return res.text();
+                })
+                .then(html => {
+                    area.innerHTML = html;
+                    window.scrollTo(0, 0);
+                    
+                    const scripts = area.querySelectorAll("script");
+                    scripts.forEach(s => {
+                        const nuevo = document.createElement("script");
+                        Array.from(s.attributes).forEach(attr => nuevo.setAttribute(attr.name, attr.value));
+                        nuevo.appendChild(document.createTextNode(s.innerHTML));
+                        s.parentNode.replaceChild(nuevo, s);
+                    });
+                })
+                .catch(() => {
+                    area.innerHTML = `<div class="p-6 md:p-10"><div class="p-4 bg-red-100 text-red-700 rounded border-l-4 border-red-500 font-medium">
+                        Error: No se pudo cargar el módulo <b>${url}</b>. Asegúrese de que el archivo exista en el directorio.
+                    </div></div>`;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const desktopMenuToggle = document.getElementById('desktop-menu-toggle');
+            const menuIconDynamic = document.getElementById('menu-icon-dynamic');
+
+            if (desktopMenuToggle && sidebar && mainContent) {
+                desktopMenuToggle.onclick = (e) => {
+                    e.preventDefault();
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                    
+                    if (menuIconDynamic) {
+                        menuIconDynamic.style.opacity = '0';
+                        setTimeout(() => {
+                            menuIconDynamic.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'menu';
+                            menuIconDynamic.style.opacity = '1';
+                        }, 150);
+                    }
+                };
+            }
+
+            document.querySelectorAll(".sidebar-nav a").forEach(link => {
+                link.addEventListener('click', () => {
+                    if (sidebar && sidebar.classList.contains('collapsed')) {
+                        sidebar.classList.remove('collapsed');
+                        mainContent.classList.remove('expanded');
+                        if (menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
