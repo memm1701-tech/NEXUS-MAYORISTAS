@@ -1,0 +1,615 @@
+<div id="contenedor-principal-cargas" class="w-full min-h-[80vh] flex flex-col items-center justify-center p-6 transition-all duration-300">
+    
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estilos Base de Paneles y Formulario */
+        .cargas-panel { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .cargas-label { font-weight: 700; color: #64748b; font-size: 0.85em; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .cargas-input, .cargas-select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; outline: none; transition: 0.3s; font-size: 1em; box-sizing: border-box;}
+        .cargas-input:focus, .cargas-select:focus { border-color: #1e293b; background: white; box-shadow: 0 0 0 3px rgba(30,41,59,0.05); }
+        
+        /* Botones */
+        .cargas-btn-main { background: #1e293b; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .cargas-btn-main:hover { background: #0f172a; }
+        .cargas-btn-back { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px; transition: 0.2s; }
+        .cargas-btn-back:hover { background: #cbd5e1; color: #1e293b; }
+
+        /* Tarjetas de Selección de Vehículo (Mini Cuadradas) */
+        .vehiculo-card-mini { 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 16px; 
+            aspect-ratio: 1 / 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 15px; 
+            transition: all 0.25s ease; 
+            cursor: pointer; 
+            text-align: center;
+        }
+        .vehiculo-card-mini:hover { border-color: #2563eb; transform: scale(1.03); box-shadow: 0 8px 15px rgba(37, 99, 235, 0.08); }
+        .vehiculo-card-mini i { color: #94a3b8; transition: color 0.2s; }
+        .vehiculo-card-mini:hover i { color: #2563eb; }
+        
+        /* Variante verde para Gestión */
+        .vehiculo-card-gestion:hover { border-color: #10b981; box-shadow: 0 8px 15px rgba(16, 185, 129, 0.08); }
+        .vehiculo-card-gestion:hover i { color: #10b981; }
+
+        /* Buscador */
+        .search-container { position: relative; width: 100%; max-width: 400px; margin-bottom: 25px; }
+        .search-input { width: 100%; padding: 12px 15px 12px 45px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; transition: 0.3s; font-size: 1em; }
+        .search-input:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.05); }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+
+        /* Tablas y Totales */
+        .cargas-table-container { border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto; background: white; }
+        .cargas-table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+        .cargas-table th { text-align: left; background: #f1f5f9; color: #475569; padding: 14px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+        .cargas-table td { padding: 14px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+        .total-row { background: #f8fafc; font-weight: 800; border-top: 2px solid #e2e8f0; }
+        .cargas-btn-del { color: #94a3b8; border: none; background: none; cursor: pointer; transition: 0.2s; padding: 5px; }
+        .cargas-btn-del:hover { color: #ef4444; }
+        
+        .hidden { display: none !important; }
+
+        /* ========================================================
+           CORRECCIONES DE ESTILOS FORZADOS (Anti-Purge Tailwind) 
+           ======================================================== */
+
+        /* 1. Garantiza el fondo oscuro superpuesto en toda la pantalla */
+        #modal-notificacion {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 99999 !important;
+            background-color: rgba(15, 23, 42, 0.6) !important; /* Fondo oscurecido */
+        }
+
+        /* 2. Garantiza la "Ventana" con fondo blanco, bordes redondos y sombra */
+        .modal-box-custom {
+            background-color: #ffffff !important;
+            border-radius: 1.5rem !important; /* Bordes redondos pronunciados */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+            padding: 2rem !important;
+            width: 100% !important;
+            max-width: 24rem !important;
+            margin: 0 1rem !important;
+            text-align: center !important;
+        }
+
+        /* 3. Textos pequeños dinámicos para las tarjetas */
+        .texto-estado-verde {
+            color: #10b981 !important; /* Verde */
+            font-size: 13px !important; /* Letra más pequeña */
+            font-weight: 800 !important;
+            line-height: 1.2 !important;
+            margin-top: 6px !important;
+            display: block;
+        }
+
+        .texto-estado-turquesa {
+            color: #0d9488 !important; /* Azul Turquesa oscuro para mejor lectura */
+            font-size: 13px !important; /* Mismo tamaño pequeño */
+            font-weight: 800 !important;
+            line-height: 1.2 !important;
+            margin-top: 6px !important;
+            display: block;
+        }
+    </style>
+
+    <div id="modal-notificacion" class="hidden flex items-center justify-center transition-opacity">
+        <div class="modal-box-custom transform transition-all">
+            <div id="modal-icono-container" class="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center">
+                <i id="modal-icono" class="material-icons text-4xl"></i>
+            </div>
+            <h3 id="modal-titulo" class="text-xl font-extrabold text-slate-800 mb-2"></h3>
+            <p id="modal-mensaje" class="text-slate-600 mb-6 font-medium"></p>
+            <div id="modal-botones" class="flex justify-center gap-3">
+            </div>
+        </div>
+    </div>
+
+    <div id="vista-tarjetas" class="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl mx-auto" style="animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;">
+        
+        <div onclick="irASeleccionVehiculo()" class="group bg-white rounded-3xl p-12 flex flex-col items-center justify-center border border-gray-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer relative overflow-hidden min-h-[400px]">
+            <div class="absolute -top-10 -right-10 w-40 h-40 bg-blue-50 rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500" style="filter: blur(30px);"></div>
+            <div class="relative w-24 h-24 bg-blue-50 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-blue-600 transition-all duration-500 transform group-hover:rotate-3">
+                <i class="material-icons text-5xl text-blue-600 group-hover:text-white transition-colors duration-500">add_box</i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-3 relative z-10">Nueva Carga</h2>
+            <p class="text-gray-500 text-center text-lg leading-relaxed relative z-10 max-w-md">Inicia el proceso de registro seleccionando una unidad de transporte.</p>
+            <div class="mt-8 px-8 py-3 rounded-full text-blue-600 font-bold text-base bg-blue-50 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">Comenzar <i class="material-icons align-middle text-sm ml-1">arrow_forward</i></div>
+        </div>
+
+        <div onclick="abrirGestionCargas()" class="group bg-white rounded-3xl p-12 flex flex-col items-center justify-center border border-gray-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 cursor-pointer relative overflow-hidden min-h-[400px]">
+            <div class="absolute -top-10 -left-10 w-40 h-40 bg-green-50 rounded-full opacity-50 group-hover:opacity-100 transition-opacity duration-500" style="filter: blur(30px);"></div>
+            <div class="relative w-24 h-24 bg-green-50 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-green-600 transition-all duration-500 transform group-hover:-rotate-3">
+                <i class="material-icons text-5xl text-green-600 group-hover:text-white transition-colors duration-500">inventory_2</i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-3 relative z-10">Gestionar Cargas</h2>
+            <p class="text-gray-500 text-center text-lg leading-relaxed relative z-10 max-w-md">Consulta los manifiestos, edita o audita las cargas enviadas de cada unidad.</p>
+            <div class="mt-8 px-8 py-3 rounded-full text-green-600 font-bold text-base bg-green-50 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">Revisar <i class="material-icons align-middle text-sm ml-1">arrow_forward</i></div>
+        </div>
+    </div>
+
+
+    <div id="vista-seleccion-vehiculo" class="hidden w-full max-w-6xl mx-auto" style="animation: fadeIn 0.4s ease-out forwards;">
+        <button onclick="volverAlMenuPrincipal()" class="cargas-btn-back">
+            <i class="material-icons">arrow_back</i> Volver
+        </button>
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Seleccionar Unidad para Nueva Carga</h1>
+            <div class="search-container">
+                <i class="material-icons search-icon">search</i>
+                <input type="text" id="buscador-vehiculos" class="search-input" placeholder="Buscar vehículo..." oninput="filtrarVehiculos()">
+            </div>
+        </div>
+        <div id="grid-vehiculos-disponibles" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5"></div>
+    </div>
+
+    <div id="vista-registro-final" class="hidden w-full max-w-7xl" style="animation: fadeIn 0.4s ease-out forwards;">
+        <button onclick="volverASeleccionVehiculo()" class="cargas-btn-back"><i class="material-icons">arrow_back</i> Cambiar Vehículo</button>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-6">
+            <div class="lg:col-span-4">
+                <div class="cargas-panel flex flex-col items-center justify-center text-center">
+                    <div class="w-14 h-14 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3"><i class="material-icons">local_shipping</i></div>
+                    <label class="cargas-label">Vehículo Seleccionado</label>
+                    <h2 id="nombre-vehiculo-fijado" class="text-xl font-black text-slate-800 uppercase">---</h2>
+                </div>
+            </div>
+            <div class="lg:col-span-8">
+                <div class="cargas-panel">
+                    <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Detalle de Mercancía</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div><label class="cargas-label">Categoría</label><select id="nc-categoria" class="cargas-select"><option value="">Seleccione...</option></select></div>
+                        <div><label class="cargas-label">Variación</label><select id="nc-subtipo" class="cargas-select" disabled><option value="">Esperando...</option></select></div>
+                        <div><label class="cargas-label">Cantidad</label><input type="number" id="nc-cantidad" class="cargas-input" placeholder="0"></div>
+                        <div><button onclick="agregarItemAlaCarga()" class="cargas-btn-main w-full" style="background: #2563eb; height: 46px;"><i class="material-icons">add</i> Añadir</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="cargas-panel w-full">
+            <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Resumen de Carga temporal</h2>
+            <div class="cargas-table-container">
+                <table class="cargas-table">
+                    <thead><tr><th>Categoría</th><th>Variación</th><th>Cantidad</th><th style="text-align: right">Acción</th></tr></thead>
+                    <tbody id="tabla-items-carga"><tr><td colspan="4" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr></tbody>
+                    <tfoot id="tabla-footer-total" class="hidden">
+                        <tr class="total-row">
+                            <td colspan="2" class="text-right font-bold text-slate-600 uppercase" id="label-total-dinamico">Total:</td>
+                            <td class="text-2xl text-blue-700 font-black" id="valor-total-dinamico">0</td><td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="flex justify-end mt-6">
+                <button onclick="guardarManifiestoCompleto()" class="cargas-btn-main" style="background: #10b981;"><i class="material-icons">save</i> Guardar Manifiesto</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="vista-gestion-seleccion" class="hidden w-full max-w-6xl mx-auto" style="animation: fadeIn 0.4s ease-out forwards;">
+        <button onclick="volverAlMenuPrincipalDesdeGestion()" class="cargas-btn-back">
+            <i class="material-icons">arrow_back</i> Volver
+        </button>
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Auditoría: Seleccionar Unidad</h1>
+            <div class="search-container">
+                <i class="material-icons search-icon">search</i>
+                <input type="text" id="buscador-gestion" class="search-input focus:border-green-500" placeholder="Buscar vehículo para auditar..." oninput="filtrarVehiculosGestion()">
+            </div>
+        </div>
+        <div id="grid-vehiculos-gestion" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5"></div>
+    </div>
+
+    <div id="vista-gestion-detalles" class="hidden w-full" style="animation: fadeIn 0.4s ease-out forwards;">
+        <button onclick="volverASeleccionGestion()" class="cargas-btn-back">
+            <i class="material-icons">arrow_back</i> Seleccionar otra Unidad
+        </button>
+
+        <div class="cargas-panel flex items-center gap-4 mb-6" style="padding: 20px; background: #f8fafc; border-left: 5px solid #10b981;">
+            <div class="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
+                <i class="material-icons text-2xl">local_shipping</i>
+            </div>
+            <div>
+                <p class="text-sm font-bold text-slate-500 uppercase">Manifiesto Actual de:</p>
+                <h2 id="nombre-vehiculo-auditoria" class="text-2xl font-black text-slate-800 uppercase tracking-wide">---</h2>
+            </div>
+        </div>
+
+        <div class="cargas-panel w-full">
+            <h2 class="text-xl font-bold text-slate-700 mb-4 border-b pb-2 flex items-center gap-2">
+                <i class="material-icons">inventory_2</i> Mercancía a bordo
+            </h2>
+            <div class="cargas-table-container">
+                <table class="cargas-table">
+                    <thead>
+                        <tr>
+                            <th>Categoría</th>
+                            <th>Variación</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cargas-bd">
+                        <tr><td colspan="3" class="text-center text-slate-400 italic p-6">Buscando manifiesto...</td></tr>
+                    </tbody>
+                    <tfoot id="tabla-footer-gestion" class="hidden">
+                        <tr class="total-row">
+                            <td colspan="2" class="text-right font-bold text-slate-600 uppercase" id="label-total-gestion">Total en unidad:</td>
+                            <td class="text-2xl text-green-600 font-black" id="valor-total-gestion">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+{
+    // Función para manejar el Modal Personalizado
+    window.mostrarModal = function(tipo, titulo, mensaje, callbackConfirmacion = null) {
+        const modal = document.getElementById('modal-notificacion');
+        const iconContainer = document.getElementById('modal-icono-container');
+        const icon = document.getElementById('modal-icono');
+        const titleEl = document.getElementById('modal-titulo');
+        const textEl = document.getElementById('modal-mensaje');
+        const botonesEl = document.getElementById('modal-botones');
+
+        titleEl.innerText = titulo;
+        textEl.innerText = mensaje;
+        botonesEl.innerHTML = '';
+
+        // Estilos en línea para evitar el purgado de Tailwind en los botones y colores del Modal
+        if (tipo === 'exito') {
+            iconContainer.style.backgroundColor = '#dcfce7';
+            iconContainer.style.color = '#16a34a';
+            icon.innerText = 'check_circle';
+            botonesEl.innerHTML = `<button onclick="cerrarModal()" style="background-color: #22c55e; color: white; font-weight: bold; padding: 12px 20px; border-radius: 12px; width: 100%; border: none; cursor: pointer; transition: 0.2s;">Aceptar</button>`;
+        } else if (tipo === 'error') {
+            iconContainer.style.backgroundColor = '#fee2e2';
+            iconContainer.style.color = '#dc2626';
+            icon.innerText = 'error_outline';
+            botonesEl.innerHTML = `<button onclick="cerrarModal()" style="background-color: #ef4444; color: white; font-weight: bold; padding: 12px 20px; border-radius: 12px; width: 100%; border: none; cursor: pointer; transition: 0.2s;">Entendido</button>`;
+        } else if (tipo === 'confirmacion') {
+            iconContainer.style.backgroundColor = '#dbeafe';
+            iconContainer.style.color = '#2563eb';
+            icon.innerText = 'help_outline';
+            
+            const btnCancelar = document.createElement('button');
+            btnCancelar.innerText = 'Cancelar';
+            btnCancelar.style.cssText = 'flex: 1; background-color: #e2e8f0; color: #334155; font-weight: bold; padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; transition: 0.2s; margin-right: 10px;';
+            btnCancelar.onclick = cerrarModal;
+
+            const btnConfirmar = document.createElement('button');
+            btnConfirmar.innerText = 'Confirmar';
+            btnConfirmar.style.cssText = 'flex: 1; background-color: #2563eb; color: white; font-weight: bold; padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; transition: 0.2s;';
+            btnConfirmar.onclick = () => {
+                cerrarModal();
+                if(callbackConfirmacion) callbackConfirmacion();
+            };
+
+            botonesEl.appendChild(btnCancelar);
+            botonesEl.appendChild(btnConfirmar);
+        }
+
+        modal.classList.remove('hidden');
+    };
+
+    window.cerrarModal = function() {
+        document.getElementById('modal-notificacion').classList.add('hidden');
+    };
+
+    // Vistas Flujo A (Nueva Carga)
+    const vista1 = document.getElementById('vista-tarjetas');
+    const vista2 = document.getElementById('vista-seleccion-vehiculo');
+    const vista3 = document.getElementById('vista-registro-final');
+    
+    // Vistas Flujo B (Gestión)
+    const vistaGestion2 = document.getElementById('vista-gestion-seleccion');
+    const vistaGestion3 = document.getElementById('vista-gestion-detalles');
+
+    const contenedor = document.getElementById('contenedor-principal-cargas');
+
+    let ipc;
+    try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("IPC offline"); }
+
+    let vehiculosCache = [];
+    let listaCargaActual = []; // <-- Array puramente visual (Frontend)
+    let vehiculoAuditoriaId = null;
+    let vehiculoSeleccionado = null; // <-- Para saber a qué camión inyectarle la base de datos
+
+    // ==========================================
+    // NAVEGACIÓN COMPARTIDA Y FLUJO A
+    // ==========================================
+    window.irASeleccionVehiculo = async function() {
+        vista1.classList.add('hidden');
+        vista2.classList.remove('hidden');
+        contenedor.classList.remove('items-center', 'justify-center');
+        contenedor.classList.add('items-start');
+        await cargarVehiculosFlujoA();
+    };
+
+    window.volverAlMenuPrincipal = function() {
+        vista2.classList.add('hidden');
+        vista3.classList.add('hidden');
+        vistaGestion2.classList.add('hidden');
+        vistaGestion3.classList.add('hidden');
+
+        vista1.classList.remove('hidden');
+        contenedor.classList.remove('items-start');
+        contenedor.classList.add('items-center', 'justify-center');
+    };
+
+    window.volverASeleccionVehiculo = function() {
+        vista3.classList.add('hidden');
+        vista2.classList.remove('hidden');
+    };
+
+    async function cargarVehiculosFlujoA() {
+        if (!ipc) return;
+        const vehiculosCrudos = await ipc.invoke('obtener-vehiculos');
+        
+        // MODIFICADO: Ahora consultamos si hay una carga ACTIVA (Cabecera)
+        vehiculosCache = await Promise.all(vehiculosCrudos.map(async (v) => {
+            const cargaActiva = await ipc.invoke('obtener-carga-activa', v.id);
+            return { ...v, tieneCarga: cargaActiva !== null }; // Si no es null, está ocupado
+        }));
+        
+        renderizarGaleriaA(vehiculosCache);
+    }
+
+    window.filtrarVehiculos = function() {
+        const busqueda = document.getElementById('buscador-vehiculos').value.toLowerCase().trim();
+        const filtrados = vehiculosCache.filter(v => v.nombre.toLowerCase().includes(busqueda));
+        renderizarGaleriaA(filtrados);
+    };
+
+    function renderizarGaleriaA(lista) {
+        const grid = document.getElementById('grid-vehiculos-disponibles');
+        if (lista.length === 0) {
+            grid.innerHTML = '<p class="col-span-full text-center text-slate-500 p-10">No se encontraron vehículos.</p>';
+            return;
+        }
+        
+        // Utilizamos la clase CSS forzada '.texto-estado-verde' para el mensaje de Ocupado
+        grid.innerHTML = lista.map(v => {
+            const accionClick = v.tieneCarga 
+                ? `mostrarModal('error', 'Vehículo Ocupado', 'No puede añadirle una nueva carga a un vehículo que aún tiene una carga.')` 
+                : `seleccionarEsteVehiculo(${v.id}, '${v.nombre}')`;
+                
+            const etiquetaEstado = v.tieneCarga 
+                ? `<span class="texto-estado-verde">Este vehículo ya tiene una carga asignada</span>` 
+                : ``;
+
+            return `
+            <div class="vehiculo-card-mini" onclick="${accionClick}">
+                <i class="material-icons text-3xl mb-2">local_shipping</i>
+                <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
+                ${etiquetaEstado}
+            </div>
+            `;
+        }).join('');
+    }
+
+    window.seleccionarEsteVehiculo = async function(id, nombre) {
+        // Almacenamos el vehículo seleccionado para cuando le demos "Guardar Manifiesto"
+        vehiculoSeleccionado = { id, nombre }; 
+        document.getElementById('nombre-vehiculo-fijado').innerText = nombre;
+        vista2.classList.add('hidden');
+        vista3.classList.remove('hidden');
+        
+        const categorias = await ipc.invoke('obtener-unidades-maestras');
+        const selC = document.getElementById('nc-categoria');
+        selC.innerHTML = '<option value="">Seleccione...</option>' + categorias.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    };
+
+    // Lógica del Formulario Flujo A
+    document.getElementById('nc-categoria').addEventListener('change', async (e) => {
+        const selS = document.getElementById('nc-subtipo');
+        if(!e.target.value) { selS.disabled = true; return; }
+        const subtipos = await ipc.invoke('obtener-subtipos-maestros', e.target.value);
+        selS.disabled = false;
+        selS.innerHTML = '<option value="">Seleccione...</option>' + subtipos.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+    });
+
+    window.agregarItemAlaCarga = function() {
+        const cat = document.getElementById('nc-categoria');
+        const sub = document.getElementById('nc-subtipo');
+        const cant = document.getElementById('nc-cantidad');
+        if(!cat.value || !sub.value || cant.value <= 0) return;
+
+        listaCargaActual.push({
+            id: Date.now(),
+            categoria: cat.options[cat.selectedIndex].text,
+            subtipo: sub.value,
+            cantidad: parseInt(cant.value)
+        });
+        cant.value = "";
+        renderizarTablaCarga();
+    };
+
+    window.renderizarTablaCarga = function() {
+        const tbody = document.getElementById('tabla-items-carga');
+        const tfoot = document.getElementById('tabla-footer-total');
+        const labelTotal = document.getElementById('label-total-dinamico');
+        const valorTotal = document.getElementById('valor-total-dinamico');
+
+        if (listaCargaActual.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr>';
+            tfoot.classList.add('hidden');
+            return;
+        }
+
+        tfoot.classList.remove('hidden');
+        tbody.innerHTML = listaCargaActual.map(item => `
+            <tr>
+                <td class="font-bold">${item.categoria}</td><td>${item.subtipo}</td><td class="font-bold text-blue-600 text-lg">${item.cantidad}</td>
+                <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem(${item.id})"><i class="material-icons">delete</i></button></td>
+            </tr>
+        `).join('');
+
+        const total = listaCargaActual.reduce((acc, cur) => acc + cur.cantidad, 0);
+        valorTotal.innerText = total;
+        const cats = [...new Set(listaCargaActual.map(i => i.categoria))];
+        labelTotal.innerText = (cats.length === 1) ? `${cats[0]}S TOTAL:` : "UNIDADES TOTAL:";
+    };
+
+    window.eliminarItem = function(id) { 
+        listaCargaActual = listaCargaActual.filter(i => i.id !== id); 
+        renderizarTablaCarga(); 
+    };
+
+    window.guardarManifiestoCompleto = function() {
+        if(listaCargaActual.length === 0) {
+            return mostrarModal('error', 'Carga Vacía', 'El manifiesto está vacío. Añade mercancía primero.');
+        }
+        if(!vehiculoSeleccionado || !vehiculoSeleccionado.id) {
+            return mostrarModal('error', 'Error de Unidad', 'No se definió el vehículo destino.');
+        }
+
+        // Enviamos TODA la lista de carga como un JSON en un solo evento IPC
+        if (ipc) {
+            ipc.send('guardar-carga-vehiculo', {
+                vehiculo_id: vehiculoSeleccionado.id,
+                datos_json: listaCargaActual // El Main.js se encargará de hacerle JSON.stringify
+            });
+        }
+
+        mostrarModal('exito', '¡Manifiesto Guardado!', 'La carga ha sido registrada y está lista para ventas.');
+        
+        // Limpiamos el front-end
+        listaCargaActual = []; 
+        renderizarTablaCarga(); 
+        document.getElementById('nc-categoria').value = ""; 
+        document.getElementById('nc-subtipo').innerHTML = '<option value="">Esperando...</option>'; 
+        document.getElementById('nc-subtipo').disabled = true;
+        vehiculoSeleccionado = null;
+        
+        volverAlMenuPrincipal();
+    };
+
+    window.abrirGestionCargas = async function() {
+        vista1.classList.add('hidden');
+        vistaGestion2.classList.remove('hidden');
+        contenedor.classList.remove('items-center', 'justify-center');
+        contenedor.classList.add('items-start');
+        
+        if (!ipc) return;
+        const vehiculosCrudos = await ipc.invoke('obtener-vehiculos');
+        
+        // MODIFICADO: Ahora consultamos si hay una carga ACTIVA para la Auditoría
+        vehiculosCache = await Promise.all(vehiculosCrudos.map(async (v) => {
+            const cargaActiva = await ipc.invoke('obtener-carga-activa', v.id);
+            return { ...v, tieneCarga: cargaActiva !== null };
+        }));
+
+        renderizarGaleriaGestion(vehiculosCache);
+    };
+
+    window.volverAlMenuPrincipalDesdeGestion = function() {
+        vistaGestion2.classList.add('hidden');
+        vistaGestion3.classList.add('hidden'); 
+        vista2.classList.add('hidden');
+        vista3.classList.add('hidden');
+
+        vista1.classList.remove('hidden');
+        contenedor.classList.remove('items-start');
+        contenedor.classList.add('items-center', 'justify-center');
+    };
+
+    window.volverASeleccionGestion = function() {
+        vistaGestion3.classList.add('hidden');
+        vistaGestion2.classList.remove('hidden');
+        vehiculoAuditoriaId = null;
+    };
+
+    window.filtrarVehiculosGestion = function() {
+        const busqueda = document.getElementById('buscador-gestion').value.toLowerCase().trim();
+        const filtrados = vehiculosCache.filter(v => v.nombre.toLowerCase().includes(busqueda));
+        renderizarGaleriaGestion(filtrados);
+    };
+
+    function renderizarGaleriaGestion(lista) {
+        const grid = document.getElementById('grid-vehiculos-gestion');
+        if (lista.length === 0) {
+            grid.innerHTML = '<p class="col-span-full text-center text-slate-500 p-10">No se encontraron vehículos.</p>';
+            return;
+        }
+        
+        // Utilizamos la clase CSS forzada '.texto-estado-turquesa' para el mensaje
+        grid.innerHTML = lista.map(v => {
+            const etiquetaEstado = !v.tieneCarga 
+                ? `<span class="texto-estado-turquesa">Este vehículo no tiene una carga asignada</span>` 
+                : ``;
+
+            return `
+            <div class="vehiculo-card-mini vehiculo-card-gestion" onclick="auditarVehiculo(${v.id}, '${v.nombre}')">
+                <i class="material-icons text-3xl mb-2">inventory_2</i>
+                <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
+                ${etiquetaEstado}
+            </div>
+            `;
+        }).join('');
+    }
+
+    window.auditarVehiculo = async function(id, nombre) {
+        vehiculoAuditoriaId = id;
+        document.getElementById('nombre-vehiculo-auditoria').innerText = nombre;
+        vistaGestion2.classList.add('hidden');
+        vistaGestion3.classList.remove('hidden');
+        
+        await cargarTablaBaseDatos();
+    };
+
+    async function cargarTablaBaseDatos() {
+        const tbody = document.getElementById('tabla-cargas-bd');
+        const tfoot = document.getElementById('tabla-footer-gestion');
+        const labelTotal = document.getElementById('label-total-gestion');
+        const valorTotal = document.getElementById('valor-total-gestion');
+        
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-slate-400 italic p-6">Consultando base de datos...</td></tr>';
+        
+        if(!ipc) return;
+
+        // MODIFICADO: Consulta real a la Cabecera ACTIVA en SQLite
+        const cargaActiva = await ipc.invoke('obtener-carga-activa', vehiculoAuditoriaId);
+
+        // Extraemos los datos parseados del JSON si existe la carga
+        const cargasBD = cargaActiva && cargaActiva.datos_parseados ? cargaActiva.datos_parseados : [];
+
+        if (cargasBD.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-slate-400 font-medium p-8">Esta unidad no tiene manifiestos activos en la base de datos.</td></tr>';
+            tfoot.classList.add('hidden');
+            return;
+        }
+
+        tfoot.classList.remove('hidden');
+        // Mapeamos leyendo desde la estructura JSON (categoria, subtipo, cantidad)
+        tbody.innerHTML = cargasBD.map(c => `
+            <tr>
+                <td class="font-bold text-slate-800">${c.categoria}</td>
+                <td class="text-slate-600">${c.subtipo}</td>
+                <td class="font-bold text-green-600 text-lg">${c.cantidad}</td>
+            </tr>
+        `).join('');
+
+        const total = cargasBD.reduce((acc, cur) => acc + cur.cantidad, 0);
+        valorTotal.innerText = total;
+
+        const categoriasBD = [...new Set(cargasBD.map(i => i.categoria))];
+        labelTotal.innerText = (categoriasBD.length === 1) ? `${categoriasBD[0]}S EN UNIDAD:` : "UNIDADES A BORDO:";
+    }
+}
+</script>

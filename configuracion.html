@@ -1,0 +1,386 @@
+<style>
+    /* Paleta Corporativa Neutra: Tonos Pizarra y Grafito */
+    .config-container { padding: 30px; animation: fadeIn 0.4s ease-out; width: 100%; box-sizing: border-box; }
+    .config-container h1 { color: #1e293b; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; font-size: 2.2em; }
+    
+    .section-title { font-size: 1.3em; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    
+    .panel { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 20px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 20px; }
+    @media(min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; gap: 30px; } }
+    
+    /* Formularios */
+    label { font-weight: 700; color: #64748b; font-size: 0.85em; text-transform: uppercase; margin-bottom: 8px; display: block; }
+    input, select { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; outline: none; transition: 0.3s; font-size: 1em; margin-bottom: 15px; box-sizing: border-box;}
+    input:focus, select:focus { border-color: #1e293b; background: white; box-shadow: 0 0 0 3px rgba(30,41,59,0.05); }
+
+    /* Botones */
+    .btn-main { background: #1e293b; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-main:hover { background: #0f172a; }
+    .btn-secondary { background: #cbd5e1; color: #334155; padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.85em; font-weight: 700; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-secondary:hover { background: #94a3b8; color: #0f172a; }
+    .btn-del { color: #94a3b8; border: none; background: none; cursor: pointer; transition: 0.2s; padding: 5px; }
+    .btn-del:hover { color: #ef4444; }
+    .btn-back { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px; transition: 0.2s; }
+    .btn-back:hover { background: #cbd5e1; color: #1e293b; }
+
+    /* Tablas */
+    .table-container { border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+    th { text-align: left; background: #f1f5f9; color: #475569; padding: 14px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 14px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f8fafc; }
+    .empty-message { text-align: center; padding: 25px !important; color: #94a3b8; font-style: italic; }
+
+    .hidden { display: none !important; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<div class="config-container">
+    
+    <div id="vista-principal">
+        <h1>Configuración Global del Sistema</h1>
+
+        <h2 class="section-title"><i class="material-icons">local_shipping</i> 1. Gestión de Flota (Vehículos)</h2>
+        <div class="panel grid-2" style="align-items: end; padding-bottom: 15px;">
+            <div>
+                <label for="nombreVehiculo">Nombre o Placa del Vehículo / Sucursal:</label>
+                <input type="text" id="nombreVehiculo" placeholder="Ej: Camión 01 - Placa ABC-123" autocomplete="off" style="margin: 0;">
+            </div>
+            <div>
+                <button onclick="registrarVehiculo()" class="btn-main" style="width: 100%;">
+                    <i class="material-icons">add_box</i> Registrar Vehículo
+                </button>
+            </div>
+        </div>
+
+        <div class="table-container mb-8">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Identificador del Vehículo</th>
+                        <th>Fecha de Creación</th>
+                        <th style="text-align: right">Gestión y Cargas</th>
+                    </tr>
+                </thead>
+                <tbody id="listaVehiculos">
+                    <tr><td colspan="3" class="empty-message">Cargando flota...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <h2 class="section-title"><i class="material-icons">payments</i> 2. Métodos de Pago</h2>
+        <div class="panel mb-8">
+            <div class="grid-2" style="align-items: end; margin-bottom: 15px;">
+                <div>
+                    <label for="nombreMetodoPago">Nombre del Método (Ej. Zelle, Binance...):</label>
+                    <input type="text" id="nombreMetodoPago" placeholder="Ej: ZELLE" autocomplete="off" style="margin: 0; text-transform: uppercase;">
+                </div>
+                <div>
+                    <button onclick="registrarMetodoPago()" class="btn-main" style="width: 100%;">
+                        <i class="material-icons">add_box</i> Registrar Método
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Método de Pago</th>
+                            <th style="text-align: right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaMetodosPago">
+                        <tr><td colspan="2" class="empty-message">Cargando métodos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="section-title"><i class="material-icons">architecture</i> 3. Maestros de Unidades de Medida</h2>
+        <div class="grid-2">
+            
+            <div class="panel">
+                <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Categorías Principales</h3>
+                <input type="text" id="nombreUnidadManual" placeholder="Ej: Cesta, Saco, Cabilla..." autocomplete="off">
+                <button onclick="guardarUnidadMaestra()" class="btn-main" style="width: 100%; margin-bottom: 20px;">
+                    <i class="material-icons">add_circle</i> Crear Categoría
+                </button>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Categoría</th><th style="text-align: right">Borrar</th></tr></thead>
+                        <tbody id="tablaUnidadesRaiz"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Variaciones / Tamaños</h3>
+                <select id="selectUnidadPadre"><option value="">Seleccione categoría...</option></select>
+                <input type="text" id="nombreSubtipoManual" placeholder="Ej: Pequeña, Grande, 50kg..." autocomplete="off">
+                <button onclick="guardarSubtipoMaestro()" class="btn-main" style="background: #475569; width: 100%; margin-bottom: 20px;">
+                    <i class="material-icons">playlist_add</i> Añadir Variación
+                </button>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Variación / Tamaño</th><th style="text-align: right">Borrar</th></tr></thead>
+                        <tbody id="tablaSubtipos">
+                            <tr><td colspan="2" class="empty-message">Seleccione categoría</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="vista-detalles" class="hidden">
+        <button onclick="volverVistaPrincipal()" class="btn-back">
+            <i class="material-icons">arrow_back</i> Volver al Panel
+        </button>
+        <h1 id="titulo-vehiculo">Vehículo: ...</h1>
+        <div class="panel">
+            <h3 style="margin-top: 0; color: #334155; font-size: 1.2em; margin-bottom: 20px;">Asignar Carga</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end;">
+                <div>
+                    <label>Tipo (Categoría):</label>
+                    <select id="selectCargaCategoria"><option value="">Seleccione...</option></select>
+                </div>
+                <div>
+                    <label>Tamaño (Variación):</label>
+                    <select id="selectCargaSubtipo" disabled><option value="">Seleccione primero</option></select>
+                </div>
+                <div>
+                    <label>Cantidad:</label>
+                    <input type="number" id="cantidadCarga" placeholder="Ej: 50" min="1" style="margin: 0;">
+                </div>
+                <div>
+                    <button onclick="agregarCargaVehiculo()" class="btn-main" style="background: #2563eb; width: 100%; height: 46px;">
+                        <i class="material-icons">add</i> Añadir
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead><tr><th>Tipo</th><th>Tamaño</th><th>Cant.</th><th style="text-align: right">Acción</th></tr></thead>
+                <tbody id="listaCargasVehiculo"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+{
+    let ipc = window.nexusAPI;
+    if (!ipc) {
+        console.warn("Nexus API no detectado.");
+    } else {
+        let vehiculoActualId = null;
+
+        // VEHÍCULOS
+        window.registrarVehiculo = function() {
+            const input = document.getElementById('nombreVehiculo');
+            const nombre = input.value.trim();
+            if(!nombre) return;
+            ipc.send('guardar-vehiculo', nombre);
+        };
+
+        ipc.removeAllListeners('guardar-resultado');
+        ipc.on('guardar-resultado', (event, res) => {
+            if(res.success) { document.getElementById('nombreVehiculo').value = ''; cargarVehiculos(); }
+        });
+
+        window.cargarVehiculos = async function() {
+            const tbody = document.getElementById('listaVehiculos');
+            const vehiculos = await ipc.invoke('obtener-vehiculos');
+            if (vehiculos.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty-message">Sin vehículos.</td></tr>'; return; }
+            tbody.innerHTML = vehiculos.map(v => `
+                <tr>
+                    <td class="font-bold text-gray-800"><i class="material-icons align-middle text-gray-400 mr-2">local_shipping</i>${v.nombre}</td>
+                    <td class="text-gray-500 font-mono">${new Date(v.fecha_creacion).toLocaleDateString()}</td>
+                    <td style="text-align: right;">
+                        <button onclick="abrirConfiguracionVehiculo(${v.id}, '${v.nombre}')" class="btn-secondary">Configurar Cargas</button>
+                    </td>
+                </tr>`).join('');
+        };
+
+        // MAESTROS
+        window.guardarUnidadMaestra = function() {
+            const nombre = document.getElementById('nombreUnidadManual').value.trim();
+            if(!nombre) return;
+            ipc.send('guardar-unidad-maestra', nombre);
+        };
+
+        window.cargarUnidadesMaestras = async function() {
+            const lista = await ipc.invoke('obtener-unidades-maestras');
+            const tbody = document.getElementById('tablaUnidadesRaiz');
+            const selectPadre = document.getElementById('selectUnidadPadre');
+            const selectCarga = document.getElementById('selectCargaCategoria');
+            
+            tbody.innerHTML = '';
+            selectPadre.innerHTML = '';
+            selectCarga.innerHTML = '<option value="">Seleccione...</option>';
+
+            if (lista.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin categorías</td></tr>';
+                return;
+            }
+
+            lista.forEach(u => {
+                tbody.innerHTML += `<tr><td class="font-bold">${u.nombre}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarUnidad(${u.id})"><i class="material-icons">delete</i></button></td></tr>`;
+                selectPadre.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
+                selectCarga.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
+            });
+
+            // AUTO-SELECCIÓN DEL PRIMER ELEMENTO
+            if (lista.length > 0) {
+                const primerId = lista[0].id;
+                selectPadre.value = primerId;
+                cargarSubtiposTabla(primerId);
+            }
+        };
+
+        window.eliminarUnidad = function(id) {
+            if(confirm("¿Eliminar categoría?")) ipc.send('eliminar-unidad-maestra', id);
+        };
+
+        document.getElementById('selectUnidadPadre').addEventListener('change', (e) => cargarSubtiposTabla(e.target.value));
+
+        window.guardarSubtipoMaestro = function() {
+            const unidad_id = document.getElementById('selectUnidadPadre').value;
+            const nombre = document.getElementById('nombreSubtipoManual').value.trim();
+            if(!unidad_id || !nombre) return;
+            ipc.send('guardar-subtipo-maestro', { unidad_id, nombre });
+        };
+
+        window.cargarSubtiposTabla = async function(unidad_id) {
+            const tbody = document.getElementById('tablaSubtipos');
+            const selectPadre = document.getElementById('selectUnidadPadre');
+            // Obtener el nombre de la categoría seleccionada para el subtítulo turquesa
+            const nombreCategoria = selectPadre.options[selectPadre.selectedIndex]?.text || "";
+
+            if(!unidad_id) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Seleccione categoría</td></tr>'; return; }
+            
+            const subtipos = await ipc.invoke('obtener-subtipos-maestros', unidad_id);
+            if (subtipos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin variaciones</td></tr>'; return; }
+
+            tbody.innerHTML = subtipos.map(s => `
+                <tr>
+                    <td>
+                        <div class="font-bold">${s.nombre}</div>
+                        <div style="font-size: 0.75em; color: #00ced1; font-weight: 700; margin-top: 2px; text-transform: uppercase;">${nombreCategoria}</div>
+                    </td>
+                    <td style="text-align: right;"><button class="btn-del" onclick="eliminarSubtipo(${s.id})"><i class="material-icons">delete</i></button></td>
+                </tr>`).join('');
+        };
+
+        // METODOS DE PAGO
+        window.registrarMetodoPago = function() {
+            const input = document.getElementById('nombreMetodoPago');
+            const nombre = input.value.trim().toUpperCase();
+            if(!nombre) return;
+            ipc.send('guardar-metodo-pago', nombre);
+        };
+
+        window.eliminarMetodoPago = function(id) {
+            if(confirm("¿Seguro que deseas eliminar este método de pago?")) {
+                ipc.send('eliminar-metodo-pago', id);
+            }
+        };
+
+        window.toggleEstadoMetodoPago = function(id, estadoActual) {
+            const nuevoEstado = estadoActual === 1 ? 0 : 1;
+            ipc.send('cambiar-estado-metodo-pago', { id: id, estado: nuevoEstado });
+        };
+
+        window.cargarMetodosPago = async function() {
+            const tbody = document.getElementById('listaMetodosPago');
+            const metodos = await ipc.invoke('obtener-metodos-pago-config');
+            if (metodos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin métodos de pago.</td></tr>'; return; }
+            tbody.innerHTML = metodos.map(m => {
+                const iconoEstado = m.estado === 1 ? 'toggle_on' : 'toggle_off';
+                const colorEstado = m.estado === 1 ? '#10b981' : '#94a3b8';
+                const opacidadTexto = m.estado === 1 ? '1' : '0.5';
+                const textoTachado = m.estado === 1 ? 'none' : 'line-through';
+                
+                return `
+                <tr style="opacity: ${opacidadTexto}">
+                    <td class="font-bold text-gray-800" style="text-decoration: ${textoTachado};"><i class="material-icons align-middle text-gray-400 mr-2">payments</i>${m.nombre}</td>
+                    <td style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+                        <button class="btn-del" style="color: ${colorEstado};" onclick="toggleEstadoMetodoPago(${m.id}, ${m.estado})" title="${m.estado === 1 ? 'Deshabilitar' : 'Habilitar'}"><i class="material-icons">${iconoEstado}</i></button>
+                        <button class="btn-del" onclick="eliminarMetodoPago(${m.id})" title="Eliminar"><i class="material-icons">delete</i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        };
+
+        ipc.removeAllListeners('resultado-operacion');
+        ipc.on('resultado-operacion', (event, res) => {
+            if(res.success) {
+                document.getElementById('nombreUnidadManual').value = '';
+                document.getElementById('nombreSubtipoManual').value = '';
+                document.getElementById('nombreMetodoPago').value = '';
+                cargarUnidadesMaestras();
+                cargarMetodosPago();
+            }
+        });
+
+        // CARGAS VEHÍCULO
+        window.abrirConfiguracionVehiculo = function(id, nombre) {
+            vehiculoActualId = id;
+            document.getElementById('titulo-vehiculo').innerHTML = `Vehículo: <span style="color:#2563eb">${nombre}</span>`;
+            document.getElementById('vista-principal').classList.add('hidden');
+            document.getElementById('vista-detalles').classList.remove('hidden');
+            cargarTablaCargasVehiculo();
+        };
+
+        window.volverVistaPrincipal = function() {
+            vehiculoActualId = null;
+            document.getElementById('vista-detalles').classList.add('hidden');
+            document.getElementById('vista-principal').classList.remove('hidden');
+        };
+
+        document.getElementById('selectCargaCategoria').addEventListener('change', async (e) => {
+            const selectSub = document.getElementById('selectCargaSubtipo');
+            if(!e.target.value) { selectSub.disabled = true; return; }
+            const subtipos = await ipc.invoke('obtener-subtipos-maestros', e.target.value);
+            selectSub.disabled = false;
+            selectSub.innerHTML = subtipos.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+        });
+
+        window.agregarCargaVehiculo = function() {
+            const cat = document.getElementById('selectCargaCategoria');
+            const sub = document.getElementById('selectCargaSubtipo');
+            const cant = document.getElementById('cantidadCarga').value;
+            if(!cat.value || !sub.value || cant <= 0) return;
+            ipc.send('guardar-carga-vehiculo', {
+                vehiculo_id: vehiculoActualId,
+                tipo_medida: cat.options[cat.selectedIndex].text,
+                subtipo_medida: sub.value,
+                cantidad: parseInt(cant)
+            });
+        };
+
+        ipc.removeAllListeners('guardar-carga-resultado');
+        ipc.on('guardar-carga-resultado', (event, res) => { if(res.success) { document.getElementById('cantidadCarga').value = ''; cargarTablaCargasVehiculo(); } });
+
+        window.cargarTablaCargasVehiculo = async function() {
+            const tbody = document.getElementById('listaCargasVehiculo');
+            const cargas = await ipc.invoke('obtener-cargas-vehiculo', vehiculoActualId);
+            if (cargas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin cargas.</td></tr>'; return; }
+            tbody.innerHTML = cargas.map(c => `<tr><td class="font-bold">${c.tipo_medida}</td><td>${c.subtipo_medida}</td><td class="font-bold text-blue-600">${c.cantidad}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarCargaVehiculo(${c.id})"><i class="material-icons">delete</i></button></td></tr>`).join('');
+        };
+
+        window.eliminarCargaVehiculo = function(id) { if(confirm("¿Eliminar?")) ipc.send('eliminar-carga-vehiculo', id); };
+        ipc.removeAllListeners('eliminar-carga-resultado');
+        ipc.on('eliminar-carga-resultado', (event, res) => { if(res.success) cargarTablaCargasVehiculo(); });
+
+        // Inicializar
+        cargarVehiculos();
+        cargarUnidadesMaestras();
+        cargarMetodosPago();
+    }
+}
+</script>

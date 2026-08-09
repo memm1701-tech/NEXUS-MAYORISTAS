@@ -1,0 +1,64 @@
+{
+  "name": "nexus-mayorista",
+  "version": "1.0.1",
+  "description": "Sistema de Ventas/administrativo Nexus Mayorista",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "electron-builder",
+    "rebuild": "electron-rebuild -f -w sqlite3",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ventas",
+    "mayorista",
+    "nexus"
+  ],
+  "author": "Nexus Company C.A",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "electron": "^42.4.0",
+    "electron-builder": "^25.0.0",
+    "tailwindcss": "^4.3.0"
+  },
+  "dependencies": {
+    "@fontsource/roboto": "^5.2.10",
+    "material-icons": "^1.13.14",
+    "sqlite3": "^6.0.1"
+  },
+  "build": {
+    "appId": "com.nexus.mayorista",
+    "productName": "Nexus Mayorista",
+    "copyright": "Copyright © 2026 Nexus Company C.A",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "assets/icono_redondeado.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Nexus Mayorista",
+      "createDesktopShortcut": true,
+      "installerIcon": "assets/icono_redondeado.ico",
+      "uninstallerIcon": "assets/icono_redondeado.ico",
+      "license": "eula.txt",
+      "language": "1034"
+    },
+    "files": [
+      "**/*",
+      "!data/*",
+      "!dist/*",
+      "!.git/**/*"
+    ],
+    "asar": true,
+    "npmRebuild": true
+  }
+}

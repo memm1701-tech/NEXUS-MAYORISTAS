@@ -1,0 +1,41 @@
+{
+  "name": "sistema-ventas-mayorista",
+  "version": "1.0.0",
+  "description": "Sistema de Ventas Mayorista",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dist": "electron-builder"
+  },
+  "keywords": [
+    "ventas",
+    "mayorista",
+    "nexus"
+  ],
+  "author": "Nexus company",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.0",
+    "electron": "^42.0.1",
+    "electron-builder": "^25.0.0",
+    "tailwindcss": "^4.3.0"
+  },
+  "dependencies": {
+    "@fontsource/roboto": "^5.2.10",
+    "material-icons": "^1.13.14",
+    "sqlite3": "^6.0.1"
+  },
+  "build": {
+    "appId": "com.nexus.mayorista",
+    "productName": "Nexus Mayorista",
+    "win": {
+      "target": "portable"
+    },
+    "files": [
+      "**/*",
+      "!dist/*"
+    ]
+  }
+}

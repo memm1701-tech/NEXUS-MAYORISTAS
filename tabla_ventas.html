@@ -1,0 +1,2038 @@
+<div id="contenedor-cuentas-cobrar" class="w-full min-h-[80vh] flex flex-col p-6 transition-all duration-300">
+    
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .cargas-btn-back { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px; transition: 0.2s; width: fit-content; }
+        .cargas-btn-back:hover { background: #cbd5e1; color: #1e293b; }
+
+        .vehiculo-card-mini { 
+            background: white; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 16px; 
+            aspect-ratio: 1 / 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 15px; 
+            transition: all 0.25s ease; 
+            cursor: pointer; 
+            text-align: center;
+        }
+        
+        .vehiculo-card-mini:hover { border-color: #f59e0b; transform: scale(1.03); box-shadow: 0 8px 15px rgba(245, 158, 11, 0.08); }
+        .vehiculo-card-mini i { color: #94a3b8; transition: color 0.2s; }
+        .vehiculo-card-mini:hover i { color: #f59e0b; }
+
+        .vehiculo-activa-glass {
+            background: rgba(239, 68, 68, 0.55); /* Rojo medio translúcido */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid #dc2626 !important;
+            box-shadow: 0 6px 12px rgba(239, 68, 68, 0.2) !important;
+        }
+        .vehiculo-activa-glass:hover {
+            border-color: #b91c1c !important;
+            background: rgba(239, 68, 68, 0.75);
+            box-shadow: 0 8px 15px rgba(239, 68, 68, 0.3) !important;
+        }
+        .vehiculo-activa-glass i, .vehiculo-activa-glass span {
+            color: white !important;
+        }
+        .status-activa {
+            margin-top: 8px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            color: white;
+            background: #7f1d1d;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #450a0a;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .search-container { position: relative; width: 100%; max-width: 400px; }
+        .search-input { width: 100%; padding: 12px 15px 12px 45px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; transition: 0.3s; font-size: 1em; }
+        .search-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.05); }
+        .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+
+        .contenedor-restantes { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 30px; }
+        .restante-card {
+            background: #fffbeb; 
+            border: 1px solid #fde68a; 
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 160px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .restante-valor { font-size: 1.8rem; font-weight: 900; color: #d97706; line-height: 1; }
+        .restante-tipo { font-size: 0.85rem; font-weight: 800; color: #92400e; text-transform: uppercase; margin-top: 5px; text-align: center; }
+        .restante-label { font-size: 0.7rem; color: #b45309; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .panel-excel { background: white; border-radius: 0; border: 1px solid #e2e8f0; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .excel-table-container { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 0; }
+        
+        /* --- ESTILOS DE TABLA OPTIMIZADOS (RESPONSIVOS) --- */
+        .excel-table { 
+            table-layout: fixed; 
+            width: 100%; 
+            min-width: 1000px; 
+            border-collapse: collapse;
+        }
+
+        /* Definición de anchos compactos y flexibles */
+        .col-idx { width: 40px; }    
+        .col-cant { width: 65px; }   
+        .col-precio { width: 90px; } 
+        .col-cliente { width: 22%; } 
+        .col-metodo { width: 140px; }
+        .col-banco { width: 130px; } 
+        .col-ganancia { width: 95px; background: #f8fafc; border-right: 2px solid #e2e8f0; }
+        .col-tipo { width: auto; }   
+        .col-plus { width: 45px; }   
+
+        .excel-table th { 
+            background: #f8fafc; 
+            border: 1px solid #cbd5e1; 
+            padding: 8px 4px; 
+            color: #475569; 
+            font-weight: 800; 
+            text-align: center; 
+            text-transform: uppercase; 
+            font-size: 0.65rem; 
+            letter-spacing: 0.3px;
+        }
+
+        .excel-table td { border: 1px solid #cbd5e1; padding: 0; position: relative; height: 38px; }
+        .excel-table th.row-header { background: #f1f5f9; color: #64748b; }
+        
+        .excel-input, .excel-select { 
+            width: 100%; height: 100%; border: none; outline: none; padding: 8px 10px; 
+            box-sizing: border-box; background: transparent; font-size: 0.85em; 
+            text-transform: uppercase; font-weight: 600;
+        }
+        .excel-input:focus, .excel-select:focus { outline: 2px solid #f59e0b; outline-offset: -2px; z-index: 10; position: relative; background: #fffbeb; }
+
+        .row-subline { background-color: #f8fafc; }
+        .row-subline .row-header { color: #94a3b8; font-size: 0.6rem; font-style: italic; }
+        
+        .btn-add-sub { 
+            background: #f59e0b; color: white; border: none; border-radius: 4px; 
+            width: 24px; height: 24px; cursor: pointer; display: flex; 
+            align-items: center; justify-content: center; transition: 0.2s; margin: auto;
+        }
+        .btn-add-sub:hover { background: #d97706; transform: scale(1.1); }
+
+        .btn-del-sub { 
+            background: #ef4444; color: white; border: none; border-radius: 4px; 
+            width: 24px; height: 24px; cursor: pointer; display: flex; 
+            align-items: center; justify-content: center; transition: 0.2s; margin: auto;
+        }
+        .btn-del-sub:hover { background: #dc2626; transform: scale(1.1); }
+
+        .barra-totales {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: rgba(241, 245, 249, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 10px;
+            border-radius: 0;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        .total-mini-card {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 8px 12px;
+            border-radius: 0;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .total-mini-label { font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+        .total-mini-valor { font-size: 1.1rem; font-weight: 900; color: #1e293b; }
+        .valor-credito { color: #ef4444; } 
+        .valor-contado { color: #10b981; }
+
+        .btn-ver-mas {
+            margin-top: 15px;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            color: #64748b;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-ver-mas:hover { background: #f1f5f9; border-color: #94a3b8; color: #1e293b; }
+
+        .barra-cliente-nueva {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            flex: 1; 
+        }
+        .barra-cliente-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            white-space: nowrap; 
+            flex-shrink: 0; 
+        }
+        .barra-cliente-input {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 4px 12px;
+            height: 35px;
+            flex: 1; 
+            width: 100%;
+            min-width: 150px; 
+            outline: none;
+            transition: all 0.2s;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+        .barra-cliente-input:focus {
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+        .barra-cliente-btn {
+            background-color: #f59e0b;
+            color: white;
+            font-weight: 700;
+            padding: 0 12px;
+            border: none;
+            border-radius: 4px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            flex-shrink: 0; 
+        }
+        .barra-cliente-btn:hover {
+            background-color: #d97706;
+        }
+
+        /* --- ESTILOS PARA LAS NOTIFICACIONES (TOASTS) --- */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            font-weight: 700;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateX(100%);
+            opacity: 0;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .toast.toast-success { background-color: #10b981; } 
+        .toast.toast-error { background-color: #ef4444; }   
+        .toast.show { transform: translateX(0); opacity: 1; }
+
+        /* --- ESTILOS PARA EL BUSCADOR DE CLIENTES EN LA TABLA --- */
+        .cliente-search-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .cliente-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+            border: 1px solid #bbf7d0; 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .cliente-results.activo { display: block; }
+
+        .cliente-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0fdf4;
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #1f2937;
+            text-transform: uppercase;
+        }
+
+        .cliente-item:last-child { border-bottom: none; }
+
+        .cliente-item:hover, .cliente-item.autocomplete-active {
+            background-color: #f0fdf4 !important; 
+            color: #166534 !important; 
+            border-left: 3px solid #15803d !important; 
+        }
+
+        .row-subline { background-color: #f8fafc; }
+        .row-subline .row-header { color: #94a3b8; font-size: 0.6rem; font-style: italic; }
+        
+        .grupo-padre th, .grupo-padre td { border-top: 2px solid #64748b !important; }
+        .grupo-padre th.col-idx, .grupo-hijo th.col-idx, .grupo-hijo-ultimo th.col-idx { border-left: 2px solid #64748b !important; }
+        .grupo-padre td.col-plus, .grupo-hijo td.col-plus, .grupo-hijo-ultimo td.col-plus { border-right: 2px solid #64748b !important; }
+        .grupo-hijo-ultimo th, .grupo-hijo-ultimo td { border-bottom: 2px solid #64748b !important; }
+
+        .btn-cerrar-carga {
+            background-color: #10b981; 
+            color: white;
+            font-weight: 800;
+            padding: 0 20px;
+            border: none;
+            border-radius: 8px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);
+        }
+        .btn-cerrar-carga:hover {
+            background-color: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px -1px rgba(16, 185, 129, 0.3);
+        }
+
+        .merma-container {
+            margin-top: 24px;
+            background-color: white; 
+            border: 1px solid #e2e8f0;
+            border-radius: 0;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .merma-header-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #1e293b;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .merma-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        @media (min-width: 768px) { .merma-controls { flex-direction: row; } }
+        
+        .merma-input-wrapper { flex: 1; width: 100%; }
+        .merma-cant-wrapper { width: 100%; }
+        @media (min-width: 768px) { .merma-cant-wrapper { width: 192px; } }
+
+        .merma-select, .merma-input {
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            border: 1px solid #7dd3fc;
+            border-radius: 8px;
+            background-color: #ffffff;
+            outline: none;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 600;
+            text-transform: uppercase;
+            box-sizing: border-box;
+        }
+        .merma-input { text-align: center; color: #1e293b; font-weight: 800; }
+        .merma-select:focus, .merma-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+
+        .merma-btn {
+            background-color: #dc2626;
+            color: white;
+            font-weight: 700;
+            padding: 0 24px;
+            border-radius: 8px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-transform: uppercase;
+        }
+        @media (min-width: 768px) { .merma-btn { width: auto; flex-shrink: 0; } }
+        .merma-btn:hover { background-color: #b91c1c; }
+
+        .merma-table-container {
+            margin-top: 16px;
+            border: 1px solid #fee2e2;
+            border-radius: 0;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .merma-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .merma-table th {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            padding: 10px 16px;
+        }
+        .merma-table td {
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 1px solid #fef2f2;
+        }
+        .merma-table tr:hover { background-color: #fef2f2; }
+        .btn-delete-merma {
+            color: #f87171;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .btn-delete-merma:hover { color: #b91c1c; }
+
+        .rendicion-container {
+            margin-top: 24px;
+            background-color: white; 
+            border: 1px solid #e2e8f0;
+            border-radius: 0;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .rendicion-header-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #1e293b;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rendicion-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        @media (min-width: 768px) { .rendicion-controls { flex-direction: row; } }
+        
+        .rendicion-input-wrapper { flex: 1; width: 100%; }
+        .rendicion-cant-wrapper { width: 100%; }
+        @media (min-width: 768px) { .rendicion-cant-wrapper { width: 120px; } }
+
+        .rendicion-select, .rendicion-input {
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            border: 1px solid #7dd3fc;
+            border-radius: 8px;
+            background-color: #ffffff;
+            outline: none;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 600;
+            text-transform: uppercase;
+            box-sizing: border-box;
+        }
+        .rendicion-input { text-align: center; color: #1e293b; font-weight: 800; }
+        .rendicion-select:focus, .rendicion-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+
+        .rendicion-btn {
+            background-color: #9333ea;
+            color: white;
+            font-weight: 700;
+            padding: 0 24px;
+            border-radius: 8px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-transform: uppercase;
+        }
+        @media (min-width: 768px) { .rendicion-btn { width: auto; flex-shrink: 0; } }
+        .rendicion-btn:hover { background-color: #7e22ce; }
+
+        .rendicion-table-container {
+            margin-top: 16px;
+            border: 1px solid #f3e8ff;
+            border-radius: 0;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .rendicion-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .rendicion-table th {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            padding: 10px 16px;
+        }
+        .rendicion-table td {
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 1px solid #faf5ff;
+        }
+        .rendicion-table tr:hover { background-color: #faf5ff; }
+        .btn-delete-rendicion {
+            color: #c084fc;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .btn-delete-rendicion:hover { color: #7e22ce; }
+
+        #modal-confirmacion-cierre {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 99998;
+            background-color: rgba(15, 23, 42, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        #modal-confirmacion-cierre.activo {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box-cierre {
+            background-color: #ffffff;
+            border-radius: 1.5rem; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 2rem;
+            width: 100%;
+            max-width: 24rem;
+            margin: 0 1rem;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        #modal-confirmacion-cierre.activo .modal-box-cierre {
+            transform: scale(1);
+        }
+        .modal-btn-cancel {
+            flex: 1; background-color: #e2e8f0; color: #334155; font-weight: 700; padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; transition: 0.2s; font-size: 0.95rem; width: 100%;
+        }
+        .modal-btn-cancel:hover { background-color: #cbd5e1; }
+        
+        .modal-btn-confirm {
+            flex: 1; background-color: #ef4444; color: white; font-weight: 700; padding: 12px 20px; border-radius: 12px; border: none; cursor: pointer; transition: 0.2s; font-size: 0.95rem; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2); width: 100%;
+        }
+        .modal-btn-confirm:hover { background-color: #dc2626; transform: translateY(-1px); }
+
+        /* ESTILOS DEL MODAL DE RESUMEN SEPARADOS CORRECTAMENTE */
+        #modal-resumen-cierre {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999;
+            background-color: rgba(15, 23, 42, 0.7); display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        #modal-resumen-cierre.activo { opacity: 1; pointer-events: auto; }
+        
+        .modal-box-resumen {
+            background-color: #ffffff; border-radius: 1.5rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            padding: 2rem; width: 100%; max-width: 32rem; display: flex; flex-direction: column;
+            max-height: 90vh; transform: scale(0.95); transition: transform 0.3s ease; overflow: hidden;
+        }
+        #modal-resumen-cierre.activo .modal-box-resumen { transform: scale(1); }
+        
+        .resumen-scroll { overflow-y: auto; padding-right: 8px; margin-bottom: 20px; }
+        
+        .resumen-seccion { margin-bottom: 1.5rem; }
+        .resumen-seccion-titulo { font-size: 0.85rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        
+        .resumen-grid-totales { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+        .resumen-total-item { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 8px; text-align: center; }
+        .resumen-total-label { font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; }
+        .resumen-total-valor { font-size: 1.15rem; font-weight: 900; margin-top: 4px; }
+        
+        .resumen-lista-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; }
+        .resumen-lista-item:last-child { border-bottom: none; }
+        
+        .btn-cerrar-resumen {
+            background-color: #3b82f6; color: white; font-weight: 800; padding: 14px; border-radius: 12px; border: none;
+            cursor: pointer; transition: all 0.2s; width: 100%; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-cerrar-resumen:hover { background-color: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
+    </style>
+
+    <div id="toast-container"></div>
+    
+    <div id="modal-confirmacion-cierre">
+        <div class="modal-box-cierre">
+            <div style="width: 64px; height: 64px; background-color: #fee2e2; color: #ef4444; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
+                <i class="material-icons" style="font-size: 32px;">warning_amber</i>
+            </div>
+            <h3 id="modal-conf-titulo" style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 8px;">---</h3>
+            <p id="modal-conf-mensaje" style="color: #64748b; font-weight: 500; margin-bottom: 24px; font-size: 0.95rem; line-height: 1.4; white-space: pre-line;">---</p>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button id="modal-btn-cancel" onclick="cerrarModalConfirmacion()" class="modal-btn-cancel">Cancelar</button>
+                <button id="modal-btn-confirm-action" onclick="ejecutarAccionConfirmacion()" class="modal-btn-confirm">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-resumen-cierre">
+        <div class="modal-box-resumen">
+            <div style="text-align: center; margin-bottom: 20px; flex-shrink: 0;">
+                <div style="width: 60px; height: 60px; background-color: #dcfce7; color: #10b981; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="material-icons" style="font-size: 32px;">task_alt</i>
+                </div>
+                <h3 style="font-size: 1.3rem; font-weight: 900; color: #1e293b; margin: 0;">¡Carga Cerrada Exitosamente!</h3>
+                <p style="color: #64748b; font-size: 0.9rem; font-weight: 500; margin-top: 4px;">Resumen final de la operación</p>
+            </div>
+            
+            <div class="resumen-scroll custom-scrollbar">
+                <div class="resumen-grid-totales">
+                    <div class="resumen-total-item">
+                        <div class="resumen-total-label">Total Venta</div>
+                        <div class="resumen-total-valor text-blue-600" id="resumen-modal-venta">0.00 $</div>
+                    </div>
+                    <div class="resumen-total-item">
+                        <div class="resumen-total-label">Contado</div>
+                        <div class="resumen-total-valor text-emerald-600" id="resumen-modal-contado">0.00 $</div>
+                    </div>
+                    <div class="resumen-total-item">
+                        <div class="resumen-total-label">Crédito</div>
+                        <div class="resumen-total-valor text-red-500" id="resumen-modal-credito">0.00 $</div>
+                    </div>
+                </div>
+                
+                <div class="resumen-seccion">
+                    <div class="resumen-seccion-titulo">Promedio de Venta por Producto</div>
+                    <div id="resumen-modal-promedios"></div>
+                </div>
+                
+                <div class="resumen-seccion" id="seccion-modal-mermas" style="display: none;">
+                    <div class="resumen-seccion-titulo" style="color: #ef4444; border-color: #fca5a5;">Mermas Registradas</div>
+                    <div id="resumen-modal-mermas"></div>
+                </div>
+            </div>
+            
+            <button onclick="cerrarYLimpiarResumen()" class="btn-cerrar-resumen flex-shrink-0">Terminar y Volver</button>
+        </div>
+    </div>
+
+<div id="vista-seleccion-cuentas" class="w-full max-w-6xl mx-auto" style="animation: fadeIn 0.4s ease-out forwards;">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 border-b border-slate-200 pb-6">
+        <div>
+            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Gestione sus ventas</h1>
+            <p class="text-slate-500 mt-1 font-medium">Selecciona una unidad de transporte para gestionar sus ventas</p>
+        </div>
+        <div class="search-container">
+            <i class="material-icons search-icon">search</i>
+            <input type="text" id="buscador-vehiculos-cuentas" class="search-input" placeholder="Buscar unidad..." oninput="filtrarVehiculosCuentas()">
+        </div>
+    </div>
+    <div id="grid-vehiculos-cuentas" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5"></div>
+</div>
+
+<div id="vista-cobros-detalle" class="hidden w-full max-w-6xl mx-auto" style="animation: fadeIn 0.4s ease-out forwards;">
+    <button onclick="volverASeleccionCuentas()" class="cargas-btn-back">
+        <i class="material-icons">arrow_back</i> Volver a unidades
+    </button>
+
+    <div class="mb-6 flex items-center w-full gap-4 md:gap-6">
+            <div class="flex items-center gap-3 shrink-0">
+                <i class="material-icons text-4xl text-amber-500">payments</i>
+                <h2 class="text-2xl font-black text-slate-800 uppercase tracking-wide whitespace-nowrap">
+                    Cobranza: <span id="titulo-vehiculo-cobro" class="text-amber-600">---</span>
+                </h2>
+            </div>
+            
+            <div class="barra-cliente-nueva">
+                <span class="barra-cliente-label">Nuevo Cliente:</span>
+                <input type="text" 
+                       id="input-nuevo-cliente" 
+                       class="barra-cliente-input" 
+                       placeholder="Nombre del cliente..."
+                       onkeydown="if(event.key === 'Enter') guardarNuevoCliente()">
+                
+                <button onclick="guardarNuevoCliente()" class="barra-cliente-btn">
+                    <i class="material-icons" style="font-size: 18px;">save</i>
+                    <span style="font-size: 0.875rem;">Guardar</span>
+                </button>
+            </div>
+        </div>
+
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">Carga del Vehículo</h3>
+        <div id="contenedor-cards-carga-original" class="contenedor-restantes mb-6"></div>
+    </div>
+
+    <div>
+        <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">Mercancía Restante por vender</h3>
+        <div id="contenedor-cards-restantes" class="contenedor-restantes"></div>
+    </div>
+
+    <div class="barra-totales">
+        <div class="total-mini-card">
+            <span class="total-mini-label">Total en Venta</span>
+            <span id="resumen-total-venta" class="total-mini-valor">0.00 $</span>
+        </div>
+        <div class="total-mini-card">
+            <span class="total-mini-label">Total Crédito</span>
+            <span id="resumen-total-credito" class="total-mini-valor valor-credito">0.00 $</span>
+        </div>
+        <div class="total-mini-card">
+            <span class="total-mini-label">Total Contado</span>
+            <span id="resumen-total-contado" class="total-mini-valor valor-contado">0.00 $</span>
+        </div>
+    </div>
+
+    <div class="panel-excel mt-2">
+        <h3 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2 flex items-center gap-2">
+            <i class="material-icons text-slate-400">table_chart</i> Planilla de Montos
+        </h3>
+        
+        <div class="excel-table-container">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th class="col-idx">#</th> 
+                        <th class="col-cant">Cant.</th>
+                        <th class="col-precio">Precio U.</th>
+                        <th class="col-cliente">Cliente</th>
+                        <th class="col-metodo">Método</th>
+                        <th class="col-banco">Banco</th>
+                        <th class="col-ganancia">Ganancia</th>
+                        <th class="col-tipo">Tipo Cesta Vendida</th>
+                        <th class="col-plus">+</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-excel-body"></tbody>
+            </table>
+        </div>
+        
+        <!-- CONTROLES DE LA TABLA -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 5px;">
+            <button id="btn-expandir-filas" class="btn-ver-mas" style="margin-top: 0;" onclick="expandirFilas()">
+                <i class="material-icons text-sm">add_circle_outline</i> Ver más filas
+            </button>
+            
+            <div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 6px 15px; border-radius: 6px; font-weight: 800; color: #0369a1; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <span style="font-size: 0.75rem; text-transform: uppercase;">Total Ganancia:</span>
+                <span id="resumen-total-ganancia-tabla" style="font-size: 1.1rem;">0.00 $</span>
+            </div>
+        </div>
+
+        <div class="merma-container">
+            <h3 class="merma-header-title">
+                Salida por Merma
+            </h3>
+            
+            <div class="merma-controls">
+                <div class="merma-input-wrapper">
+                    <select id="select-merma-tipo" class="merma-select">
+                        <option value="">-- SELECCIONAR PRODUCTO --</option>
+                    </select>
+                </div>
+                <div class="merma-cant-wrapper">
+                    <input type="number" id="input-merma-cant" class="merma-input" placeholder="CANTIDAD">
+                </div>
+                <button onclick="procesarMerma()" class="merma-btn">
+                    <i class="material-icons" style="font-size: 18px;">playlist_remove</i> Procesar
+                </button>
+            </div>
+
+            <div class="merma-table-container hidden" id="contenedor-tabla-mermas">
+                <table class="merma-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 33%;">Fecha / Hora</th>
+                            <th style="width: 33%;">Producto</th>
+                            <th style="width: 16%; text-align: center;">Cant.</th>
+                            <th style="width: 16%; text-align: center;">Pérdida ($)</th>
+                            <th style="width: 16%; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-mermas-body">
+                    </tbody>
+                </table>
+                <div style="display: flex; justify-content: flex-end; margin-top: 5px;">
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 15px; border-radius: 6px; font-weight: 800; color: #1e293b; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase;">Total Pérdida:</span>
+                        <span id="resumen-total-merma-tabla" style="font-size: 1.1rem;">0.00 $</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rendicion-container">
+            <h3 class="rendicion-header-title">
+                Rendimiento de Producto
+            </h3>
+            
+            <div class="rendicion-controls">
+                <div class="rendicion-input-wrapper">
+                    <select id="select-rendicion-origen" class="rendicion-select">
+                        <option value="">-- PRODUCTO ORIGEN --</option>
+                    </select>
+                </div>
+                <div class="rendicion-cant-wrapper">
+                    <input type="number" id="input-rendicion-cant-restada" class="rendicion-input" placeholder="CANT. RESTA">
+                </div>
+                <div class="rendicion-input-wrapper">
+                    <input type="text" id="input-rendicion-nuevo-nombre" class="rendicion-input" placeholder="NOMBRE NUEVO PROD." style="text-align: left;">
+                </div>
+                <div class="rendicion-cant-wrapper">
+                    <input type="number" id="input-rendicion-cant-generada" class="rendicion-input" placeholder="CANT. GENERA">
+                </div>
+                <div class="rendicion-cant-wrapper">
+                    <input type="number" id="input-rendicion-nuevo-precio" class="rendicion-input" placeholder="PRECIO VENTA" step="0.01">
+                </div>
+                <button onclick="procesarRendicion()" class="rendicion-btn">
+                    <i class="material-icons" style="font-size: 18px;">add_task</i> Crear
+                </button>
+            </div>
+
+            <div class="rendicion-table-container hidden" id="contenedor-tabla-rendiciones">
+                <table class="rendicion-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Fecha</th>
+                            <th style="width: 25%;">Se restó</th>
+                            <th style="width: 25%;">Se generó</th>
+                            <th style="width: 15%; text-align: center;">Precio U. ($)</th>
+                            <th style="width: 15%; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-rendiciones-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="flex items-center justify-end w-full" style="display: flex; justify-content: flex-end; align-items: center; width: 100%; margin-top: 24px;">
+
+            <button onclick="cerrarCargaActiva()" class="btn-cerrar-carga">
+                <i class="material-icons" style="font-size: 20px;">task_alt</i>
+                <span style="font-size: 0.85rem;">Cerrar Carga</span>
+            </button>
+        </div>
+    </div>
+<script>
+{
+    let ipc;
+    try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("IPC offline"); }
+
+    let vehiculosCuentasCache = [];
+    let inventarioOriginal = {};
+    let preciosCompraMap = {};
+    let vehiculoActualId = null;
+    let filasActuales = 20;
+    let clientesCache = []; 
+    let focoClienteRowId = null; 
+    let focoClienteIndex = -1;
+    let cargaActivaActual = null;
+    let accionConfirmadaCallback = null;
+    let metodosPagoGlobal = ["CRÉDITO"];
+
+    const vistaSeleccion = document.getElementById('vista-seleccion-cuentas');
+    const vistaDetalle = document.getElementById('vista-cobros-detalle');
+
+    function mostrarToast(mensaje, tipo = "success") {
+        const contenedor = document.getElementById('toast-container');
+        if(!contenedor) return;
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${tipo}`;
+        toast.innerHTML = `<span>${tipo === "success" ? '✅' : '❌'}</span><span>${mensaje}</span>`;
+        contenedor.appendChild(toast);
+        
+        // Animación de entrada
+        requestAnimationFrame(() => {
+            toast.classList.add('show');
+        });
+
+        // Animación de salida y remoción
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    async function cargarClientesBaseDatos() {
+        if(ipc) {
+            clientesCache = await ipc.invoke('obtener-clientes') || [];
+        }
+    }
+
+    async function inicializarCuentasCobrar() {
+        if (!ipc) return;
+        const vehiculosCrudos = await ipc.invoke('obtener-vehiculos');
+        vehiculosCuentasCache = vehiculosCrudos || [];
+        renderizarGaleriaCuentas(vehiculosCuentasCache);
+        await cargarClientesBaseDatos(); // Cargamos los clientes al inicio
+        
+        const metodosExtra = await ipc.invoke('obtener-metodos-pago');
+        if (metodosExtra) {
+            metodosPagoGlobal = ["CRÉDITO", ...metodosExtra.map(m => m.nombre)];
+        }
+    }
+
+    window.filtrarVehiculosCuentas = function() {
+        const busqueda = document.getElementById('buscador-vehiculos-cuentas').value.toLowerCase().trim();
+        const filtrados = vehiculosCuentasCache.filter(v => v.nombre.toLowerCase().includes(busqueda));
+        renderizarGaleriaCuentas(filtrados);
+    };
+
+    function renderizarGaleriaCuentas(lista) {
+        const grid = document.getElementById('grid-vehiculos-cuentas');
+        grid.innerHTML = lista.map(v => {
+            const tieneActiva = v.tiene_activa > 0;
+            const extraClass = tieneActiva ? 'vehiculo-activa-glass' : '';
+            const statusLabel = tieneActiva ? `<div class="status-activa">Carga en curso,<br>sin cerrar</div>` : '';
+            
+            return `
+            <div class="vehiculo-card-mini ${extraClass}" onclick="seleccionarVehiculoParaCobros(${v.id}, '${v.nombre}')">
+                <i class="material-icons text-3xl mb-2">payments</i>
+                <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
+                ${statusLabel}
+            </div>
+            `;
+        }).join('');
+    }
+
+    window.volverASeleccionCuentas = function() {
+        vistaDetalle.classList.add('hidden');
+        vistaSeleccion.classList.remove('hidden');
+        vehiculoActualId = null;
+    };
+
+    window.seleccionarVehiculoParaCobros = async function(id, nombre) {
+        vehiculoActualId = id;
+        document.getElementById('titulo-vehiculo-cobro').innerText = nombre;
+        vistaSeleccion.classList.add('hidden');
+        vistaDetalle.classList.remove('hidden');
+
+        if(ipc) {
+            // 1. Buscamos la cabecera (La carga ACTIVA)
+            cargaActivaActual = await ipc.invoke('obtener-carga-activa', id);
+            
+            if (!cargaActivaActual) {
+                mostrarToast("Este vehículo no tiene una carga activa.", "error");
+                document.getElementById('tabla-excel-body').innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 p-6">Sin carga activa. Vaya al módulo de Cargas.</td></tr>';
+                renderizarCargaOriginalUI({});
+                document.getElementById('contenedor-cards-restantes').innerHTML = '';
+                
+                // === FIX VISUAL: Limpieza de Mermas si no hay carga ===
+                mermasGuardadas = [];
+                renderizarTablaMermas();
+                document.getElementById('select-merma-tipo').innerHTML = '<option value="">-- SELECCIONAR PRODUCTO --</option>';
+                
+                rendicionesGuardadas = [];
+                renderizarTablaRendiciones();
+                document.getElementById('select-rendicion-origen').innerHTML = '<option value="">-- PRODUCTO ORIGEN --</option>';
+
+                return;
+            }
+
+            inventarioOriginal = {};
+            preciosCompraMap = {};
+            const itemsCarga = cargaActivaActual.datos_parseados || [];
+            itemsCarga.forEach(c => {
+                const clave = `${c.categoria} ${c.subtipo}`.trim();
+                inventarioOriginal[clave] = (inventarioOriginal[clave] || 0) + c.cantidad;
+                preciosCompraMap[clave] = c.p_compra || 0;
+            });
+            
+            rendicionesGuardadas = await ipc.invoke('obtener-rendiciones-carga', cargaActivaActual.id_carga);
+            rendicionesGuardadas.forEach(r => {
+                if (inventarioOriginal[r.producto_origen] !== undefined) {
+                    inventarioOriginal[r.producto_origen] -= r.cantidad_restada;
+                }
+                const nuevoProd = r.nombre_nuevo_producto;
+                inventarioOriginal[nuevoProd] = (inventarioOriginal[nuevoProd] || 0) + r.cantidad_generada;
+                
+                const pCompraOriginal = preciosCompraMap[r.producto_origen] || 0;
+                const costoTotal = r.cantidad_restada * pCompraOriginal;
+                const pCompraNuevo = r.cantidad_generada > 0 ? (costoTotal / r.cantidad_generada) : 0;
+                preciosCompraMap[nuevoProd] = pCompraNuevo;
+            });
+
+            const cobrosGuardados = await ipc.invoke('obtener-ventas-carga', cargaActivaActual.id_carga);
+            
+            const configFilas = cobrosGuardados.find(d => d.fila_id === "0"); 
+            filasActuales = configFilas ? parseInt(configFilas.cantidad) : 20;
+
+            // Consultar Mermas Activas de esta carga
+            mermasGuardadas = await ipc.invoke('obtener-mermas-carga', cargaActivaActual.id_carga);
+            renderizarTablaMermas();
+            renderizarTablaRendiciones();
+
+            // Rellenar el select de la barra de mermas y rendiciones
+            const opcionesInventarioFiltrado = Object.keys(inventarioOriginal).filter(opt => inventarioOriginal[opt] >= 0);
+            const opcionesDropdown = opcionesInventarioFiltrado.map(opt => `<option value="${opt}">${opt.toUpperCase()}</option>`).join('');
+            document.getElementById('select-merma-tipo').innerHTML = '<option value="">-- SELECCIONAR PRODUCTO --</option>' + opcionesDropdown;
+            document.getElementById('select-rendicion-origen').innerHTML = '<option value="">-- PRODUCTO ORIGEN --</option>' + opcionesDropdown;
+
+            renderizarCargaOriginalUI(inventarioOriginal);
+            generarFilasExcel(Object.keys(inventarioOriginal), cobrosGuardados, 1, filasActuales);
+            actualizarSaldosUI();
+        }
+    };
+
+    function renderizarCargaOriginalUI(inventario) {
+        const contenedor = document.getElementById('contenedor-cards-carga-original');
+        if (Object.keys(inventario).length === 0) {
+            contenedor.innerHTML = '<div class="w-full text-center p-4 text-slate-400">Sin mercancía registrada en carga</div>';
+            return;
+        }
+
+        // Diseño con tonos verdes/neutros para diferenciar la carga original de la restante
+        contenedor.innerHTML = Object.entries(inventario).map(([nombre, total]) => {
+            const partes = nombre.split(' ');
+            return `
+                <div class="restante-card" style="background: #f0fdf4; border-color: #bbf7d0;">
+                    <span class="restante-valor" style="color: #166534;">${total}</span>
+                    <span class="restante-tipo" style="color: #14532d;">${partes[0].toUpperCase()} <br> 
+                        <span class="text-xs text-emerald-600">${partes.slice(1).join(' ').toUpperCase()}</span>
+                    </span>
+                    <span class="restante-label mt-2" style="color: #15803d;">Llegada Inicial</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    window.guardarNuevoCliente = function() {
+        const inputCliente = document.getElementById('input-nuevo-cliente');
+        const nombreCliente = inputCliente.value.trim().toUpperCase();
+
+        if (!nombreCliente) {
+            mostrarToast("Por favor, escribe un nombre antes de guardar.", "error");
+            return;
+        }
+
+        if (ipc) {
+            ipc.send('guardar-cliente', nombreCliente);
+            ipc.once('guardar-cliente-resultado', async (event, response) => {
+                if (response.success) {
+                    mostrarToast(`Cliente "${nombreCliente}" guardado exitosamente.`, "success");
+                    inputCliente.value = ''; 
+                    await cargarClientesBaseDatos(); // Recargar la caché
+                } else {
+                    mostrarToast("Error al guardar: " + response.msg, "error");
+                }
+            });
+        }
+    };
+
+    window.manejarCambioFila = function(filaId) {
+        if (!vehiculoActualId || !cargaActivaActual || !ipc) return;
+
+        const inputReferencia = document.querySelector(`[data-fila="${filaId}"]`);
+        if (!inputReferencia) return;
+        const filaReal = inputReferencia.closest('tr');
+        
+        // Extraemos la información de la fila
+        const tipo_cesta = filaReal.querySelector('.cell-tipo').value; 
+        const inputCant = filaReal.querySelector('.cell-cant');
+        let cantIngresada = parseInt(inputCant.value) || 0;
+
+        // ================= ESCUDO DE SEGURIDAD: VALIDACIÓN DE STOCK =================
+        if (tipo_cesta && cantIngresada > 0) {
+            let stockDisponible = inventarioOriginal[tipo_cesta] || 0;
+
+            // 1. Restamos las mermas guardadas
+            mermasGuardadas.forEach(m => {
+                const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+                if (claveMerma === tipo_cesta) {
+                    stockDisponible -= m.cantidad;
+                }
+            });
+
+            // 2. Restamos otras filas de la tabla que tengan el mismo producto (EXCLUYENDO esta fila)
+            document.querySelectorAll('.cell-cant').forEach(input => {
+                if (input.dataset.fila !== filaId) { 
+                    const filaOtra = input.closest('tr');
+                    if (filaOtra) {
+                        const tipoOtra = filaOtra.querySelector('.cell-tipo').value;
+                        if (tipoOtra === tipo_cesta) {
+                            stockDisponible -= (parseInt(input.value) || 0);
+                        }
+                    }
+                }
+            });
+
+            // 3. Verificamos si la cantidad ingresada supera el stock
+            if (cantIngresada > stockDisponible) {
+                abrirModalConfirmacion(
+                    "Stock Insuficiente",
+                    `No puedes vender ${cantIngresada} unidades de ${tipo_cesta} porque te quedan ${stockDisponible} en el inventario.`,
+                    "Entendido",
+                    () => {}, // Callback vacío, solo cierra la modal
+                    false // Ocultamos el botón de cancelar para que actúe como alerta
+                );
+                
+                // Revertimos la cantidad al máximo permitido o lo dejamos vacío si es 0
+                inputCant.value = stockDisponible > 0 ? stockDisponible : '';
+                cantIngresada = stockDisponible > 0 ? stockDisponible : 0; 
+            }
+        }
+        // ============================================================================
+
+        const partesTipo = tipo_cesta.split(' '); // Separamos ej: "CESTAS PEQUEÑAS"
+        const categoria = partesTipo[0] || '';
+        const subtipo = partesTipo.slice(1).join(' ') || '';
+
+        const data = {
+            fila_id: filaId,
+            id_carga: cargaActivaActual.id_carga,
+            vehiculo_id: vehiculoActualId,
+            fecha_entrada: cargaActivaActual.fecha_entrada, // Vinculamos con la fecha de la cabecera
+            cliente: filaReal.querySelector('.cell-cliente').value.toUpperCase(),
+            tipo_medida: categoria,
+            sub_medida: subtipo,
+            precio: filaReal.querySelector('.cell-precio').value,
+            cantidad: inputCant.value, // Usamos el valor del input por si fue revertido por el escudo
+            metodo_pago: filaReal.querySelector('.cell-metodo').value,
+            banco: filaReal.querySelector('.cell-banco').value
+        };
+
+        ipc.send('auto-guardar-venta-carga', data);
+        actualizarSaldosUI();
+    };
+
+    function actualizarSaldosUI() {
+        const saldosActuales = { ...inventarioOriginal };
+        const inputsCant = document.querySelectorAll('.cell-cant');
+        
+        let totalVenta = 0;
+        let totalCredito = 0;
+        let totalContado = 0;
+        let totalGananciaGlobal = 0;
+
+        inputsCant.forEach(input => {
+            const fila = input.closest('tr');
+            const cant = parseInt(input.value) || 0;
+            const precioRaw = fila.querySelector('.cell-precio').value.replace('$', '').trim();
+            const precio = parseFloat(precioRaw) || 0;
+            
+            const metodo = fila.querySelector('.cell-metodo').value;
+            const tipo = fila.querySelector('.cell-tipo').value;
+            
+            const subtotal = cant * precio;
+            totalVenta += subtotal;
+
+            if (metodo === "CRÉDITO") {
+                totalCredito += subtotal;
+            } else if (metodo !== "") {
+                totalContado += subtotal;
+            }
+
+            // CALCULO DE GANANCIA POR FILA
+            let gananciaFila = 0;
+            if (tipo) {
+                const pCompraUnitario = preciosCompraMap[tipo] || 0;
+                gananciaFila = (precio - pCompraUnitario) * cant;
+            }
+            totalGananciaGlobal += gananciaFila;
+            
+            // Reflejar la ganancia en la UI de la celda
+            const cellGanancia = fila.querySelector('.cell-ganancia-div');
+            if (cellGanancia) {
+                cellGanancia.innerText = `${gananciaFila.toFixed(2)} $`;
+                cellGanancia.style.color = gananciaFila > 0 ? '#10b981' : (gananciaFila < 0 ? '#ef4444' : '#64748b');
+            }
+
+            if (tipo && saldosActuales[tipo] !== undefined) {
+                saldosActuales[tipo] -= cant;
+            }
+        });
+
+        mermasGuardadas.forEach(m => {
+            const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            if (saldosActuales[claveMerma] !== undefined) {
+                saldosActuales[claveMerma] -= m.cantidad;
+            }
+        });
+
+        
+
+        document.getElementById('resumen-total-venta').innerText = `${totalVenta.toFixed(2)} $`;
+        document.getElementById('resumen-total-credito').innerText = `${totalCredito.toFixed(2)} $`;
+        document.getElementById('resumen-total-contado').innerText = `${totalContado.toFixed(2)} $`;
+        
+        const gananciaTotalTabla = document.getElementById('resumen-total-ganancia-tabla');
+        if (gananciaTotalTabla) {
+            gananciaTotalTabla.innerText = `${totalGananciaGlobal.toFixed(2)} $`;
+            gananciaTotalTabla.style.color = totalGananciaGlobal > 0 ? '#0369a1' : (totalGananciaGlobal < 0 ? '#ef4444' : '#0369a1');
+        }
+
+        const contenedor = document.getElementById('contenedor-cards-restantes');
+        if (Object.keys(saldosActuales).length === 0) {
+            contenedor.innerHTML = '<div class="w-full text-center p-4 text-slate-400">Sin mercancía cargada</div>';
+            return;
+        }
+
+        contenedor.innerHTML = Object.entries(saldosActuales).map(([nombre, total]) => {
+            const partes = nombre.split(' ');
+            return `
+                <div class="restante-card">
+                    <span class="restante-valor">${total}</span>
+                    <span class="restante-tipo">${partes[0].toUpperCase()} <br> 
+                        <span class="text-xs text-amber-600">${partes.slice(1).join(' ').toUpperCase()}</span>
+                    </span>
+                    <span class="restante-label mt-2">Restantes</span>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function generarFilasExcel(opcionesInventario, datosGuardados, inicio, fin) {
+        const tbody = document.getElementById('tabla-excel-body');
+        if (inicio === 1) tbody.innerHTML = '';
+        
+        const metodosPago = typeof metodosPagoGlobal !== 'undefined' ? metodosPagoGlobal : ["CRÉDITO", "EFECTIVO", "PAGO MÓVIL", "TRANSFERENCIA", "DIVISA"];
+        const bancosList = ["BNC", "VENEZUELA", "BANESCO", "PROVINCIAL", "MERCANTIL"];
+
+        const selectMetodosHTML = (seleccionado) => `
+            <option value="">-- MÉTODO --</option>
+            ${metodosPago.map(m => `<option value="${m}" ${m === seleccionado ? 'selected' : ''}>${m}</option>`).join('')}
+        `;
+
+        const selectBancosHTML = (seleccionado) => `
+            <option value="">-- BANCO --</option>
+            ${bancosList.map(b => `<option value="${b}" ${b === seleccionado ? 'selected' : ''}>${b}</option>`).join('')}
+        `;
+
+        const selectMercanciaHTML = (seleccionado) => `
+            <option value="">-- SELECCIONAR --</option>
+            ${opcionesInventario.map(opt => `<option value="${opt}" ${opt === seleccionado ? 'selected' : ''}>${opt.toUpperCase()}</option>`).join('')}
+        `;
+
+        for (let i = inicio; i <= fin; i++) {
+            const dataPrincipal = datosGuardados.find(d => d.fila_id == i.toString()) || {};
+            const subLineas = datosGuardados.filter(d => d.fila_id.toString().startsWith(i + "_"))
+                                            .sort((a, b) => a.fila_id.localeCompare(b.fila_id));
+            
+            // NUEVO: Verificamos si tiene sub-líneas para agrupar visualmente
+            const tieneSub = subLineas.length > 0;
+            const clasePadre = tieneSub ? 'grupo-padre' : '';
+            
+            tbody.appendChild(crearElementoFila(i.toString(), i, dataPrincipal, false, selectMetodosHTML, selectBancosHTML, selectMercanciaHTML, clasePadre));
+
+            subLineas.forEach((sl, index) => {
+                const esUltimo = index === subLineas.length - 1;
+                const claseHijo = esUltimo ? 'grupo-hijo-ultimo' : 'grupo-hijo';
+                tbody.appendChild(crearElementoFila(sl.fila_id, `${i}.+`, sl, true, selectMetodosHTML, selectBancosHTML, selectMercanciaHTML, claseHijo));
+            });
+        }
+    }
+
+
+    function crearElementoFila(idFila, labelHeader, data, esSub, selectMetodos, selectBancos, selectMercancia, claseGrupo = '') {
+        const tr = document.createElement('tr');
+        if (esSub) tr.classList.add('row-subline');
+        if (claseGrupo) tr.classList.add(claseGrupo); 
+        
+        // --- FIX: Reconstruimos el valor uniendo tipo_medida y sub_medida tal como se guardó en BD ---
+        let tipoCestaGuardado = "";
+        if (data.tipo_medida) {
+            tipoCestaGuardado = `${data.tipo_medida} ${data.sub_medida || ''}`.trim();
+        }
+        
+        tr.innerHTML = `
+            <th class="row-header col-idx">${labelHeader}</th>
+            <td class="col-cant"><input type="number" class="excel-input cell-cant" data-fila="${idFila}" value="${data.cantidad || ''}" onchange="manejarCambioFila('${idFila}')" onkeydown="avanzarConEnter(event, this)"></td>
+            <td class="col-precio"><input type="text" class="excel-input cell-precio" data-fila="${idFila}" value="${data.precio || ''}" oninput="manejarCambioFila('${idFila}')" onblur="formatearPrecio(this, '${idFila}')" onkeydown="avanzarConEnter(event, this)"></td>
+            
+            <td class="col-cliente">
+                <div class="cliente-search-container">
+                    <input type="text" 
+                           class="excel-input cell-cliente" 
+                           data-fila="${idFila}" 
+                           value="${data.cliente || ''}" 
+                           placeholder="Buscar..."
+                           autocomplete="off"
+                           oninput="buscarClienteEnFila(this, '${idFila}')"
+                           onkeydown="navegarBuscadorCliente(event, this, '${idFila}')"
+                           onblur="ocultarBuscadorCliente('${idFila}')">
+                    <div id="resultados-cliente-${idFila}" class="cliente-results"></div>
+                </div>
+            </td>
+
+            <td class="col-metodo">
+                <select class="excel-select cell-metodo" data-fila="${idFila}" onchange="manejarCambioFila('${idFila}')" onkeydown="avanzarConEnter(event, this)">
+                    ${selectMetodos(data.metodo_pago)}
+                </select>
+            </td>
+            <td class="col-banco">
+                <select class="excel-select cell-banco" data-fila="${idFila}" onchange="manejarCambioFila('${idFila}')" onkeydown="avanzarConEnter(event, this)">
+                    ${selectBancos(data.banco)}
+                </select>
+            </td>
+            <td class="col-ganancia">
+                <div class="cell-ganancia-div" data-fila="${idFila}" style="padding: 10px; text-align: right; font-weight: 800; color: #64748b; font-size: 0.85em; white-space: nowrap;">0.00 $</div>
+            </td>
+            <td class="col-tipo">
+                <select class="excel-select cell-tipo" data-fila="${idFila}" onchange="manejarCambioFila('${idFila}')" onkeydown="avanzarConEnter(event, this)">
+                    ${selectMercancia(tipoCestaGuardado)}
+                </select>
+            </td>
+            <td class="col-plus">
+                ${!esSub ? 
+                    `<button class="btn-add-sub" onclick="agregarSubFila('${idFila}')"><i class="material-icons" style="font-size:16px">add</i></button>` : 
+                    `<button class="btn-del-sub" onclick="eliminarSubFila('${idFila}')"><i class="material-icons" style="font-size:16px">remove</i></button>`
+                }
+            </td>
+        `;
+        return tr;
+    }
+
+    window.cerrarCargaActiva = function() {
+        if (!cargaActivaActual || !vehiculoActualId || !ipc) {
+            mostrarToast("No hay una carga activa para cerrar.", "error");
+            return;
+        }
+
+        // ================= ESCUDO DE SEGURIDAD: VALIDACIÓN DE MERCANCÍA RESTANTE =================
+        const saldosValidacion = { ...inventarioOriginal };
+        
+        // 1. Restamos lo que se ha vendido en la tabla
+        document.querySelectorAll('.cell-cant').forEach(input => {
+            const cant = parseInt(input.value) || 0;
+            const fila = input.closest('tr');
+            const tipo = fila.querySelector('.cell-tipo').value;
+            if (tipo && saldosValidacion[tipo] !== undefined) saldosValidacion[tipo] -= cant;
+        });
+
+        // 2. Restamos las mermas registradas
+        mermasGuardadas.forEach(m => {
+            const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            if (saldosValidacion[claveMerma] !== undefined) saldosValidacion[claveMerma] -= m.cantidad;
+        });
+
+        // 3. Comprobamos si quedó mercancía huérfana
+        let inventarioSobranteTexto = "";
+        let haySobrantes = false;
+
+        for (const [tipoCesta, cantidadRestante] of Object.entries(saldosValidacion)) {
+            if (cantidadRestante > 0) {
+                haySobrantes = true;
+                inventarioSobranteTexto += `     ° ${cantidadRestante} unidades de ${tipoCesta}\n`;
+            }
+        }
+
+        if (haySobrantes) {
+            // Usamos la modal personalizada en lugar del alert nativo
+            const mensajeAlerta = `¡Oye! Aún tienes:\n${inventarioSobranteTexto}en el inventario.\n\nPor favor, confirma eso antes de cerrar la carga. Recuerda que puedes verificar en la tabla de cobros o, si fue una PÉRDIDA/MERMA, gestionarla en el panel de Salida por Merma.`;
+            
+            abrirModalConfirmacion(
+                "Mercancía Restante",
+                mensajeAlerta,
+                "Entendido",
+                () => {}, // Callback vacío, la modal se cerrará sola
+                false // Ocultamos el botón de cancelar para que funcione como alerta
+            );
+            return; // 🛑 CORTA EL PROCESO, NO MUESTRA EL MODAL DE CIERRE
+        }
+
+
+        abrirModalConfirmacion(
+            "¿Cerrar esta carga?",
+            "Pasará al historial y no podrás agregar más ventas ni modificar las actuales.",
+            "Sí, Cerrar Carga",
+            () => {
+                // SE EJECUTA AL CONFIRMAR EL MODAL
+                const totalVenta = parseFloat(document.getElementById('resumen-total-venta').innerText.replace('$', '').trim()) || 0;
+                const totalCredito = parseFloat(document.getElementById('resumen-total-credito').innerText.replace('$', '').trim()) || 0;
+                const totalContado = parseFloat(document.getElementById('resumen-total-contado').innerText.replace('$', '').trim()) || 0;
+
+                const saldosRestantes = { ...inventarioOriginal };
+                let cantidadTotalVendida = 0;
+                let statsPorProducto = {}; // NUEVO: Objeto para agrupar ventas e ingresos por tipo
+                
+                const inputsCant = document.querySelectorAll('.cell-cant');
+                inputsCant.forEach(input => {
+                    const cant = parseInt(input.value) || 0;
+                    const fila = input.closest('tr');
+                    const tipo = fila.querySelector('.cell-tipo').value;
+                    const precioRaw = fila.querySelector('.cell-precio').value.replace('$', '').trim();
+                    const precio = parseFloat(precioRaw) || 0;
+                    
+                    if (tipo && saldosRestantes[tipo] !== undefined) saldosRestantes[tipo] -= cant;
+                    
+                    if (cant > 0 && precioRaw !== "") {
+                        cantidadTotalVendida += cant;
+                        
+                        // NUEVO: Acumulamos ingresos y cantidades para sacar el promedio específico
+                        if (tipo) {
+                            if (!statsPorProducto[tipo]) statsPorProducto[tipo] = { ingresos: 0, cantidad: 0 };
+                            statsPorProducto[tipo].ingresos += (cant * precio);
+                            statsPorProducto[tipo].cantidad += cant;
+                        }
+                    }
+                });
+
+                // NUEVO: Generamos el objeto de promedios para inyectarlo al JSON
+                let promediosCalculados = {};
+                for (const [producto, stats] of Object.entries(statsPorProducto)) {
+                    if (stats.cantidad > 0) {
+                        promediosCalculados[producto] = stats.ingresos / stats.cantidad;
+                    }
+                }
+
+                const valorPromedio = cantidadTotalVendida > 0 ? (totalVenta / cantidadTotalVendida) : 0;
+
+                const mercanciaJson = JSON.stringify({
+                    llegada_original: inventarioOriginal,
+                    sobrantes: saldosRestantes,
+                    unidades_vendidas: cantidadTotalVendida,
+                    promedios_por_producto: promediosCalculados // <-- Ahora cargas_cerradas podrá leer esto
+                });
+                
+                const mermasJson = JSON.stringify(mermasGuardadas);
+
+                const dataCierre = {
+                    id_carga: cargaActivaActual.id_carga,
+                    vehiculo_id: vehiculoActualId,
+                    fecha_entrada: cargaActivaActual.fecha_entrada,
+                    mercancia_json: mercanciaJson,
+                    mermas_json: mermasJson,
+                    total_venta: totalVenta,
+                    total_credito: totalCredito,
+                    total_contado: totalContado,
+                    valor_promedio_producto: valorPromedio
+                };
+
+                ipc.send('cerrar-carga-vehiculo', dataCierre);
+                
+                ipc.once('cerrar-carga-resultado', (event, response) => {
+                    if (response.success) {
+                        // Lanzamos el modal con el resumen detallado en lugar de limpiar inmediatamente
+                        mostrarModalResumenCierre(dataCierre, promediosCalculados, mermasGuardadas);
+                    } else {
+                        mostrarToast("Error al cerrar: " + response.msg, "error");
+                    }
+                });
+            }
+        );
+    };
+
+    window.procesarMerma = function() {
+        if (!cargaActivaActual || !ipc) return;
+
+        const selectTipo = document.getElementById('select-merma-tipo');
+        const inputCant = document.getElementById('input-merma-cant');
+        
+        const valorCesta = selectTipo.value;
+        const cant = parseInt(inputCant.value);
+
+        if (!valorCesta || isNaN(cant) || cant <= 0) {
+            mostrarToast("Selecciona un producto y una cantidad válida.", "error");
+            return;
+        }
+
+        // ================= ESCUDO DE SEGURIDAD: VALIDACIÓN DE STOCK =================
+        // 1. Calculamos el stock actual exacto en este momento
+        const saldosValidacion = { ...inventarioOriginal };
+        
+        // Restamos lo vendido en la tabla
+        document.querySelectorAll('.cell-cant').forEach(input => {
+            const cantVendida = parseInt(input.value) || 0;
+            const fila = input.closest('tr');
+            const tipo = fila.querySelector('.cell-tipo').value;
+            if (tipo && saldosValidacion[tipo] !== undefined) saldosValidacion[tipo] -= cantVendida;
+        });
+
+        // Restamos las mermas ya registradas
+        mermasGuardadas.forEach(m => {
+            const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            if (saldosValidacion[claveMerma] !== undefined) saldosValidacion[claveMerma] -= m.cantidad;
+        });
+
+        const stockDisponible = saldosValidacion[valorCesta] || 0;
+
+        // 2. Verificamos si la cantidad a mermar supera el stock disponible
+        if (cant > stockDisponible) {
+            abrirModalConfirmacion(
+                "Stock Insuficiente",
+                `No puedes descontar ${cant} unidades de ${valorCesta} porque te quedan ${stockDisponible} en el inventario.`,
+                "Entendido",
+                () => {}, // Callback vacío, solo cierra la modal
+                false // Ocultamos el botón de cancelar para que actúe como alerta
+            );
+            return; // 🛑 CORTAMOS EL PROCESO, NO GUARDA LA MERMA
+        }
+        // ============================================================================
+
+        const partesTipo = valorCesta.split(' ');
+        const categoria = partesTipo[0] || '';
+        const subtipo = partesTipo.slice(1).join(' ') || '';
+
+        ipc.send('guardar-merma-carga', {
+            id_carga: cargaActivaActual.id_carga,
+            vehiculo_id: vehiculoActualId,
+            tipo_medida: categoria,
+            sub_medida: subtipo,
+            cantidad: cant
+        });
+
+        ipc.once('guardar-merma-resultado', async (event, response) => {
+            if (response.success) {
+                mostrarToast("Merma procesada y descontada del inventario.", "success");
+                selectTipo.value = "";
+                inputCant.value = "";
+                
+                // Recargar mermas y refrescar UI
+                mermasGuardadas = await ipc.invoke('obtener-mermas-carga', cargaActivaActual.id_carga);
+                renderizarTablaMermas();
+                actualizarSaldosUI(); 
+            } else {
+                mostrarToast("Error al procesar merma: " + response.msg, "error");
+            }
+        });
+    };
+
+    window.renderizarTablaMermas = function() {
+        const contenedor = document.getElementById('contenedor-tabla-mermas');
+        const tbody = document.getElementById('tabla-mermas-body');
+
+        if (mermasGuardadas.length === 0) {
+            contenedor.classList.add('hidden');
+            return;
+        }
+
+        contenedor.classList.remove('hidden');
+        
+        let totalPerdidaMermas = 0;
+
+        tbody.innerHTML = mermasGuardadas.map(m => {
+            const claveProducto = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            const pCompra = preciosCompraMap[claveProducto] || 0;
+            const dineroPerdido = m.cantidad * pCompra;
+            totalPerdidaMermas += dineroPerdido;
+
+            return `
+            <tr>
+                <td>${new Date(m.fecha_registro).toLocaleString()}</td>
+                <td>${m.tipo_medida} ${m.sub_medida}</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${m.cantidad}</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${dineroPerdido.toFixed(2)} $</td>
+                <td style="text-align: center;">
+                    <button onclick="eliminarMerma(${m.merma_id})" class="btn-delete-merma" title="Eliminar Registro">
+                        <i class="material-icons" style="font-size: 20px;">delete</i>
+                    </button>
+                </td>
+            </tr>
+            `;
+        }).join('');
+
+        const totalDiv = document.getElementById('resumen-total-merma-tabla');
+        if (totalDiv) {
+            totalDiv.innerText = `${totalPerdidaMermas.toFixed(2)} $`;
+        }
+    };
+
+    window.eliminarMerma = function(merma_id) {
+        abrirModalConfirmacion(
+            "¿Revertir Merma?",
+            "¿Deseas revertir esta merma y devolver la mercancía al inventario restante?",
+            "Sí, Revertir",
+            () => {
+                // ESTO SE EJECUTA AL CONFIRMAR
+                ipc.send('eliminar-merma-carga', merma_id);
+                
+                ipc.once('eliminar-merma-resultado', async (event, response) => {
+                    if (response.success) {
+                        mostrarToast("Registro de merma revertido.", "success");
+                        mermasGuardadas = await ipc.invoke('obtener-mermas-carga', cargaActivaActual.id_carga);
+                        renderizarTablaMermas();
+                        actualizarSaldosUI(); 
+                    } else {
+                        mostrarToast("Error al revertir merma.", "error");
+                    }
+                });
+            }
+        );
+    };
+
+    window.procesarRendicion = function() {
+        if (!cargaActivaActual || !ipc) return;
+
+        const selectOrigen = document.getElementById('select-rendicion-origen');
+        const inputCantRestada = document.getElementById('input-rendicion-cant-restada');
+        const inputNuevoNombre = document.getElementById('input-rendicion-nuevo-nombre');
+        const inputCantGenerada = document.getElementById('input-rendicion-cant-generada');
+        const inputNuevoPrecio = document.getElementById('input-rendicion-nuevo-precio');
+        
+        const valorOrigen = selectOrigen.value;
+        const cantRestada = parseInt(inputCantRestada.value);
+        const nuevoNombre = inputNuevoNombre.value.trim().toUpperCase();
+        const cantGenerada = parseInt(inputCantGenerada.value);
+        const nuevoPrecio = parseFloat(inputNuevoPrecio.value);
+
+        if (!valorOrigen || isNaN(cantRestada) || cantRestada <= 0 || !nuevoNombre || isNaN(cantGenerada) || cantGenerada <= 0 || isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+            mostrarToast("Completa todos los campos de rendición correctamente.", "error");
+            return;
+        }
+
+        const saldosValidacion = { ...inventarioOriginal };
+        
+        document.querySelectorAll('.cell-cant').forEach(input => {
+            const cantVendida = parseInt(input.value) || 0;
+            const fila = input.closest('tr');
+            const tipo = fila.querySelector('.cell-tipo').value;
+            if (tipo && saldosValidacion[tipo] !== undefined) saldosValidacion[tipo] -= cantVendida;
+        });
+
+        mermasGuardadas.forEach(m => {
+            const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            if (saldosValidacion[claveMerma] !== undefined) saldosValidacion[claveMerma] -= m.cantidad;
+        });
+
+        const stockDisponible = saldosValidacion[valorOrigen] || 0;
+
+        if (cantRestada > stockDisponible) {
+            abrirModalConfirmacion(
+                "Stock Insuficiente",
+                `No puedes restar ${cantRestada} unidades de ${valorOrigen} porque solo te quedan ${stockDisponible}.`,
+                "Entendido",
+                () => {}, 
+                false 
+            );
+            return; 
+        }
+
+        ipc.send('guardar-rendicion-carga', {
+            id_carga: cargaActivaActual.id_carga,
+            vehiculo_id: vehiculoActualId,
+            producto_origen: valorOrigen,
+            cantidad_restada: cantRestada,
+            nombre_nuevo_producto: nuevoNombre,
+            precio_venta_nuevo_producto: nuevoPrecio,
+            cantidad_generada: cantGenerada
+        });
+
+        ipc.once('guardar-rendicion-resultado', async (event, response) => {
+            if (response.success) {
+                mostrarToast("Rendición procesada con éxito.", "success");
+                selectOrigen.value = "";
+                inputCantRestada.value = "";
+                inputNuevoNombre.value = "";
+                inputCantGenerada.value = "";
+                inputNuevoPrecio.value = "";
+                
+                seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
+            } else {
+                mostrarToast("Error al procesar rendición: " + response.msg, "error");
+            }
+        });
+    };
+
+    window.renderizarTablaRendiciones = function() {
+        const contenedor = document.getElementById('contenedor-tabla-rendiciones');
+        const tbody = document.getElementById('tabla-rendiciones-body');
+
+        if (!rendicionesGuardadas || rendicionesGuardadas.length === 0) {
+            contenedor.classList.add('hidden');
+            return;
+        }
+
+        contenedor.classList.remove('hidden');
+
+        tbody.innerHTML = rendicionesGuardadas.map(r => {
+            return `
+            <tr>
+                <td>${new Date(r.fecha_registro).toLocaleString()}</td>
+                <td style="color: #1e293b; font-weight: 800;">-${r.cantidad_restada} ${r.producto_origen}</td>
+                <td style="color: #1e293b; font-weight: 800;">+${r.cantidad_generada} ${r.nombre_nuevo_producto}</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${r.precio_venta_nuevo_producto.toFixed(2)} $</td>
+                <td style="text-align: center;">
+                    <button onclick="eliminarRendicion(${r.rendicion_id})" class="btn-delete-rendicion" title="Eliminar Rendición">
+                        <i class="material-icons" style="font-size: 20px;">delete</i>
+                    </button>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    };
+
+    window.eliminarRendicion = function(rendicion_id) {
+        abrirModalConfirmacion(
+            "¿Revertir Rendición?",
+            "¿Deseas revertir esta rendición y devolver la mercancía al producto original?",
+            "Sí, Revertir",
+            () => {
+                ipc.send('eliminar-rendicion-carga', rendicion_id);
+                ipc.once('eliminar-rendicion-resultado', async (event, response) => {
+                    if (response.success) {
+                        mostrarToast("Rendición revertida.", "success");
+                        seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
+                    } else {
+                        mostrarToast("Error al revertir rendición.", "error");
+                    }
+                });
+            }
+        );
+    };
+
+    window.avanzarConEnter = function(e, elementoActual) {
+        if (e.key === "Enter") {
+            e.preventDefault(); // Evitamos que haga un salto de línea o envíe algo
+            
+            const fila = elementoActual.closest('tr');
+            // Definimos el orden lógico de las columnas de izquierda a derecha
+            const secuencia = ['.cell-cant', '.cell-precio', '.cell-cliente', '.cell-metodo', '.cell-banco', '.cell-tipo'];
+            
+            let indiceActual = -1;
+            // Buscamos en qué celda estamos actualmente
+            for (let i = 0; i < secuencia.length; i++) {
+                if (elementoActual.classList.contains(secuencia[i].substring(1))) {
+                    indiceActual = i;
+                    break;
+                }
+            }
+
+            // Si encontramos la celda y no es la última de la fila, saltamos a la siguiente
+            if (indiceActual > -1 && indiceActual < secuencia.length - 1) {
+                const siguienteClase = secuencia[indiceActual + 1];
+                const siguienteElemento = fila.querySelector(siguienteClase);
+                if (siguienteElemento) {
+                    siguienteElemento.focus();
+                }
+            }
+        }
+    };
+
+    window.agregarSubFila = async function(idPadre) {
+        if (!vehiculoActualId || !cargaActivaActual || !ipc) return;
+
+        // MODIFICADO: Ahora leemos de la nueva tabla usando el id_carga
+        const cobros = await ipc.invoke('obtener-ventas-carga', cargaActivaActual.id_carga);
+        const subExistentes = cobros.filter(c => c.fila_id.toString().startsWith(idPadre + "_"));
+        const nuevoSubId = `${idPadre}_${subExistentes.length + 1}`;
+
+        // MODIFICADO: Estructura adaptada al nuevo modelo Cabecera-Detalle
+        const dataVacia = {
+            fila_id: nuevoSubId,
+            id_carga: cargaActivaActual.id_carga,
+            vehiculo_id: vehiculoActualId,
+            fecha_entrada: cargaActivaActual.fecha_entrada,
+            cliente: '', 
+            tipo_medida: '',
+            sub_medida: '',
+            precio: '',
+            cantidad: '',
+            metodo_pago: '',
+            banco: ''
+        };
+
+        // MODIFICADO: Enviamos al nuevo canal
+        ipc.send('auto-guardar-venta-carga', dataVacia);
+        
+        // Refrescamos la UI
+        seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
+    };
+
+    window.eliminarSubFila = async function(idFila) {
+        if (!cargaActivaActual || !ipc) return;
+
+        ipc.send('eliminar-fila-venta', { id_carga: cargaActivaActual.id_carga, fila_id: idFila });
+        
+        ipc.once('eliminar-fila-venta-resultado', (event, response) => {
+            if (response.success) {
+                mostrarToast("Sub-línea removida con éxito.", "success");
+                seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
+            } else {
+                mostrarToast("No se pudo eliminar la sub-línea.", "error");
+            }
+        });
+    };
+
+    window.expandirFilas = async function() {
+        if (!cargaActivaActual) return;
+        const inicio = filasActuales + 1;
+        const fin = filasActuales + 20;
+        filasActuales = fin;
+
+        if (ipc) {
+            ipc.send('auto-guardar-venta-carga', {
+                fila_id: "0",
+                id_carga: cargaActivaActual.id_carga,
+                vehiculo_id: vehiculoActualId,
+                fecha_entrada: cargaActivaActual.fecha_entrada,
+                cantidad: filasActuales // Aprovechamos este campo para guardar el límite
+            });
+
+            const cobrosGuardados = await ipc.invoke('obtener-ventas-carga', cargaActivaActual.id_carga);
+            generarFilasExcel(Object.keys(inventarioOriginal), cobrosGuardados, inicio, fin);
+        }
+    };
+
+    window.formatearPrecio = function(input, filaId) {
+        let valor = input.value.trim();
+        if (valor !== "" && !valor.includes('$')) {
+            input.value = `${valor} $`;
+            manejarCambioFila(filaId);
+        }
+    };
+
+    window.buscarClienteEnFila = function(input, filaId) {
+        // Guardamos el input para auto-guardado
+        manejarCambioFila(filaId);
+
+        const termino = input.value.toLowerCase().trim();
+        const contenedorResultados = document.getElementById(`resultados-cliente-${filaId}`);
+        focoClienteIndex = -1;
+        focoClienteRowId = filaId;
+
+        if (termino.length < 1) {
+            contenedorResultados.classList.remove('activo');
+            return;
+        }
+
+        const filtrados = clientesCache.filter(c => c.nombre.toLowerCase().includes(termino));
+
+        if (filtrados.length > 0) {
+            contenedorResultados.classList.add('activo');
+            contenedorResultados.innerHTML = filtrados.slice(0, 8).map(c => 
+                `<div class="cliente-item" onmousedown="seleccionarClienteFila('${c.nombre}', '${filaId}')">${c.nombre}</div>`
+            ).join('');
+        } else {
+            contenedorResultados.classList.add('activo');
+            contenedorResultados.innerHTML = `<div class="cliente-item" style="color:#9ca3af; font-style:italic;">No encontrado</div>`;
+        }
+    };
+
+    window.seleccionarClienteFila = function(nombre, filaId) {
+        const input = document.querySelector(`.cell-cliente[data-fila="${filaId}"]`);
+        if (input) {
+            input.value = nombre;
+            manejarCambioFila(filaId); // Guardar en BD
+            
+            // Pasar el foco a la columna "Método" (la de al lado)
+            const filaReal = input.closest('tr');
+            const selectMetodo = filaReal.querySelector('.cell-metodo');
+            if(selectMetodo) selectMetodo.focus();
+        }
+        document.getElementById(`resultados-cliente-${filaId}`).classList.remove('activo');
+    };
+
+    window.ocultarBuscadorCliente = function(filaId) {
+        // Se usa setTimeout para permitir que se registre el clic en la opción (onmousedown)
+        setTimeout(() => {
+            const res = document.getElementById(`resultados-cliente-${filaId}`);
+            if(res) res.classList.remove('activo');
+        }, 150);
+    };
+
+    window.navegarBuscadorCliente = function(e, input, filaId) {
+        const contenedorResultados = document.getElementById(`resultados-cliente-${filaId}`);
+        
+        // Si el menú NO está activo y presionamos Enter, avanzamos a la celda de Método
+        if (!contenedorResultados.classList.contains('activo') && e.key === "Enter") {
+            avanzarConEnter(e, input);
+            return;
+        }
+
+        const items = contenedorResultados.querySelectorAll('.cliente-item');
+        
+        // Si no hay resultados y presionamos Enter, también avanzamos
+        if (items.length === 0) {
+            if (e.key === "Enter") avanzarConEnter(e, input);
+            return;
+        }
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            focoClienteIndex++;
+            if (focoClienteIndex >= items.length) focoClienteIndex = 0;
+            aplicarResaltadoCliente(items);
+        } 
+        else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            focoClienteIndex--;
+            if (focoClienteIndex < 0) focoClienteIndex = items.length - 1;
+            aplicarResaltadoCliente(items);
+        } 
+        else if (e.key === "Enter") {
+            e.preventDefault();
+            if (focoClienteIndex > -1) {
+                // Simula un clic en el elemento enfocado
+                items[focoClienteIndex].dispatchEvent(new Event('mousedown'));
+            } else {
+                // Si no hay nada seleccionado, selecciona la primera opción válida
+                if (items.length > 0 && items[0].innerText !== "No encontrado") {
+                    items[0].dispatchEvent(new Event('mousedown'));
+                } else {
+                    avanzarConEnter(e, input);
+                }
+            }
+        }
+    };
+
+    function aplicarResaltadoCliente(items) {
+        items.forEach(el => el.classList.remove("autocomplete-active"));
+        if (focoClienteIndex > -1) {
+            items[focoClienteIndex].classList.add("autocomplete-active");
+            items[focoClienteIndex].scrollIntoView({ block: "nearest" });
+        }
+    }
+
+    window.abrirModalConfirmacion = function(titulo, mensaje, textoBoton, callback, mostrarCancelar = true) {
+        document.getElementById('modal-conf-titulo').innerText = titulo;
+        document.getElementById('modal-conf-mensaje').innerText = mensaje;
+        document.getElementById('modal-btn-confirm-action').innerText = textoBoton;
+        
+        // Controlamos si se muestra o no el botón de cancelar (flexbox amigable)
+        const btnCancelar = document.getElementById('modal-btn-cancel');
+        if (btnCancelar) {
+            btnCancelar.style.display = mostrarCancelar ? '' : 'none';
+        }
+        
+        accionConfirmadaCallback = callback; // Guardamos la acción
+        document.getElementById('modal-confirmacion-cierre').classList.add('activo');
+    };
+
+    window.cerrarModalConfirmacion = function() {
+        document.getElementById('modal-confirmacion-cierre').classList.remove('activo');
+        accionConfirmadaCallback = null;
+    };
+
+    window.mostrarModalResumenCierre = function(dataCierre, promedios, mermas) {
+        document.getElementById('resumen-modal-venta').innerText = `${dataCierre.total_venta.toFixed(2)} $`;
+        document.getElementById('resumen-modal-contado').innerText = `${dataCierre.total_contado.toFixed(2)} $`;
+        document.getElementById('resumen-modal-credito').innerText = `${dataCierre.total_credito.toFixed(2)} $`;
+
+        const contenedorPromedios = document.getElementById('resumen-modal-promedios');
+        contenedorPromedios.innerHTML = '';
+        if (promedios && Object.keys(promedios).length > 0) {
+            for (const [prod, prom] of Object.entries(promedios)) {
+                contenedorPromedios.innerHTML += `
+                    <div class="resumen-lista-item">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: #334155;">${prod}</span>
+                        <span style="font-size: 0.9rem; font-weight: 900; color: #8b5cf6;">${prom.toFixed(2)} $</span>
+                    </div>
+                `;
+            }
+        } else {
+            contenedorPromedios.innerHTML = '<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">No hubo ventas registradas en esta carga.</span>';
+        }
+
+        const seccionMermas = document.getElementById('seccion-modal-mermas');
+        const contenedorMermas = document.getElementById('resumen-modal-mermas');
+        if (mermas && mermas.length > 0) {
+            seccionMermas.style.display = 'block';
+            contenedorMermas.innerHTML = mermas.map(m => `
+                <div class="resumen-lista-item">
+                    <span style="font-size: 0.8rem; font-weight: 700; color: #334155;">${m.tipo_medida} ${m.sub_medida}</span>
+                    <span style="font-size: 0.85rem; font-weight: 900; color: #ef4444;">-${m.cantidad}</span>
+                </div>
+            `).join('');
+        } else {
+            seccionMermas.style.display = 'none';
+        }
+
+        document.getElementById('modal-resumen-cierre').classList.add('activo');
+    };
+
+    window.cerrarYLimpiarResumen = function() {
+        document.getElementById('modal-resumen-cierre').classList.remove('activo');
+        
+        // Ejecutamos la limpieza visual de la tabla original aquí, al cerrar el resumen
+        mermasGuardadas = [];
+        renderizarTablaMermas();
+        inventarioOriginal = {};
+        document.getElementById('contenedor-cards-carga-original').innerHTML = '';
+        document.getElementById('contenedor-cards-restantes').innerHTML = '';
+        document.getElementById('tabla-excel-body').innerHTML = '';
+        
+        volverASeleccionCuentas(); 
+    };
+
+    window.ejecutarAccionConfirmacion = function() {
+        if (accionConfirmadaCallback) {
+            accionConfirmadaCallback(); 
+        }
+        cerrarModalConfirmacion(); 
+    };
+
+    inicializarCuentasCobrar();
+}
+</script>
+</div>

@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ventas "Mayorista"</title>
+    <link href="./node_modules/@fontsource/roboto/index.css" rel="stylesheet">
+    <link href="./node_modules/material-icons/iconfont/material-icons.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="./css/tailwind.css">
+    
+    <style>
+        /* =========================================
+           1. ESTILOS GLOBALES Y SCROLLBAR
+           ========================================= */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #FFFFFF;
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #cccccc; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        .app-container { display: flex; width: 100%; min-height: 100vh; }
+
+        /* =========================================
+           2. MENÚ LATERAL (SIDEBAR)
+           ========================================= */
+        .sidebar {
+            width: 280px;
+            background-color: #F8F8F8;
+            color: #4A4A4A;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            position: fixed; 
+            top: 0;
+            left: 0;
+            z-index: 50;
+            box-sizing: border-box;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+        }
+
+        .sidebar-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        .sidebar-nav ul { list-style: none; padding: 0; margin: 0; }
+        .sidebar-nav ul li { margin-bottom: 0.25rem; }
+        .sidebar-nav ul li a {
+            display: flex;
+            align-items: center;
+            padding: 0.85rem 1rem;
+            color: #4A4A4A;
+            text-decoration: none;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .sidebar-nav ul li a:hover {
+            background-color: #E0F2F7;
+            color: #0288D1;
+        }
+
+        .sidebar-nav ul li a i.material-icons {
+            margin-right: 12px;
+            transition: transform 0.3s ease;
+        }
+
+        /* =========================================
+           3. BOTÓN TOGGLE
+           ========================================= */
+        .sidebar-toggle-btn {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #4A4A4A;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-toggle-btn:hover { color: #0288D1; }
+
+        /* =========================================
+           4. ÁREA DE CONTENIDO PRINCIPAL
+           ========================================= */
+        .main-content {
+            flex-grow: 1;
+            padding: 0 !important; 
+            margin: 0; 
+            background-color: #FFFFFF; 
+            min-height: 100vh;
+            margin-left: 280px; 
+            width: calc(100% - 280px);
+            display: flex;
+            flex-direction: column;
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #dynamic-content-area {
+            padding: 0; 
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* =========================================
+           5. COMPORTAMIENTO MINIMIZADO
+           ========================================= */
+        .sidebar.collapsed { width: 56px; padding: 1.5rem 0.5rem; }
+        .sidebar.collapsed .sidebar-toggle-btn { left: 50%; transform: translateX(-50%); }
+        
+        .sidebar.collapsed .sidebar-header img { width: 35px !important; height: 35px !important; margin-top: 35px; transition: all 0.3s ease; }
+        
+        .sidebar.collapsed .sidebar-header h3,
+        .sidebar.collapsed .sidebar-header h4 {
+            opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none; height: 0; margin: 0;
+        }
+
+        .sidebar.collapsed .footer-info {
+            opacity: 0; visibility: hidden; height: 0; margin: 0; overflow: hidden; transition: all 0.3s ease;
+        }
+
+        .sidebar-header h3, .sidebar-header h4, .footer-info {
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s, height 0.3s, margin 0.3s;
+            opacity: 1; transform: translateX(0); visibility: visible;
+        }
+
+        .sidebar.collapsed .sidebar-nav ul li a {
+            font-size: 0; justify-content: center; padding-left: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar.collapsed .sidebar-nav ul li a i.material-icons { margin-right: 0; font-size: 24px; }
+        
+        .main-content.expanded { margin-left: 56px; width: calc(100% - 56px); }
+
+        /* =========================================
+           6. ESTILOS DEL MANUAL DE USUARIO (NUEVO DISEÑO ADMINISTRATIVO)
+           ========================================= */
+        .manual-container {
+            width: 100%;
+            margin: 0 auto;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        
+        .manual-header {
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #f1f5f9;
+        }
+
+        /* Malla Adaptativa */
+        .manual-steps-grid {
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 2rem;
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .manual-steps-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (min-width: 1400px) {
+            .manual-steps-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* Estructura de la nueva tarjeta */
+        .manual-step-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1; /* Borde sutil general */
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            height: 100%; 
+            overflow: hidden; /* Importante para que el color de la cabecera no se salga del radio */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .manual-step-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        /* Cabecera de la tarjeta con color */
+        .manual-step-header {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .manual-step-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.01em;
+        }
+
+        /* Cuerpo de la tarjeta blanco */
+        .manual-step-content {
+            padding: 1.5rem;
+            color: #475569;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            flex-grow: 1; 
+        }
+
+        .manual-step-content ul {
+            margin-top: 0.75rem;
+            padding-left: 1.25rem;
+            margin-bottom: 0;
+        }
+
+        .manual-step-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Caja de ejemplo refinada */
+        .manual-example-box {
+            background-color: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.25rem;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .manual-example-box strong { color: #334155; }
+
+        /* Colores Específicos por Módulo para las Cabeceras */
+        .config-step .manual-step-header { background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+        .config-step .manual-step-header i, .config-step .manual-step-title { color: #475569; }
+
+        .cargas-step .manual-step-header { background-color: #eff6ff; border-bottom: 1px solid #bfdbfe; }
+        .cargas-step .manual-step-header i, .cargas-step .manual-step-title { color: #1d4ed8; }
+
+        .ventas-step .manual-step-header { background-color: #fffbeb; border-bottom: 1px solid #fde68a; }
+        .ventas-step .manual-step-header i, .ventas-step .manual-step-title { color: #b45309; }
+
+        .cobros-step .manual-step-header { background-color: #fef2f2; border-bottom: 1px solid #fecaca; }
+        .cobros-step .manual-step-header i, .cobros-step .manual-step-title { color: #b91c1c; }
+
+        .historial-step .manual-step-header { background-color: #f0fdf4; border-bottom: 1px solid #bbf7d0; }
+        .historial-step .manual-step-header i, .historial-step .manual-step-title { color: #15803d; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" id="sidebar">
+            <div>
+                <div class="sidebar-header">
+                    <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none">
+                        <i id="menu-icon-dynamic" class="material-icons">menu</i>
+                    </button>
+                    
+                    <img src="logo_redondeado.png" alt="Logo NEXUS Mayorista" class="rounded-full mx-auto mb-2 mt-8" style="display: block; width: 100px; height: 100px; object-fit: cover; transition: all 0.3s ease;">
+                    
+                    <h3 class="font-bold text-gray-800 uppercase tracking-wider text-[15px] mt-2">NEXUS <span style="color: #8cc63f;">MAYORISTAS</span></h3>
+                    
+                    <div id="company-rif-display" class="font-medium text-gray-600 mt-1" style="font-size: 0.8rem;">RIF: J-50807000-3</div>
+                    <div id="sync-status-indicator" class="mt-2 text-[0.8rem] flex items-center justify-center gap-1.5 text-gray-600 transition-colors duration-300">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span> Preparando motor...
+                    </div>
+                    <div id="sync-last-time" class="text-[10px] text-green-600 mt-0.5" style="display: none;">Sincronización exitosa</div>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li>
+                            <a href="#" onclick="loadPage('cargas.html')">
+                                <i class="material-icons">local_shipping</i>
+                                <span>Cargas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('tabla_ventas.html')">
+                                <i class="material-icons">payments</i>
+                                <span>Tabla de ventas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('cargas_cerradas.html')">
+                                <i class="material-icons">history</i>
+                                <span>Cargas Cerradas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('cuentas_cobrar.html')">
+                                <i class="material-icons">receipt_long</i>
+                                <span>Cuentas por cobrar</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('deuda_clientes.html')">
+                                <i class="material-icons">account_box</i>
+                                <span>Deuda / Clientes</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('gestor_clientes.html')">
+                                <i class="material-icons">people</i>
+                                <span>Gestor de Clientes</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            
+            <div>
+                <div class="footer-info mb-4 text-center px-2" style="font-size: 0.75rem; color: #6B6B6B; white-space: normal;">
+                    <p class="font-bold text-gray-700">Desarrollado por Nexus Company</p>
+                    <p class="italic text-xs mt-1">De la familia de Nexus POS Global</p>
+                    <p class="mt-2" style="font-size: 0.65rem;">Copyright © 2026<br>Todos los derechos reservados</p>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <ul>
+                        <li>
+                            <a href="#" onclick="loadPage('configuracion.html')">
+                                <i class="material-icons">settings</i>
+                                <span>Configuración</span>
+                            </a>
+                        </li>
+                        <li style="margin-top: 10px;">
+                            <a href="#" onclick="cerrarSesionLocal()" style="color: #ef4444;">
+                                <i class="material-icons" style="color: #ef4444;">logout</i>
+                                <span>Cerrar Sesión</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div id="dynamic-content-area" class="w-full">
+                
+                <div class="manual-container p-6 md:p-10 max-w-7xl mx-auto">
+                    <div class="manual-header text-center">
+                        <h1 class="text-3xl font-extrabold text-gray-800 mb-2 tracking-tight">Manual de Usuario</h1>
+                        <p class="text-gray-500 text-lg">Guía paso a paso para el control de inventario y ventas en ruta</p>
+                    </div>
+
+                    <div class="manual-steps-grid">
+                        
+                        <div class="manual-step-card config-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">settings</i>
+                                <h2 class="manual-step-title">1. Configuración Inicial</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Antes de comenzar a operar, debes preparar el sistema en el módulo de <strong>Configuración</strong>:</p>
+                                <ul>
+                                    <li><strong>Registrar Vehículos:</strong> Añade todos los camiones o sucursales móviles que usarás.</li>
+                                    <li><strong>Unidades y Subtipos:</strong> Define cómo mides tu mercancía (ej. Cajas, Kilos, Paquetes).</li>
+                                    <li><strong>Métodos de Pago:</strong> Activa los medios por los cuales recibirás dinero (Zelle, Efectivo, Punto de Venta).</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card cargas-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">local_shipping</i>
+                                <h2 class="manual-step-title">2. Asignación de Cargas</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>El camión no puede vender si no tiene inventario asignado. Dirígete a <strong>Cargas</strong> para despachar mercancía.</p>
+                                <ul>
+                                    <li>Selecciona un vehículo de tu flota.</li>
+                                    <li>Escoge el producto y la cantidad exacta que se subirá al camión.</li>
+                                    <li>Una vez confirmes todo, el sistema cambiará el estado del camión a "En Ruta", listo para la preventa.</li>
+                                </ul>
+                                <div class="manual-example-box">
+                                    <strong>Ejemplo:</strong> Al "Camión 01" le asignas 50 Cajas de Tomates y 20 Sacos de Cebolla antes de salir a su ruta matutina.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card ventas-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">payments</i>
+                                <h2 class="manual-step-title">3. Operación Diaria</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Este es el núcleo del sistema. Aquí registrarás las salidas de mercancía del camión.</p>
+                                <ul>
+                                    <li>Selecciona el vehículo que tiene la carga activa.</li>
+                                    <li>Usa la planilla estilo Excel para ir anotando a quién se le vende, el precio, qué método de pago usó y la cantidad.</li>
+                                    <li>Si hubo mercancía dañada o extraviada, regístrala en la sección inferior de <strong>"Salida por Merma"</strong>.</li>
+                                    <li>Cuando el camión regrese o se quede sin mercancía, presiona <strong>"Cerrar Carga"</strong>. El sistema verificará que no queden inventarios huérfanos.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card cobros-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">receipt_long</i>
+                                <h2 class="manual-step-title">4. Cuentas por Cobrar</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Toda venta registrada como "CRÉDITO" en la Tabla de Ventas, aparecerá aquí organizada por Carga y Vehículo.</p>
+                                <ul>
+                                    <li>Selecciona la carga que deseas revisar.</li>
+                                    <li>Podrás registrar pagos (abonos) en Divisas, Transferencia o Pago Móvil a los clientes deudores.</li>
+                                    <li>El sistema cuenta con una <strong>Auditoría de Pagos</strong> para rastrear o revertir cualquier abono ingresado por error.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="manual-step-card historial-step">
+                            <div class="manual-step-header">
+                                <i class="material-icons text-2xl">account_box</i>
+                                <h2 class="manual-step-title">5. Reportes Finales</h2>
+                            </div>
+                            <div class="manual-step-content">
+                                <p>Para la administración general, cuentas con dos módulos de auditoría globales:</p>
+                                <ul>
+                                    <li><strong>Deuda / Clientes:</strong> Busca a un cliente por su nombre y mira su deuda total consolidada (sumando todas las cargas de todos los camiones).</li>
+                                    <li><strong>Cargas Cerradas:</strong> El archivo histórico. Aquí consultarás los ingresos generados por cada viaje, mermas declaradas, y el promedio de ganancia exacto por producto de cargas ya finalizadas.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function loadPage(url) {
+            const area = document.getElementById('dynamic-content-area');
+            area.innerHTML = '<div class="p-6 md:p-10"><p class="text-blue-500 flex items-center gap-2 font-medium"><i class="material-icons animate-spin">refresh</i> Cargando módulo...</p></div>';
+            
+            fetch(url)
+                .then(res => {
+                    if(!res.ok) throw new Error();
+                    return res.text();
+                })
+                .then(html => {
+                    area.innerHTML = html;
+                    window.scrollTo(0, 0);
+                    
+                    const scripts = area.querySelectorAll("script");
+                    scripts.forEach(s => {
+                        const nuevo = document.createElement("script");
+                        Array.from(s.attributes).forEach(attr => nuevo.setAttribute(attr.name, attr.value));
+                        nuevo.appendChild(document.createTextNode(s.innerHTML));
+                        s.parentNode.replaceChild(nuevo, s);
+                    });
+                })
+                .catch(() => {
+                    area.innerHTML = `<div class="p-6 md:p-10"><div class="p-4 bg-red-100 text-red-700 rounded border-l-4 border-red-500 font-medium">
+                        Error: No se pudo cargar el módulo <b>${url}</b>. Asegúrese de que el archivo exista en el directorio.
+                    </div></div>`;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
+            const desktopMenuToggle = document.getElementById('desktop-menu-toggle');
+            const menuIconDynamic = document.getElementById('menu-icon-dynamic');
+
+            if (desktopMenuToggle && sidebar && mainContent) {
+                desktopMenuToggle.onclick = (e) => {
+                    e.preventDefault();
+                    sidebar.classList.toggle('collapsed');
+                    mainContent.classList.toggle('expanded');
+                    
+                    if (menuIconDynamic) {
+                        menuIconDynamic.style.opacity = '0';
+                        setTimeout(() => {
+                            menuIconDynamic.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'menu';
+                            menuIconDynamic.style.opacity = '1';
+                        }, 150);
+                    }
+                };
+            }
+
+            document.querySelectorAll(".sidebar-nav a").forEach(link => {
+                link.addEventListener('click', () => {
+                    if (sidebar && sidebar.classList.contains('collapsed')) {
+                        sidebar.classList.remove('collapsed');
+                        mainContent.classList.remove('expanded');
+                        if (menuIconDynamic) menuIconDynamic.textContent = 'menu';
+                    }
+                });
+            });
+        });
+
+        function cerrarSesionLocal() {
+            if (window.nexusAPI && window.nexusAPI.cerrarYVolverAlLogin) {
+                // Remove any auth tokens if we end up adding them to localStorage too
+                localStorage.removeItem('supertokens-web-js-session'); 
+                window.nexusAPI.cerrarYVolverAlLogin();
+            } else {
+                console.warn('API de nexus no disponible para cerrar sesión.');
+            }
+        }
+
+        /* ==========================================
+           MOTOR DE SINCRONIZACIÓN Y SESIÓN
+           ========================================== */
+        let sincronizando = false;
+        let idEmpresaActual = null;
+        let SERVER_URL = 'http://68.168.218.147:4020'; // Puerto 4020 del VPS Maestro
+
+        const RUTAS_VPS = {
+            'vehiculos': '/api/maestro/vehiculos',
+            'maestro_unidades': '/api/maestro/maestro_unidades',
+            'maestro_subtipos': '/api/maestro/maestro_subtipos',
+            'clientes': '/api/maestro/clientes',
+            'vehiculo_cargas': '/api/maestro/vehiculo_cargas',
+            'ventas_cargas': '/api/maestro/ventas_cargas',
+            'cargas_cerradas': '/api/maestro/cargas_cerradas',
+            'mermas_cargas': '/api/maestro/mermas_cargas',
+            'rendiciones_cargas': '/api/maestro/rendiciones_cargas',
+            'abonos_deudas': '/api/maestro/abonos_deudas',
+            'reversos_deudas': '/api/maestro/reversos_deudas',
+            'configuracion_sistema': '/api/maestro/configuracion_sistema',
+            'metodos_pago': '/api/maestro/metodos_pago'
+        };
+
+        function actualizarUIConexion(estado) {
+            const indicator = document.getElementById('sync-status-indicator');
+            const successMsg = document.getElementById('sync-last-time');
+            if (!indicator) return;
+            
+            if (estado === 'offline') {
+                indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Sin conexión (Offline)';
+                if (successMsg) successMsg.style.display = 'none';
+            } else if (estado === 'syncing') {
+                indicator.innerHTML = '<i class="material-icons animate-spin" style="font-size: 14px;">sync</i> Sincronizando...';
+                if (successMsg) successMsg.style.display = 'none';
+            } else {
+                indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Conectado (Online)';
+                // Si la llamamos con 'online_success', mostramos el msj
+                if (estado === 'online_success' && successMsg) {
+                    successMsg.style.display = 'block';
+                    // Ocultarlo después de 5 segundos
+                    setTimeout(() => { successMsg.style.display = 'none'; }, 5000);
+                }
+            }
+        }
+
+        async function iniciarSincronizacionSilenciosa() {
+            if (sincronizando) return;
+            // Quitamos el bloqueo por idEmpresaActual por ahora porque el RIF es fijo en UI, 
+            // pero internamente deberia requerirlo. Lo ignoraremos si queremos ver el UI rapido.
+            if (!navigator.onLine) {
+                actualizarUIConexion('offline');
+                return;
+            }
+
+            sincronizando = true;
+            try {
+                // 1. Verificamos internet real
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                let ping;
+                
+                try {
+                    ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                } catch (e) {
+                    throw e; // Offline
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+
+                if (ping) {
+                    actualizarUIConexion('syncing');
+                    
+                    // 2. FASE 3: Subida de Datos (Sincronización Silenciosa)
+                    if (window.nexusAPI && window.nexusAPI.invoke) {
+                        const tablas = Object.keys(RUTAS_VPS);
+                        console.log("Iniciando escaneo de tablas pendientes...", tablas);
+                        
+                        const pendientes = await window.nexusAPI.invoke('obtener-pendientes-sync', tablas);
+                        console.log("Resultados del escaneo local:", pendientes);
+
+                        let huboSubidas = false;
+
+                        for (const tabla of tablas) {
+                            const registros = pendientes[tabla];
+                            if (registros && registros.length > 0) {
+                                console.log(`Subiendo ${registros.length} registros de la tabla '${tabla}'...`);
+                                
+                                try {
+                                    const res = await fetch(SERVER_URL + RUTAS_VPS[tabla], {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(registros) // Mandamos el lote
+                                    });
+
+                                    if (res.ok) {
+                                        const idsSincronizados = registros.map(r => r.id || r.merma_id || r.rendicion_id || r.id_carga).filter(id => id);
+                                        console.log(`Éxito al subir '${tabla}'. Marcando como sincronizados IDs:`, idsSincronizados);
+                                        
+                                        // Marcamos localmente como sync_status = 1
+                                        await window.nexusAPI.invoke('marcar-como-sincronizado-lote', { tabla: tabla, ids: idsSincronizados });
+                                        huboSubidas = true;
+                                    } else {
+                                        console.error(`Error del servidor al subir tabla '${tabla}':`, res.status, res.statusText);
+                                    }
+                                } catch(errPost) {
+                                    console.error(`Error de red al subir tabla '${tabla}':`, errPost);
+                                }
+                            }
+                        }
+                        
+                        if (huboSubidas) {
+                            console.log("Sincronización completada con éxito. Registros nuevos subidos.");
+                        } else {
+                            console.log("No hay nuevos registros pendientes por subir en este ciclo.");
+                        }
+                    } else {
+                        console.warn("Nexus API .invoke no disponible para la sincronización.");
+                    }
+
+                    actualizarUIConexion('online_success');
+                }
+            } catch (err) {
+                console.warn("Sincronización falló por pérdida de conexión real:", err);
+                actualizarUIConexion('offline');
+            } finally {
+                sincronizando = false;
+            }
+        }
+
+        async function iniciarEntorno() {
+            // Forzamos el inicio del motor independientemente de la sesión
+            // Esto arregla el error de "Preparando motor..." estático
+            setInterval(iniciarSincronizacionSilenciosa, 10000); // Cada 10s
+            iniciarSincronizacionSilenciosa();
+            
+            if (window.nexusAPI && window.nexusAPI.obtenerSesion) {
+                try {
+                    const sesion = await window.nexusAPI.obtenerSesion();
+                    if (sesion && sesion.idEmpresa) {
+                        idEmpresaActual = sesion.idEmpresa;
+                        
+                        // Mostrar RIF
+                        const rifDisplay = document.getElementById('company-rif-display');
+                        if (rifDisplay) {
+                            rifDisplay.textContent = 'RIF: ' + idEmpresaActual;
+                            rifDisplay.style.display = 'block';
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error al obtener sesión:", e);
+                }
+            } else {
+                console.warn("Nexus API IPC no detectado en inicio.html");
+            }
+        }
+
+        // Lanzar entorno al cargar
+        document.addEventListener('DOMContentLoaded', iniciarEntorno);
+
+    </script>
+</body>
+</html>

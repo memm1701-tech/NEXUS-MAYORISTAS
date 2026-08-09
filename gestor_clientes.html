@@ -1,0 +1,266 @@
+<style>
+    /* Paleta Corporativa Neutra: Tonos Pizarra y Grafito */
+    .config-container { padding: 30px; animation: fadeIn 0.4s ease-out; width: 100%; box-sizing: border-box; }
+    .config-container h1 { color: #1e293b; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; font-size: 2.2em; }
+    
+    .section-title { font-size: 1.3em; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-top: 35px; margin-bottom: 20px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    
+    .panel { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); margin-bottom: 20px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr; gap: 20px; }
+    @media(min-width: 768px) { .grid-2 { grid-template-columns: 1fr 1fr; gap: 30px; } }
+    
+    /* Formularios */
+    label { font-weight: 700; color: #64748b; font-size: 0.85em; text-transform: uppercase; margin-bottom: 8px; display: block; }
+    input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 0; background: #f8fafc; outline: none; transition: 0.3s; font-size: 1em; margin-bottom: 15px; box-sizing: border-box;}
+    input:focus { border-color: #1e293b; background: white; box-shadow: 0 0 0 3px rgba(30,41,59,0.05); }
+
+    /* Botones */
+    .btn-main { background: #1e293b; color: white; border: none; padding: 12px 20px; border-radius: 0; font-weight: 700; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-main:hover { background: #0f172a; }
+    .btn-del { color: #94a3b8; border: none; background: none; cursor: pointer; transition: 0.2s; padding: 5px; }
+    .btn-del:hover { color: #ef4444; }
+    .btn-edit { color: #94a3b8; border: none; background: none; cursor: pointer; transition: 0.2s; padding: 5px; }
+    .btn-edit:hover { color: #3b82f6; }
+
+    /* Tablas */
+    .table-container { border-radius: 0; border: 1px solid #e2e8f0; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95em; }
+    th { text-align: left; background: #f1f5f9; color: #475569; padding: 14px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+    td { padding: 14px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f8fafc; }
+    .empty-message { text-align: center; padding: 25px !important; color: #94a3b8; font-style: italic; }
+
+    .hidden { display: none !important; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Modales */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal-square { background: white; border-radius: 0; width: 100%; max-width: 450px; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    .modal-title { margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+    .modal-body { padding: 20px; }
+    .modal-footer { padding: 16px 20px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; background: #f8fafc; }
+    
+    .btn-cancel { background: white; color: #64748b; border: 1px solid #cbd5e1; padding: 10px 16px; font-weight: bold; cursor: pointer; border-radius: 0; transition: 0.2s; }
+    .btn-cancel:hover { background: #f1f5f9; }
+    .btn-confirm { background: #ef4444; color: white; border: none; padding: 10px 16px; font-weight: bold; cursor: pointer; border-radius: 0; transition: 0.2s; }
+    .btn-confirm:hover { background: #dc2626; }
+    .btn-save { background: #3b82f6; color: white; border: none; padding: 10px 16px; font-weight: bold; cursor: pointer; border-radius: 0; transition: 0.2s; }
+    .btn-save:hover { background: #2563eb; }
+</style>
+
+<div class="config-container">
+    
+    <h1>Directorio de Clientes</h1>
+    
+    <div class="panel mb-8">
+        <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Registrar Nuevo Cliente</h3>
+        <div class="grid-2" style="align-items: end;">
+            <div>
+                <label for="nombreCliente">Nombre del Cliente:</label>
+                <input type="text" id="nombreCliente" placeholder="Ej: ZORRA, TORO, WILMER..." autocomplete="off" style="margin: 0; text-transform: uppercase;">
+            </div>
+            <div>
+                <button onclick="registrarClienteGlobal()" class="btn-main" style="width: 100%;">
+                    <i class="material-icons">person_add</i> Registrar Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="panel mb-8">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #334155; font-size: 1.1em;">Gestión de Clientes</h3>
+            <input type="text" id="buscadorClientes" onkeyup="filtrarClientes()" placeholder="Buscar cliente..." style="width: 250px; margin: 0; padding: 8px 12px; border-radius: 4px;">
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Nombre</th>
+                        <th>Fecha de Creación</th>
+                        <th style="text-align: right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="listaClientes">
+                    <tr><td colspan="4" class="empty-message">Cargando clientes...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Eliminar -->
+<div id="modal-eliminar" class="modal-overlay hidden">
+    <div class="modal-square">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="material-icons" style="color: #ef4444;">warning</i> Eliminar Cliente</h3>
+        </div>
+        <div class="modal-body">
+            <p style="margin: 0; color: #475569; font-size: 0.95rem; line-height: 1.5;">
+                ¿Estás seguro de que deseas eliminar al cliente <strong id="lbl-eliminar-nombre" style="color: #1e293b;"></strong>?
+                Esta acción no se puede deshacer.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="cerrarModalEliminar()">CANCELAR</button>
+            <button class="btn-confirm" onclick="confirmarEliminarCliente()">ELIMINAR</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar -->
+<div id="modal-editar" class="modal-overlay hidden">
+    <div class="modal-square">
+        <div class="modal-header">
+            <h3 class="modal-title"><i class="material-icons" style="color: #3b82f6;">edit</i> Editar Cliente</h3>
+        </div>
+        <div class="modal-body">
+            <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 12px; margin-bottom: 15px; font-size: 0.85rem; color: #92400e;">
+                <i class="material-icons" style="font-size: 16px; vertical-align: middle;">info</i>
+                Al guardar, este nombre se actualizará en todo el historial de deudas, ventas y cobros para mantener la integridad de los datos.
+            </div>
+            <label for="input-editar-nombre">Nuevo Nombre:</label>
+            <input type="text" id="input-editar-nombre" style="margin: 0; text-transform: uppercase;">
+        </div>
+        <div class="modal-footer">
+            <button class="btn-cancel" onclick="cerrarModalEditar()">CANCELAR</button>
+            <button class="btn-save" onclick="guardarEdicionCliente()">GUARDAR CAMBIOS</button>
+        </div>
+    </div>
+</div>
+
+<script>
+{
+    let ipc;
+    try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("Electron no detectado."); }
+
+    if (ipc) {
+        
+        let clienteAEliminar = null;
+        let clienteAEditar = null;
+        let nombreOriginal = null;
+        let clientesCache = [];
+
+        window.registrarClienteGlobal = function() {
+            const input = document.getElementById('nombreCliente');
+            const nombre = input.value.trim().toUpperCase();
+            if(!nombre) return;
+            ipc.send('guardar-cliente', nombre);
+        };
+
+        ipc.removeAllListeners('guardar-cliente-resultado');
+        ipc.on('guardar-cliente-resultado', (event, res) => {
+            if(res.success) { 
+                document.getElementById('nombreCliente').value = ''; 
+                cargarClientesConfig(); 
+            } else {
+                alert("Error al guardar cliente. Es posible que el nombre ya exista.");
+            }
+        });
+
+        window.cargarClientesConfig = async function() {
+            clientesCache = await ipc.invoke('obtener-clientes');
+            renderizarListaClientes(clientesCache);
+        };
+
+        window.renderizarListaClientes = function(lista) {
+            const tbody = document.getElementById('listaClientes');
+            if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin clientes encontrados.</td></tr>'; return; }
+            tbody.innerHTML = lista.map(c => `
+                <tr>
+                    <td class="text-gray-500 font-mono">${c.id}</td>
+                    <td class="font-bold text-gray-800"><i class="material-icons align-middle text-gray-400 mr-2">person</i>${c.nombre}</td>
+                    <td class="text-gray-500 font-mono">${new Date(c.fecha_creacion).toLocaleDateString()}</td>
+                    <td style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+                        <button class="btn-edit" onclick="abrirModalEditar(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')" title="Editar"><i class="material-icons">edit</i></button>
+                        <button class="btn-del" onclick="abrirModalEliminar(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="material-icons">delete</i></button>
+                    </td>
+                </tr>`).join('');
+        };
+
+        window.filtrarClientes = function() {
+            const query = document.getElementById('buscadorClientes').value.toLowerCase().trim();
+            const filtrados = clientesCache.filter(c => c.nombre.toLowerCase().includes(query));
+            renderizarListaClientes(filtrados);
+        };
+
+        // ELIMINAR
+        window.abrirModalEliminar = async function(id, nombre) {
+            clienteAEliminar = id;
+            
+            // Validar si tiene deuda antes de confirmar
+            const tieneDeuda = await ipc.invoke('verificar-deuda-cliente', nombre);
+            
+            const btnConfirm = document.querySelector('#modal-eliminar .btn-confirm');
+            const mensajeModal = document.querySelector('#modal-eliminar .modal-body p');
+            const tituloModal = document.querySelector('#modal-eliminar .modal-title');
+            
+            if (tieneDeuda) {
+                tituloModal.innerHTML = `<i class="material-icons" style="color: #ef4444;">error</i> ¡ALERTA!`;
+                mensajeModal.innerHTML = `El cliente <strong>${nombre}</strong> que intentas eliminar tiene una deuda con la compañía y eliminarlo romperá los registros, así que no es posible eliminarlo por seguridad.<br><br><strong>Por favor salde las cuentas pendientes e intente de nuevo.</strong>`;
+                btnConfirm.classList.add('hidden');
+            } else {
+                tituloModal.innerHTML = `<i class="material-icons" style="color: #ef4444;">warning</i> Eliminar Cliente`;
+                mensajeModal.innerHTML = `¿Estás seguro de que deseas eliminar al cliente <strong>${nombre}</strong>? Esta acción no se puede deshacer.`;
+                btnConfirm.classList.remove('hidden');
+            }
+            
+            document.getElementById('modal-eliminar').classList.remove('hidden');
+        };
+        window.cerrarModalEliminar = function() {
+            document.getElementById('modal-eliminar').classList.add('hidden');
+            clienteAEliminar = null;
+        };
+        window.confirmarEliminarCliente = function() {
+            if (clienteAEliminar) {
+                ipc.send('eliminar-cliente', clienteAEliminar);
+                cerrarModalEliminar();
+            }
+        };
+
+        // EDITAR
+        window.abrirModalEditar = function(id, nombre) {
+            clienteAEditar = id;
+            nombreOriginal = nombre;
+            document.getElementById('input-editar-nombre').value = nombre;
+            document.getElementById('modal-editar').classList.remove('hidden');
+            setTimeout(() => document.getElementById('input-editar-nombre').focus(), 100);
+        };
+        window.cerrarModalEditar = function() {
+            document.getElementById('modal-editar').classList.add('hidden');
+            clienteAEditar = null;
+            nombreOriginal = null;
+        };
+        window.guardarEdicionCliente = function() {
+            if (clienteAEditar) {
+                const nombreNuevo = document.getElementById('input-editar-nombre').value.trim().toUpperCase();
+                if (!nombreNuevo || nombreNuevo === nombreOriginal) {
+                    cerrarModalEditar();
+                    return;
+                }
+                ipc.send('editar-cliente', { id: clienteAEditar, nombreViejo: nombreOriginal, nombreNuevo: nombreNuevo });
+                cerrarModalEditar();
+            }
+        };
+
+        // LISENERS GLOBALES
+        ipc.removeAllListeners('resultado-operacion');
+        ipc.on('resultado-operacion', (event, res) => {
+            if(res.success) {
+                cargarClientesConfig();
+            } else {
+                alert("Ocurrió un error en la operación: " + (res.msg || ''));
+            }
+        });
+
+        // Inicializar
+        cargarClientesConfig();
+    }
+}
+</script>
