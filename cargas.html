@@ -21,7 +21,7 @@
         /* Tarjetas de Selección de Vehículo (Mini Cuadradas) */
         .vehiculo-card-mini { 
             background: white; 
-            border: 1px solid #e2e8f0;
+            border: 1px solid #e2e8f0; 
             border-radius: 16px; 
             aspect-ratio: 1 / 1; 
             display: flex; 
@@ -168,12 +168,11 @@
             <div class="lg:col-span-8">
                 <div class="cargas-panel">
                     <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Detalle de Mercancía</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                         <div><label class="cargas-label">Categoría</label><select id="nc-categoria" class="cargas-select"><option value="">Seleccione...</option></select></div>
                         <div><label class="cargas-label">Variación</label><select id="nc-subtipo" class="cargas-select" disabled><option value="">Esperando...</option></select></div>
                         <div><label class="cargas-label">Cantidad</label><input type="number" id="nc-cantidad" class="cargas-input" placeholder="0"></div>
-                        <div><label class="cargas-label">P. Compra</label><input type="number" id="nc-pcompra" class="cargas-input" placeholder="0.00" step="0.01"></div>
-                        <div class="md:col-span-2 mt-2"><button onclick="agregarItemAlaCarga()" class="cargas-btn-main w-full" style="background: #2563eb; height: 46px;"><i class="material-icons">add</i> Añadir a la Carga</button></div>
+                        <div><button onclick="agregarItemAlaCarga()" class="cargas-btn-main w-full" style="background: #2563eb; height: 46px;"><i class="material-icons">add</i> Añadir</button></div>
                     </div>
                 </div>
             </div>
@@ -182,12 +181,12 @@
             <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Resumen de Carga temporal</h2>
             <div class="cargas-table-container">
                 <table class="cargas-table">
-                    <thead><tr><th>Categoría</th><th>Variación</th><th>Cantidad</th><th>P. Compra</th><th style="text-align: right">Acción</th></tr></thead>
-                    <tbody id="tabla-items-carga"><tr><td colspan="5" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr></tbody>
+                    <thead><tr><th>Categoría</th><th>Variación</th><th>Cantidad</th><th style="text-align: right">Acción</th></tr></thead>
+                    <tbody id="tabla-items-carga"><tr><td colspan="4" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr></tbody>
                     <tfoot id="tabla-footer-total" class="hidden">
                         <tr class="total-row">
                             <td colspan="2" class="text-right font-bold text-slate-600 uppercase" id="label-total-dinamico">Total:</td>
-                            <td class="text-2xl text-blue-700 font-black" id="valor-total-dinamico">0</td><td></td><td></td>
+                            <td class="text-2xl text-blue-700 font-black" id="valor-total-dinamico">0</td><td></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -239,17 +238,15 @@
                             <th>Categoría</th>
                             <th>Variación</th>
                             <th>Cantidad</th>
-                            <th>P. Compra</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-cargas-bd">
-                        <tr><td colspan="4" class="text-center text-slate-400 italic p-6">Buscando manifiesto...</td></tr>
+                        <tr><td colspan="3" class="text-center text-slate-400 italic p-6">Buscando manifiesto...</td></tr>
                     </tbody>
                     <tfoot id="tabla-footer-gestion" class="hidden">
                         <tr class="total-row">
                             <td colspan="2" class="text-right font-bold text-slate-600 uppercase" id="label-total-gestion">Total en unidad:</td>
                             <td class="text-2xl text-green-600 font-black" id="valor-total-gestion">0</td>
-                            <td></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -431,18 +428,15 @@
         const cat = document.getElementById('nc-categoria');
         const sub = document.getElementById('nc-subtipo');
         const cant = document.getElementById('nc-cantidad');
-        const pcompra = document.getElementById('nc-pcompra');
-        if(!cat.value || !sub.value || cant.value <= 0 || pcompra.value < 0) return;
+        if(!cat.value || !sub.value || cant.value <= 0) return;
 
         listaCargaActual.push({
             id: Date.now(),
             categoria: cat.options[cat.selectedIndex].text,
             subtipo: sub.value,
-            cantidad: parseInt(cant.value),
-            p_compra: parseFloat(pcompra.value) || 0
+            cantidad: parseInt(cant.value)
         });
         cant.value = "";
-        pcompra.value = "";
         renderizarTablaCarga();
     };
 
@@ -453,7 +447,7 @@
         const valorTotal = document.getElementById('valor-total-dinamico');
 
         if (listaCargaActual.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr>';
             tfoot.classList.add('hidden');
             return;
         }
@@ -461,7 +455,7 @@
         tfoot.classList.remove('hidden');
         tbody.innerHTML = listaCargaActual.map(item => `
             <tr>
-                <td class="font-bold">${item.categoria}</td><td>${item.subtipo}</td><td class="font-bold text-blue-600 text-lg">${item.cantidad}</td><td class="font-bold text-slate-700 text-lg">$${item.p_compra.toFixed(2)}</td>
+                <td class="font-bold">${item.categoria}</td><td>${item.subtipo}</td><td class="font-bold text-blue-600 text-lg">${item.cantidad}</td>
                 <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem(${item.id})"><i class="material-icons">delete</i></button></td>
             </tr>
         `).join('');
@@ -596,19 +590,18 @@
         const cargasBD = cargaActiva && cargaActiva.datos_parseados ? cargaActiva.datos_parseados : [];
 
         if (cargasBD.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-400 font-medium p-8">Esta unidad no tiene manifiestos activos en la base de datos.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-slate-400 font-medium p-8">Esta unidad no tiene manifiestos activos en la base de datos.</td></tr>';
             tfoot.classList.add('hidden');
             return;
         }
 
         tfoot.classList.remove('hidden');
-        // Mapeamos leyendo desde la estructura JSON (categoria, subtipo, cantidad, p_compra)
+        // Mapeamos leyendo desde la estructura JSON (categoria, subtipo, cantidad)
         tbody.innerHTML = cargasBD.map(c => `
             <tr>
                 <td class="font-bold text-slate-800">${c.categoria}</td>
                 <td class="text-slate-600">${c.subtipo}</td>
                 <td class="font-bold text-green-600 text-lg">${c.cantidad}</td>
-                <td class="font-bold text-slate-700 text-lg">$${c.p_compra !== undefined ? Number(c.p_compra).toFixed(2) : '0.00'}</td>
             </tr>
         `).join('');
 

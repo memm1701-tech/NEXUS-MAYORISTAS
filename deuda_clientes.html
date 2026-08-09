@@ -1,19 +1,5 @@
 <div id="contenedor-deuda-clientes" class="contenedor-deudas">
     
-    <!-- Modal de Selección de Facturas -->
-    <div id="modal-facturas" class="hidden" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; padding: 20px;">
-        <div style="background: white; border-radius: 0; width: 100%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-            <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 8px;">
-                    <i class="material-icons" style="color: #3b82f6;">receipt_long</i> Seleccionar Factura a Abonar
-                </h3>
-                <button onclick="cerrarModalFacturas()" style="background: none; border: none; cursor: pointer; color: #94a3b8;"><i class="material-icons">close</i></button>
-            </div>
-            <div id="lista-facturas-modal" style="padding: 12px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 8px; background: #f8fafc;">
-                <!-- items generados por JS -->
-            </div>
-        </div>
-    </div>
     <style>
         /* --- ANIMACIONES Y UTILIDADES --- */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
@@ -64,8 +50,8 @@
         .total-mini-card { flex: 1; background: white; padding: 16px 20px; border-radius: 8px; display: flex; flex-direction: column; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .total-mini-label { font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
         .total-mini-valor { font-size: 1.5rem; font-weight: 900; margin-top: 6px; }
-        .borde-rojo { border-left: none; }
-        .borde-naranja { border-left: none; }
+        .borde-rojo { border-left: 5px solid #ef4444; }
+        .borde-naranja { border-left: 5px solid #f59e0b; }
         .color-deuda { color: #dc2626; }
         .color-dias { color: #d97706; }
 
@@ -276,13 +262,12 @@
                                     <input type="text" id="lib-concepto" class="libreta-input" style="width: 55%;" placeholder="Ej: Cestas, Efectivo...">
                                 </div>
                                 <div id="lib-opciones-pago" class="hidden" style="margin-top: 6px; display: flex; gap: 8px;">
-                                    <input type="hidden" id="carga-seleccionada" value="AUTO">
-                                    <div style="display: flex; gap: 4px; width: 60%;">
-                                        <button id="btn-fifo" onclick="seleccionarCargaOpcion('AUTO')" title="El dinero se repartirá automáticamente pagando primero las deudas más antiguas." style="flex: 1; font-size: 0.75rem; padding: 6px 4px; border: 1px solid #10b981; background: #ecfdf5; color: #047857; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s;">✔️ FIFO</button>
-                                        <button id="btn-seleccionar-factura" onclick="abrirModalFacturas()" title="El dinero se abonará de forma exacta y exclusiva a la factura que selecciones." style="flex: 1; font-size: 0.75rem; padding: 6px 4px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ELEGIR FACTURA</button>
-                                    </div>
-                                    <select id="lib-banco" class="libreta-input" style="width: 40%; font-size: 0.7rem;">
+                                    <select id="lib-carga-ref" class="libreta-input" style="width: 50%; font-size: 0.7rem; background-color: #f1f5f9; color: #10b981; cursor: not-allowed;" disabled>
+                                        <option value="AUTO">✔️ AUTO-DISTRIBUIR (FIFO)</option>
+                                    </select>
+                                    <select id="lib-banco" class="libreta-input" style="width: 50%; font-size: 0.7rem;">
                                         <option value="">EFECTIVO</option>
+                                        <option value="PAGO MÓVIL">PAGO MÓVIL</option>
                                     </select>
                                 </div>
                             </td>
@@ -364,17 +349,6 @@
         if (ipc) {
             clientesBaseCache = await ipc.invoke('obtener-clientes') || [];
             await cargarDeudoresGlobales();
-            
-            const metodos = await ipc.invoke('obtener-metodos-pago');
-            const selectBanco = document.getElementById('lib-banco');
-            if (selectBanco && metodos) {
-                selectBanco.innerHTML = '<option value="">EFECTIVO</option>';
-                metodos.forEach(m => {
-                    if (m.nombre !== 'EFECTIVO') {
-                        selectBanco.innerHTML += `<option value="${m.nombre}">${m.nombre}</option>`;
-                    }
-                });
-            }
         }
     }
 
@@ -509,6 +483,8 @@
 
         if (ipc) {
             cargasDelClienteActual = await ipc.invoke('obtener-cargas-deuda-cliente', nombre);
+            const selectCarga = document.getElementById('lib-carga-ref');
+            selectCarga.innerHTML = '<option value="AUTO">✔️ AUTO-DISTRIBUIR (FIFO)</option>';
 
             estadoDeCuentaGlobal = await ipc.invoke('obtener-estado-cuenta-cliente', nombre);
             renderizarCuaderno();
@@ -672,46 +648,39 @@ window.renderizarCuaderno = function() {
         } else if (tipoOp === 'ABONO') {
             const abonoTotal = parseFloat(document.getElementById('lib-abono').value) || 0;
             const banco = document.getElementById('lib-banco').value;
-            const conceptoInput = document.getElementById('lib-concepto').value.trim();
 
             if (abonoTotal <= 0) { mostrarToast("Ingresa un monto de pago válido.", "error"); return; }
 
-            // ================== ALGORITMO FIFO / DIRECTO DE DISTRIBUCIÓN ==================
+            // ================== ALGORITMO FIFO DE DISTRIBUCIÓN ==================
             let abonoRestante = abonoTotal;
             let abonosAProcesar = [];
-            const cargaSeleccionada = document.getElementById('carga-seleccionada').value;
 
-            if (cargaSeleccionada !== 'AUTO') {
-                // Pago directo a una factura específica
-                abonosAProcesar.push({ id_carga: parseInt(cargaSeleccionada), monto: abonoTotal });
+            // Si el cliente no debe nada en el sistema pero entrega dinero (Saldo a Favor puro)
+            if (!cargasDelClienteActual || cargasDelClienteActual.length === 0) {
+                abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
             } else {
-                // Si el cliente no debe nada en el sistema pero entrega dinero (Saldo a Favor puro)
-                if (!cargasDelClienteActual || cargasDelClienteActual.length === 0) {
-                    abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
-                } else {
-                    // Ordenamos las facturas pendientes de la más vieja a la más nueva
-                    const cargasPendientes = [...cargasDelClienteActual].sort((a, b) => {
-                        return new Date(a.fecha_entrada || 0).getTime() - new Date(b.fecha_entrada || 0).getTime() || a.id_carga - b.id_carga;
-                    });
+                // Ordenamos las facturas pendientes de la más vieja a la más nueva
+                const cargasPendientes = [...cargasDelClienteActual].sort((a, b) => {
+                    return new Date(a.fecha_entrada || 0).getTime() - new Date(b.fecha_entrada || 0).getTime() || a.id_carga - b.id_carga;
+                });
 
-                    // Repartimos el dinero rellenando los huecos de cada factura
-                    for (let carga of cargasPendientes) {
-                        if (abonoRestante <= 0.01) break;
-                        let deudaCarga = parseFloat(carga.total_deuda_carga) || 0;
-                        if (deudaCarga <= 0) continue;
+                // Repartimos el dinero rellenando los huecos de cada factura
+                for (let carga of cargasPendientes) {
+                    if (abonoRestante <= 0.01) break;
+                    let deudaCarga = parseFloat(carga.total_deuda_carga) || 0;
+                    if (deudaCarga <= 0) continue;
 
-                        let montoAPagarAqui = Math.min(abonoRestante, deudaCarga);
-                        abonosAProcesar.push({ id_carga: carga.id_carga, monto: montoAPagarAqui });
-                        abonoRestante -= montoAPagarAqui; // Restamos lo que ya usamos
-                    }
+                    let montoAPagarAqui = Math.min(abonoRestante, deudaCarga);
+                    abonosAProcesar.push({ id_carga: carga.id_carga, monto: montoAPagarAqui });
+                    abonoRestante -= montoAPagarAqui; // Restamos lo que ya usamos
+                }
 
-                    // Si pagó de más (ej. debía 8k y pagó 10k), le metemos el sobrante a la última factura
-                    if (abonoRestante > 0.01) {
-                        if (abonosAProcesar.length > 0) {
-                            abonosAProcesar[abonosAProcesar.length - 1].monto += abonoRestante;
-                        } else {
-                            abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
-                        }
+                // Si pagó de más (ej. debía 8k y pagó 10k), le metemos el sobrante a la última factura
+                if (abonoRestante > 0.01) {
+                    if (abonosAProcesar.length > 0) {
+                        abonosAProcesar[abonosAProcesar.length - 1].monto += abonoRestante;
+                    } else {
+                        abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
                     }
                 }
             }
@@ -729,11 +698,6 @@ window.renderizarCuaderno = function() {
                 let abonoActual = abonosAProcesar[index];
                 let movil = banco === "PAGO MÓVIL" ? abonoActual.monto : 0; 
                 let divisa = banco !== "PAGO MÓVIL" ? abonoActual.monto : 0;
-                
-                let bancoConConcepto = banco === "EFECTIVO" ? "" : banco;
-                if (conceptoInput) {
-                    bancoConConcepto = bancoConConcepto ? `${bancoConConcepto} - ${conceptoInput}` : conceptoInput;
-                }
 
                 ipc.send('guardar-abono-deuda', {
                     id_carga: parseInt(abonoActual.id_carga),
@@ -741,7 +705,7 @@ window.renderizarCuaderno = function() {
                     cliente: clienteSeleccionadoActual,
                     monto_divisa: divisa,
                     monto_movil: movil,
-                    banco: bancoConConcepto
+                    banco: banco === "EFECTIVO" ? "" : banco
                 });
 
                 ipc.once('guardar-abono-resultado', (event, res) => {
@@ -762,7 +726,7 @@ window.renderizarCuaderno = function() {
         document.getElementById('lib-concepto').value = '';
         document.getElementById('lib-cargo').value = '';
         document.getElementById('lib-abono').value = '';
-        seleccionarCargaOpcion('AUTO');
+        document.getElementById('lib-carga-ref').value = '';
         document.getElementById('lib-banco').value = '';
     }
 
@@ -906,82 +870,6 @@ window.renderizarCuaderno = function() {
             toast.classList.remove('show');
             setTimeout(() => toast.remove(), 300);
         }, 3000);
-    };
-
-    window.abrirModalFacturas = function() {
-        if (!cargasDelClienteActual || cargasDelClienteActual.length === 0) {
-            mostrarToast("El cliente no tiene facturas pendientes.", "error");
-            return;
-        }
-        
-        const contenedor = document.getElementById('lista-facturas-modal');
-        contenedor.innerHTML = '';
-        
-        cargasDelClienteActual.forEach(carga => {
-            const deuda = parseFloat(carga.total_deuda_carga).toFixed(2);
-            let titulo = `fac-mercancia: Carga #${carga.id_carga}`;
-            let icon = 'inventory_2';
-            let color = '#3b82f6';
-            let fondo = '#eff6ff';
-            
-            if (carga.primera_fila_id && carga.primera_fila_id.startsWith('ANT_')) {
-                titulo = `Deuda manual: ${carga.descripcion_antigua || 'Saldos Anteriores'}`;
-                icon = 'edit_note';
-                color = '#f59e0b';
-                fondo = '#fffbeb';
-            }
-            
-            contenedor.innerHTML += `
-                <div onclick="seleccionarCargaOpcion(${carga.id_carga}, '${titulo}')" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='${color}'; this.style.backgroundColor='${fondo}'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.backgroundColor='white'">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <i class="material-icons" style="color: ${color};">${icon}</i>
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-weight: 800; color: #1e293b; font-size: 0.9rem;">${titulo}</span>
-                            <span style="font-size: 0.75rem; color: #64748b;">Deuda pendiente: <strong style="color: #ef4444;">${deuda} $</strong></span>
-                        </div>
-                    </div>
-                    <i class="material-icons" style="color: #cbd5e1;">chevron_right</i>
-                </div>
-            `;
-        });
-        
-        document.getElementById('modal-facturas').classList.remove('hidden');
-        document.getElementById('modal-facturas').style.display = 'flex';
-    };
-
-    window.cerrarModalFacturas = function() {
-        document.getElementById('modal-facturas').classList.add('hidden');
-        document.getElementById('modal-facturas').style.display = 'none';
-    };
-
-    window.seleccionarCargaOpcion = function(valor, titulo = null) {
-        const inputOculto = document.getElementById('carga-seleccionada');
-        const btnFifo = document.getElementById('btn-fifo');
-        const btnFactura = document.getElementById('btn-seleccionar-factura');
-        
-        inputOculto.value = valor;
-        
-        if (valor === 'AUTO') {
-            btnFifo.style.background = '#ecfdf5';
-            btnFifo.style.color = '#047857';
-            btnFifo.style.borderColor = '#10b981';
-            
-            btnFactura.style.background = 'white';
-            btnFactura.style.color = '#475569';
-            btnFactura.style.borderColor = '#cbd5e1';
-            btnFactura.innerText = '📄 ELEGIR FACTURA';
-        } else {
-            btnFactura.style.background = '#eff6ff';
-            btnFactura.style.color = '#1d4ed8';
-            btnFactura.style.borderColor = '#3b82f6';
-            btnFactura.innerText = `✔️ Carga #${valor}`;
-            
-            btnFifo.style.background = 'white';
-            btnFifo.style.color = '#475569';
-            btnFifo.style.borderColor = '#cbd5e1';
-            
-            cerrarModalFacturas();
-        }
     };
 
     inicializarModuloDeudas();
