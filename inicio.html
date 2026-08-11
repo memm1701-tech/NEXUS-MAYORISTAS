@@ -283,8 +283,13 @@
                     
                     <img src="logo_redondeado.png" alt="Logo NEXUS Mayorista" class="rounded-full mx-auto mb-2 mt-8" style="display: block; width: 100px; height: 100px; object-fit: cover; transition: all 0.3s ease;">
                     
-                    <h3 class="font-bold text-gray-800 uppercase tracking-wider text-sm mt-2">Nexus Pos Global</h3>
-                    <h4 class="font-bold text-gray-600 uppercase tracking-wider text-xs">Version "Mayorista"</h4>
+                    <h3 class="font-bold text-gray-800 uppercase tracking-wider text-[15px] mt-2">NEXUS <span style="color: #8cc63f;">MAYORISTAS</span></h3>
+                    
+                    <div id="company-rif-display" class="font-medium text-gray-600 mt-1" style="font-size: 0.8rem;">RIF: J-50807000-3</div>
+                    <div id="sync-status-indicator" class="mt-2 text-[0.8rem] flex items-center justify-center gap-1.5 text-gray-600 transition-colors duration-300">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span> Preparando motor...
+                    </div>
+                    <div id="sync-last-time" class="text-[10px] text-green-600 mt-0.5" style="display: none;">Sincronización exitosa</div>
                 </div>
 
                 <nav class="sidebar-nav">
@@ -319,9 +324,15 @@
                                 <span>Deuda / Clientes</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="#" onclick="loadPage('gestor_clientes.html')">
+                                <i class="material-icons">people</i>
+                                <span>Gestor de Clientes</span>
+                            </a>
+                        </li>
                     </ul>
                 </nav>
-            </div> 
+            </div>
             
             <div>
                 <div class="footer-info mb-4 text-center px-2" style="font-size: 0.75rem; color: #6B6B6B; white-space: normal;">
@@ -338,18 +349,24 @@
                                 <span>Configuración</span>
                             </a>
                         </li>
+                        <li style="margin-top: 10px;">
+                            <a href="#" onclick="cerrarSesionLocal()" style="color: #ef4444;">
+                                <i class="material-icons" style="color: #ef4444;">logout</i>
+                                <span>Cerrar Sesión</span>
+                            </a>
+                        </li>
                     </ul>
                 </nav>
             </div>
         </aside>
 
         <main class="main-content">
-            <div id="dynamic-content-area" class="p-6 md:p-10">
+            <div id="dynamic-content-area" class="w-full">
                 
-                <div class="manual-container">
-                    <div class="manual-header">
-                        <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Guía Rápida de Operación</h1>
-                        <p class="text-slate-500 mt-2 font-medium">Bienvenido al sistema Nexus Mayorista. Sigue el flujo de trabajo descrito a continuación para operar el sistema correctamente, de principio a fin.</p>
+                <div class="manual-container p-6 md:p-10 max-w-7xl mx-auto">
+                    <div class="manual-header text-center">
+                        <h1 class="text-3xl font-extrabold text-gray-800 mb-2 tracking-tight">Manual de Usuario</h1>
+                        <p class="text-gray-500 text-lg">Guía paso a paso para el control de inventario y ventas en ruta</p>
                     </div>
 
                     <div class="manual-steps-grid">
@@ -357,19 +374,15 @@
                         <div class="manual-step-card config-step">
                             <div class="manual-step-header">
                                 <i class="material-icons text-2xl">settings</i>
-                                <h2 class="manual-step-title">1. Configuración de Datos</h2>
+                                <h2 class="manual-step-title">1. Configuración Inicial</h2>
                             </div>
                             <div class="manual-step-content">
-                                <p>Antes de iniciar cualquier operación, debes configurar las bases del sistema en el módulo de <strong>Configuración</strong> (ubicado en la parte inferior del menú izquierdo).</p>
+                                <p>Antes de comenzar a operar, debes preparar el sistema en el módulo de <strong>Configuración</strong>:</p>
                                 <ul>
-                                    <li><strong>Gestión de Flota:</strong> Registra los nombres o placas de los vehículos (o sucursales) que realizarán las ventas.</li>
-                                    <li><strong>Categorías (Unidad de Empaque):</strong> Define cómo viene empacado el producto (Ej. Saco, Caja, Paca).</li>
-                                    <li><strong>Variaciones (Contenido/Tamaño):</strong> Especifica qué contiene ese empaque.</li>
+                                    <li><strong>Registrar Vehículos:</strong> Añade todos los camiones o sucursales móviles que usarás.</li>
+                                    <li><strong>Unidades y Subtipos:</strong> Define cómo mides tu mercancía (ej. Cajas, Kilos, Paquetes).</li>
+                                    <li><strong>Métodos de Pago:</strong> Activa los medios por los cuales recibirás dinero (Zelle, Efectivo, Punto de Venta).</li>
                                 </ul>
-                                <div class="manual-example-box">
-                                    <strong>Ejemplo de uso correcto:</strong><br>
-                                    Si vendes refrescos en paquetes, la <em>Categoría</em> (Unidad de empaque) sería <strong>"Paca"</strong> o <strong>"Bulto"</strong>, y la <em>Variación</em> (Contenido) sería <strong>"Refresco Coca-Cola"</strong>.
-                                </div>
                             </div>
                         </div>
 
@@ -379,12 +392,15 @@
                                 <h2 class="manual-step-title">2. Asignación de Cargas</h2>
                             </div>
                             <div class="manual-step-content">
-                                <p>Una vez creados los productos y vehículos, dirígete al módulo de <strong>Cargas</strong> para asignar mercancía al camión antes de salir a ruta.</p>
+                                <p>El camión no puede vender si no tiene inventario asignado. Dirígete a <strong>Cargas</strong> para despachar mercancía.</p>
                                 <ul>
-                                    <li>Haz clic en <strong>"Nueva Carga"</strong> y selecciona el vehículo disponible.</li>
-                                    <li>Agrega el detalle de la mercancía (Categoría, Variación y Cantidad).</li>
-                                    <li>Guarda el manifiesto. Al hacerlo, la carga quedará "Activa" para empezar a venderse.</li>
+                                    <li>Selecciona un vehículo de tu flota.</li>
+                                    <li>Escoge el producto y la cantidad exacta que se subirá al camión.</li>
+                                    <li>Una vez confirmes todo, el sistema cambiará el estado del camión a "En Ruta", listo para la preventa.</li>
                                 </ul>
+                                <div class="manual-example-box">
+                                    <strong>Ejemplo:</strong> Al "Camión 01" le asignas 50 Cajas de Tomates y 20 Sacos de Cebolla antes de salir a su ruta matutina.
+                                </div>
                             </div>
                         </div>
 
@@ -501,6 +517,176 @@
                 });
             });
         });
+
+        function cerrarSesionLocal() {
+            if (window.nexusAPI && window.nexusAPI.cerrarYVolverAlLogin) {
+                // Remove any auth tokens if we end up adding them to localStorage too
+                localStorage.removeItem('supertokens-web-js-session'); 
+                window.nexusAPI.cerrarYVolverAlLogin();
+            } else {
+                console.warn('API de nexus no disponible para cerrar sesión.');
+            }
+        }
+
+        /* ==========================================
+           MOTOR DE SINCRONIZACIÓN Y SESIÓN
+           ========================================== */
+        let sincronizando = false;
+        let idEmpresaActual = null;
+        let SERVER_URL = 'http://68.168.218.147:4020'; // Puerto 4020 del VPS Maestro
+
+        const RUTAS_VPS = {
+            'vehiculos': '/api/maestro/vehiculos',
+            'maestro_unidades': '/api/maestro/maestro_unidades',
+            'maestro_subtipos': '/api/maestro/maestro_subtipos',
+            'clientes': '/api/maestro/clientes',
+            'vehiculo_cargas': '/api/maestro/vehiculo_cargas',
+            'ventas_cargas': '/api/maestro/ventas_cargas',
+            'cargas_cerradas': '/api/maestro/cargas_cerradas',
+            'mermas_cargas': '/api/maestro/mermas_cargas',
+            'rendiciones_cargas': '/api/maestro/rendiciones_cargas',
+            'abonos_deudas': '/api/maestro/abonos_deudas',
+            'reversos_deudas': '/api/maestro/reversos_deudas',
+            'configuracion_sistema': '/api/maestro/configuracion_sistema',
+            'metodos_pago': '/api/maestro/metodos_pago'
+        };
+
+        function actualizarUIConexion(estado) {
+            const indicator = document.getElementById('sync-status-indicator');
+            const successMsg = document.getElementById('sync-last-time');
+            if (!indicator) return;
+            
+            if (estado === 'offline') {
+                indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Sin conexión (Offline)';
+                if (successMsg) successMsg.style.display = 'none';
+            } else if (estado === 'syncing') {
+                indicator.innerHTML = '<i class="material-icons animate-spin" style="font-size: 14px;">sync</i> Sincronizando...';
+                if (successMsg) successMsg.style.display = 'none';
+            } else {
+                indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Conectado (Online)';
+                // Si la llamamos con 'online_success', mostramos el msj
+                if (estado === 'online_success' && successMsg) {
+                    successMsg.style.display = 'block';
+                    // Ocultarlo después de 5 segundos
+                    setTimeout(() => { successMsg.style.display = 'none'; }, 5000);
+                }
+            }
+        }
+
+        async function iniciarSincronizacionSilenciosa() {
+            if (sincronizando) return;
+            // Quitamos el bloqueo por idEmpresaActual por ahora porque el RIF es fijo en UI, 
+            // pero internamente deberia requerirlo. Lo ignoraremos si queremos ver el UI rapido.
+            if (!navigator.onLine) {
+                actualizarUIConexion('offline');
+                return;
+            }
+
+            sincronizando = true;
+            try {
+                // 1. Verificamos internet real
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                let ping;
+                
+                try {
+                    ping = await fetch('https://www.google.com/favicon.ico', { mode: 'no-cors', cache: 'no-store', signal: controller.signal });
+                } catch (e) {
+                    throw e; // Offline
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+
+                if (ping) {
+                    actualizarUIConexion('syncing');
+                    
+                    // 2. FASE 3: Subida de Datos (Sincronización Silenciosa)
+                    if (window.nexusAPI && window.nexusAPI.invoke) {
+                        const tablas = Object.keys(RUTAS_VPS);
+                        console.log("Iniciando escaneo de tablas pendientes...", tablas);
+                        
+                        const pendientes = await window.nexusAPI.invoke('obtener-pendientes-sync', tablas);
+                        console.log("Resultados del escaneo local:", pendientes);
+
+                        let huboSubidas = false;
+
+                        for (const tabla of tablas) {
+                            const registros = pendientes[tabla];
+                            if (registros && registros.length > 0) {
+                                console.log(`Subiendo ${registros.length} registros de la tabla '${tabla}'...`);
+                                
+                                try {
+                                    const res = await fetch(SERVER_URL + RUTAS_VPS[tabla], {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(registros) // Mandamos el lote
+                                    });
+
+                                    if (res.ok) {
+                                        const idsSincronizados = registros.map(r => r.id || r.id_detalle || r.id_abono || r.id_reverso || r.id_cierre || r.merma_id || r.rendicion_id || r.id_carga).filter(id => id !== undefined && id !== null);
+                                        console.log(`Éxito al subir '${tabla}'. Marcando como sincronizados IDs:`, idsSincronizados);
+                                        
+                                        // Marcamos localmente como sync_status = 1
+                                        await window.nexusAPI.invoke('marcar-como-sincronizado-lote', { tabla: tabla, ids: idsSincronizados });
+                                        huboSubidas = true;
+                                    } else {
+                                        console.error(`Error del servidor al subir tabla '${tabla}':`, res.status, res.statusText);
+                                    }
+                                } catch(errPost) {
+                                    console.error(`Error de red al subir tabla '${tabla}':`, errPost);
+                                }
+                            }
+                        }
+                        
+                        if (huboSubidas) {
+                            console.log("Sincronización completada con éxito. Registros nuevos subidos.");
+                        } else {
+                            console.log("No hay nuevos registros pendientes por subir en este ciclo.");
+                        }
+                    } else {
+                        console.warn("Nexus API .invoke no disponible para la sincronización.");
+                    }
+
+                    actualizarUIConexion('online_success');
+                }
+            } catch (err) {
+                console.warn("Sincronización falló por pérdida de conexión real:", err);
+                actualizarUIConexion('offline');
+            } finally {
+                sincronizando = false;
+            }
+        }
+
+        async function iniciarEntorno() {
+            // Forzamos el inicio del motor independientemente de la sesión
+            // Esto arregla el error de "Preparando motor..." estático
+            setInterval(iniciarSincronizacionSilenciosa, 10000); // Cada 10s
+            iniciarSincronizacionSilenciosa();
+            
+            if (window.nexusAPI && window.nexusAPI.obtenerSesion) {
+                try {
+                    const sesion = await window.nexusAPI.obtenerSesion();
+                    if (sesion && sesion.idEmpresa) {
+                        idEmpresaActual = sesion.idEmpresa;
+                        
+                        // Mostrar RIF
+                        const rifDisplay = document.getElementById('company-rif-display');
+                        if (rifDisplay) {
+                            rifDisplay.textContent = 'RIF: ' + idEmpresaActual;
+                            rifDisplay.style.display = 'block';
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error al obtener sesión:", e);
+                }
+            } else {
+                console.warn("Nexus API IPC no detectado en inicio.html");
+            }
+        }
+
+        // Lanzar entorno al cargar
+        document.addEventListener('DOMContentLoaded', iniciarEntorno);
+
     </script>
 </body>
 </html>
