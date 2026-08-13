@@ -345,7 +345,7 @@
                         <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span> Preparando motor...
                     </div>
                     <div id="sync-last-time" class="text-[10px] text-green-600 mt-0.5" style="display: none;">Sincronización exitosa</div>
-                    <div id="sync-empresa-id-display" class="text-[10px] text-purple-600 font-semibold mt-1">ID Empresa: Obteniendo...</div>
+
                 </div>
 
                 <nav class="sidebar-nav">
@@ -742,43 +742,27 @@
             if (window.nexusAPI && window.nexusAPI.obtenerSesion) {
                 try {
                     const sesion = await window.nexusAPI.obtenerSesion();
-                    console.log("Sesión obtenida en inicio.html:", sesion);
+                    console.log("🔍 [SESIÓN NEXUS] Objeto de sesión recibido:", sesion);
                     
                     const rifDisplay = document.getElementById('company-rif-display');
-                    const empDisplay = document.getElementById('sync-empresa-id-display');
                     
                     if (sesion && sesion.idEmpresa) {
                         idEmpresaActual = sesion.idEmpresa;
+                        console.log(`%c ✅ [SESIÓN NEXUS] ID Empresa activo: ${idEmpresaActual}`, "color: #16a34a; font-weight: bold; font-size: 13px;");
                         
                         if (rifDisplay) {
                             rifDisplay.textContent = 'RIF: ' + idEmpresaActual;
                             rifDisplay.style.display = 'block';
                         }
-                        if (empDisplay) {
-                            empDisplay.textContent = 'Empresa: ' + idEmpresaActual;
-                            empDisplay.className = 'text-[10px] text-purple-700 font-semibold mt-1 bg-purple-50 py-0.5 px-2 rounded border border-purple-200 inline-block';
-                        }
                     } else {
+                        console.warn("%c ⚠️ [SESIÓN NEXUS] ALERTA: No se encontró idEmpresa en la sesión activa (sesión nula o incompleta).", "color: #dc2626; font-weight: bold; font-size: 13px;");
                         if (rifDisplay) rifDisplay.textContent = 'RIF: No asignado';
-                        if (empDisplay) {
-                            empDisplay.textContent = 'Empresa: NINGUNA (sesion vacia/nula)';
-                            empDisplay.className = 'text-[10px] text-red-600 font-semibold mt-1 bg-red-50 py-0.5 px-2 rounded border border-red-200 inline-block';
-                        }
                     }
                 } catch (e) {
-                    console.error("Error al obtener sesión:", e);
-                    const empDisplay = document.getElementById('sync-empresa-id-display');
-                    if (empDisplay) {
-                        empDisplay.textContent = 'Empresa: Error al leer sesión';
-                        empDisplay.className = 'text-[10px] text-red-600 font-semibold mt-1';
-                    }
+                    console.error("❌ Error al obtener sesión en inicio.html:", e);
                 }
             } else {
                 console.warn("Nexus API IPC no detectado en inicio.html");
-                const empDisplay = document.getElementById('sync-empresa-id-display');
-                if (empDisplay) {
-                    empDisplay.textContent = 'Empresa: API IPC no disponible';
-                }
             }
 
             iniciarSincronizacionSilenciosa();
