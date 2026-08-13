@@ -1,0 +1,371 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     📦 CONTROL DE CESTAS — NEXUS MAYORISTA
+     Control centralizado de inventario de cestas del local
+     ═══════════════════════════════════════════════════════════════ -->
+
+<style>
+    .cp-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .cp-titulo { font-size: 1.6rem; font-weight: 900; color: #0f172a; display: flex; align-items: center; gap: 10px; margin: 0; }
+    .cp-subtitulo { color: #64748b; font-size: 0.95rem; margin-top: 4px; }
+    .btn-volver-menu { background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; padding: 10px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+    .btn-volver-menu:hover { background-color: #e2e8f0; }
+
+    .panel-cestas { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04); margin-bottom: 24px; }
+
+    .barra-kpi-cestas { display: flex; gap: 14px; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 24px; flex-wrap: wrap; }
+    .kpi-card { flex: 1; min-width: 150px; background: white; padding: 16px; border-radius: 10px; display: flex; flex-direction: column; border: 1px solid #e2e8f0; }
+    .kpi-label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-valor { font-size: 1.8rem; font-weight: 900; margin-top: 6px; }
+
+    .hoja-cuaderno {
+        background-color: #fdfbf7;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        box-shadow: 2px 4px 10px rgba(0,0,0,0.05);
+        padding: 10px 20px 20px 50px;
+        position: relative;
+        overflow-x: auto;
+        margin-top: 15px;
+    }
+    .hoja-cuaderno::before {
+        content: '';
+        position: absolute;
+        top: 0; bottom: 0; left: 40px;
+        border-left: 2px solid #fca5a5;
+        z-index: 1;
+    }
+    .tabla-cuaderno { width: 100%; border-collapse: collapse; position: relative; z-index: 2; min-width: 900px; }
+    .tabla-cuaderno th {
+        border-bottom: 3px solid #60a5fa;
+        padding: 12px 10px;
+        text-align: left;
+        color: #1e293b;
+        font-weight: 900;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+    }
+    .tabla-cuaderno td {
+        border-bottom: 1px solid #93c5fd;
+        padding: 10px;
+        color: #334155;
+        font-weight: 700;
+        font-size: 0.95rem;
+        vertical-align: bottom;
+        height: 40px;
+    }
+    .tabla-cuaderno tr:hover td { background-color: rgba(219, 234, 254, 0.4); }
+
+    .libreta-input {
+        width: 100%; border: none; background: transparent; border-bottom: 2px dashed #94a3b8; outline: none; font-weight: 800; color: #1e293b; padding: 2px; font-size: 0.9rem; text-transform: uppercase;
+    }
+    .libreta-input:focus { border-bottom-color: #2563eb; background: #fffbeb; }
+</style>
+
+<div style="padding: 10px;">
+
+    <!-- ═══ HEADER ═══ -->
+    <div class="cp-header">
+        <div>
+            <h2 class="cp-titulo">
+                <i class="material-icons-outlined" style="font-size: 28px; color: #1e293b;">shopping_basket</i>
+                📦 Control de Cestas
+            </h2>
+            <p class="cp-subtitulo">Control centralizado de inventario de cestas del local</p>
+        </div>
+        <button class="btn-volver-menu" onclick="loadPage('cuentas.html')">
+            <i class="material-icons-outlined" style="font-size: 18px;">arrow_back</i>
+            Volver a Cuentas
+        </button>
+    </div>
+
+    <!-- ═══ KPI CARDS ═══ -->
+    <div class="barra-kpi-cestas">
+        <div class="kpi-card">
+            <span class="kpi-label">Cestas Propias</span>
+            <span class="kpi-valor" id="kpi-propias" style="color: #1e293b;">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Cestas Prestadas</span>
+            <span class="kpi-valor" id="kpi-prestadas" style="color: #ef4444;">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Cestas Proveedores (Devolver)</span>
+            <span class="kpi-valor" id="kpi-proveedores" style="color: #f59e0b;">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Cestas Alquiladas (Devolver)</span>
+            <span class="kpi-valor" id="kpi-alquiladas" style="color: #8b5cf6;">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Total Haber en Local</span>
+            <span class="kpi-valor" id="kpi-total-local" style="color: #10b981;">0</span>
+        </div>
+    </div>
+
+    <!-- ═══ CUADERNO TABLE ═══ -->
+    <div class="panel-cestas">
+        <div class="hoja-cuaderno">
+            <table class="tabla-cuaderno">
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Fecha</th>
+                        <th style="width: 15%;">Tipo de Cesta</th>
+                        <th style="width: 15%;">Tipo de Operación</th>
+                        <th style="width: 28%;">Concepto / Detalle</th>
+                        <th style="width: 15%; text-align: right;">Ingreso (+) / Egreso (-)</th>
+                        <th style="width: 15%; text-align: right;">Saldo Actual</th>
+                    </tr>
+                </thead>
+
+                <tbody id="tbody-cestas">
+                    <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:24px; font-style:italic;">Sin movimientos registrados. Use el formulario inferior para agregar.</td></tr>
+                </tbody>
+
+                <tfoot>
+                    <!-- ═══ INPUT ROW ═══ -->
+                    <tr style="background-color: #eff6ff;">
+                        <td>
+                            <input type="date" id="lib-fecha" class="libreta-input">
+                        </td>
+                        <td>
+                            <select id="lib-tipo-cesta" class="libreta-input" style="color: #2563eb;">
+                                <option value="GRANDE">🟫 GRANDE</option>
+                                <option value="PEQUEÑA - TOMATERA">🟥 PEQUEÑA - TOMATERA</option>
+                                <option value="PEQUEÑA - RENDIDORA">🟧 PEQUEÑA - RENDIDORA</option>
+                            </select>
+                        </td>
+                        <td>
+                            <div style="display:flex; flex-direction:column; gap:6px;">
+                                <select id="lib-accion" class="libreta-input" style="color: #2563eb;" onchange="cambiarAccionCestas()">
+                                    <option value="ENTRADA">📥 ENTRADA (+)</option>
+                                    <option value="SALIDA">📤 SALIDA (-)</option>
+                                </select>
+                                <select id="lib-sub-accion" class="libreta-input" style="font-size: 0.75rem;">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" id="lib-concepto" class="libreta-input" placeholder="Ej: Envío ruta norte...">
+                        </td>
+                        <td>
+                            <input type="number" id="lib-cantidad" class="libreta-input" placeholder="0" style="text-align: right;" step="1" min="1">
+                        </td>
+                        <td>
+                            <button onclick="guardarMovimientoCesta()" style="background-color: #1e293b; color: white; border: none; width: 100%; height: 32px; cursor: pointer; font-weight: 900; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">GUARDAR</button>
+                        </td>
+                    </tr>
+
+                    <!-- ═══ TOTAL ROW ═══ -->
+                    <tr style="border-top: 2px dashed #94a3b8;">
+                        <td colspan="6" id="celda-total-cestas" style="text-align: right; font-size: 1.1rem; padding-top: 15px;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT — Electron IPC + Lógica de Cestas
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+{
+    let ipc;
+    try { ipc = require('electron').ipcRenderer; } catch(e) {}
+
+    // Set today's date
+    document.addEventListener('DOMContentLoaded', () => inicializarCestas());
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(inicializarCestas, 100);
+    }
+
+    async function inicializarCestas() {
+        const hoy = new Date().toISOString().split('T')[0];
+        const fechaEl = document.getElementById('lib-fecha');
+        if (fechaEl) fechaEl.value = hoy;
+        cambiarAccionCestas();
+        await cargarMovimientosCestas();
+    }
+
+    // Dynamic sub-action options
+    window.cambiarAccionCestas = function() {
+        const accion = document.getElementById('lib-accion').value;
+        const subAccion = document.getElementById('lib-sub-accion');
+
+        if (accion === 'ENTRADA') {
+            subAccion.innerHTML = `
+                <option value="DEVUELTA">♻️ DEVUELTA (Cliente)</option>
+                <option value="COMPRADA">🛒 COMPRADA</option>
+                <option value="ALQUILADA">📋 ALQUILADA</option>
+                <option value="DE PROVEEDOR">🚛 DE PROVEEDOR</option>
+            `;
+        } else {
+            subAccion.innerHTML = `
+                <option value="PRESTADA">📤 PRESTADA (Cliente)</option>
+                <option value="VENDIDA">💰 VENDIDA</option>
+                <option value="DEVUELTA A PROVEEDOR">🔄 DEVUELTA A PROVEEDOR</option>
+                <option value="DEVUELTA ALQUILER">📋 DEVUELTA ALQUILER</option>
+            `;
+        }
+    };
+
+    // Save movement
+    window.guardarMovimientoCesta = async function() {
+        const fecha = document.getElementById('lib-fecha').value;
+        const tipo_cesta = document.getElementById('lib-tipo-cesta').value;
+        const tipo_accion = document.getElementById('lib-accion').value;
+        const sub_accion = document.getElementById('lib-sub-accion').value;
+        const concepto = document.getElementById('lib-concepto').value.trim();
+        const cantidad = parseInt(document.getElementById('lib-cantidad').value) || 0;
+
+        if (!fecha) { mostrarNotifCestas('Fecha Requerida', 'Seleccione una fecha.', 'advertencia'); return; }
+        if (cantidad <= 0) { mostrarNotifCestas('Cantidad Inválida', 'Ingrese una cantidad mayor a 0.', 'advertencia'); return; }
+
+        const res = await ipc.invoke('guardar-movimiento-cesta', {
+            fecha, tipo_cesta, tipo_accion, sub_accion,
+            concepto: concepto || (tipo_accion === 'ENTRADA' ? 'Entrada de cestas' : 'Salida de cestas'),
+            cantidad
+        });
+
+        if (res.success) {
+            document.getElementById('lib-concepto').value = '';
+            document.getElementById('lib-cantidad').value = '';
+            await cargarMovimientosCestas();
+            mostrarNotifCestas('Movimiento Registrado', `Se registró ${tipo_accion === 'ENTRADA' ? 'entrada' : 'salida'} de ${cantidad} cestas.`, 'exito');
+        } else {
+            mostrarNotifCestas('Error', 'No se pudo guardar: ' + (res.msg || ''), 'error');
+        }
+    };
+
+    // Load and render movements
+    async function cargarMovimientosCestas() {
+        if (!ipc) return;
+        const movimientos = await ipc.invoke('obtener-movimientos-cestas');
+        const tbody = document.getElementById('tbody-cestas');
+
+        // Calculate running totals and KPIs
+        let saldo = 0;
+        let propias = 0;
+        let prestadas = 0;
+        let proveedores = 0;
+        let alquiladas = 0;
+
+        const historial = movimientos.map(m => {
+            const cant = parseInt(m.cantidad) || 0;
+            if (m.tipo_accion === 'ENTRADA') {
+                saldo += cant;
+                if (m.sub_accion === 'COMPRADA') propias += cant;
+                if (m.sub_accion === 'DEVUELTA') propias += cant; // returned = back to own
+                if (m.sub_accion === 'ALQUILADA') alquiladas += cant;
+                if (m.sub_accion === 'DE PROVEEDOR') proveedores += cant;
+            } else {
+                saldo -= cant;
+                if (m.sub_accion === 'PRESTADA') prestadas += cant;
+                if (m.sub_accion === 'VENDIDA') propias -= cant;
+                if (m.sub_accion === 'DEVUELTA A PROVEEDOR') proveedores -= cant;
+                if (m.sub_accion === 'DEVUELTA ALQUILER') alquiladas -= cant;
+            }
+            return { ...m, saldoActual: saldo };
+        });
+
+        // Update KPI cards
+        document.getElementById('kpi-propias').innerText = Math.max(0, propias);
+        document.getElementById('kpi-prestadas').innerText = Math.max(0, prestadas);
+        document.getElementById('kpi-proveedores').innerText = Math.max(0, proveedores);
+        document.getElementById('kpi-alquiladas').innerText = Math.max(0, alquiladas);
+        document.getElementById('kpi-total-local').innerText = Math.max(0, saldo);
+
+        // Render table
+        if (historial.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:24px; font-style:italic;">Sin movimientos registrados. Use el formulario inferior para agregar.</td></tr>';
+        } else {
+            tbody.innerHTML = historial.map(m => {
+                const fechaFmt = new Date(m.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+                const isEntrada = m.tipo_accion === 'ENTRADA';
+                const cantStr = isEntrada ? `+${m.cantidad}` : `-${m.cantidad}`;
+                const cantColor = isEntrada ? '#10b981' : '#ef4444';
+                const iconAccion = isEntrada ? '📥' : '📤';
+
+                return `
+                <tr>
+                    <td style="font-size: 0.8rem; color: #64748b;">${fechaFmt}</td>
+                    <td style="text-transform: uppercase; font-size: 0.85rem;">${m.tipo_cesta}</td>
+                    <td style="text-transform: uppercase; font-size: 0.85rem;">${iconAccion} ${m.sub_accion}</td>
+                    <td style="text-transform: uppercase;">${m.concepto}</td>
+                    <td style="text-align: right; color: ${cantColor}; font-weight: 900; font-size: 1.05rem;">${cantStr}</td>
+                    <td style="text-align: right; color: #0f172a; font-weight: 900; font-size: 1.1rem;">
+                        ${m.saldoActual}
+                        <button onclick="eliminarMovimientoCesta(${m.id})" title="Eliminar" style="background:transparent; color:#cbd5e1; border:none; cursor:pointer; padding:2px; margin-left:8px; vertical-align:middle;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'"><i class="material-icons" style="font-size:16px;">delete</i></button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        // Update total cell
+        const celdaTotal = document.getElementById('celda-total-cestas');
+        if (celdaTotal) {
+            celdaTotal.innerHTML = `<span style="color: #64748b; font-weight: 800; text-transform: uppercase;">Total de cestas en el local:</span> <span style="color: #10b981; font-weight: 900; font-size: 1.4rem; margin-left: 10px;">${Math.max(0, saldo)} Cestas</span>`;
+        }
+    }
+
+    // Delete movement
+    window.eliminarMovimientoCesta = async function(id) {
+        mostrarNotifCestas('Confirmar Eliminación', '¿Está seguro de eliminar este movimiento?', 'confirmacion', async () => {
+            const res = await ipc.invoke('eliminar-movimiento-cesta', id);
+            if (res.success) {
+                await cargarMovimientosCestas();
+                mostrarNotifCestas('Eliminado', 'El movimiento ha sido eliminado.', 'exito');
+            }
+        });
+    };
+
+    // Notification system
+    window.mostrarNotifCestas = function(titulo, mensaje, tipo = 'exito', callbackConfirm = null) {
+        let notiPrev = document.getElementById('notificacion-cestas-toast');
+        if (notiPrev) notiPrev.remove();
+
+        const noti = document.createElement('div');
+        noti.id = 'notificacion-cestas-toast';
+
+        let colorBorde = '#10b981';
+        let icono = 'check_circle';
+
+        if (tipo === 'error') { colorBorde = '#ef4444'; icono = 'error'; }
+        else if (tipo === 'advertencia') { colorBorde = '#f59e0b'; icono = 'warning'; }
+        else if (tipo === 'confirmacion') { colorBorde = '#3b82f6'; icono = 'help_outline'; }
+
+        noti.style.cssText = `position: fixed; top: 25px; right: 25px; background: #ffffff; padding: 18px 24px; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); z-index: 999999; display: flex; align-items: center; gap: 16px; font-family: inherit; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 450px;`;
+
+        if (tipo === 'confirmacion') {
+            noti.innerHTML = `
+                <i class="material-icons" style="color:${colorBorde}; font-size:32px;">${icono}</i>
+                <div style="flex:1;">
+                    <h4 style="margin:0; font-weight:800; color:#0f172a; font-size:0.95rem;">${titulo}</h4>
+                    <p style="margin:4px 0 12px 0; color:#475569; font-size:0.85rem; line-height:1.4;">${mensaje}</p>
+                    <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <button id="btn-cestas-cancel" style="background:#e2e8f0; color:#334155; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.8rem;">Cancelar</button>
+                        <button id="btn-cestas-ok" style="background:#ef4444; color:white; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:0.8rem;">Confirmar</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(noti);
+            document.getElementById('btn-cestas-cancel').onclick = () => noti.remove();
+            document.getElementById('btn-cestas-ok').onclick = () => { noti.remove(); if (callbackConfirm) callbackConfirm(); };
+        } else {
+            noti.innerHTML = `
+                <i class="material-icons" style="color:${colorBorde}; font-size:32px;">${icono}</i>
+                <div>
+                    <h4 style="margin:0; font-weight:800; color:#0f172a; font-size:0.95rem;">${titulo}</h4>
+                    <p style="margin:2px 0 0 0; color:#475569; font-size:0.85rem; line-height:1.4;">${mensaje}</p>
+                </div>
+            `;
+            document.body.appendChild(noti);
+            setTimeout(() => { if (noti) { noti.style.opacity = '0'; noti.style.transform = 'translateY(-10px)'; setTimeout(() => noti.remove(), 300); } }, 4000);
+        }
+    };
+}
+</script>

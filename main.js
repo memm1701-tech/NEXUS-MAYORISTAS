@@ -72,11 +72,12 @@ const QUERIES_TABLAS = [
         fecha_cierre DATETIME DEFAULT CURRENT_TIMESTAMP,
         mercancia_json TEXT, -- Resumen final de mercancía
         mermas_json TEXT, -- NUEVO: Resumen final de mermas
+        rendiciones_json TEXT, -- NUEVO: Rendiciones de producto
         total_venta REAL,
         total_credito REAL,
         total_contado REAL,
-        valor_promedio_producto REAL
-    ,
+        total_ganancia REAL,
+        valor_promedio_producto REAL,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0)`,
     `CREATE TABLE IF NOT EXISTS mermas_cargas (
@@ -142,7 +143,53 @@ const QUERIES_TABLAS = [
         estado INTEGER DEFAULT 1
     ,
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0)`
+        sync_status INTEGER DEFAULT 0)`,
+    `CREATE TABLE IF NOT EXISTS proveedores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT UNIQUE NOT NULL,
+        rubro TEXT,
+        anden TEXT,
+        telefono TEXT,
+        direccion TEXT,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS deudas_proveedores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        proveedor TEXT NOT NULL,
+        concepto TEXT NOT NULL,
+        cantidad REAL DEFAULT 1,
+        precio REAL DEFAULT 0,
+        monto REAL NOT NULL,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+        estado_logico INTEGER DEFAULT 1
+    )`,
+    `CREATE TABLE IF NOT EXISTS abonos_proveedores (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        proveedor TEXT NOT NULL,
+        monto_divisa REAL DEFAULT 0,
+        monto_movil REAL DEFAULT 0,
+        metodo_pago TEXT,
+        banco TEXT,
+        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+        estado_logico INTEGER DEFAULT 1
+    )`,
+    `CREATE TABLE IF NOT EXISTS movimientos_cestas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fecha TEXT NOT NULL,
+        tipo_cesta TEXT NOT NULL,
+        tipo_accion TEXT NOT NULL,
+        sub_accion TEXT NOT NULL,
+        concepto TEXT,
+        cantidad INTEGER NOT NULL DEFAULT 0,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`
 ];
 
 function inicializarYActualizarBaseDeDatos() {
@@ -489,14 +536,14 @@ ipcMain.handle('obtener-cobros-excel', async (event, vehiculo_id) => {
 });
 
 ipcMain.on('cerrar-carga-vehiculo', (event, data) => {
-    const { id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, total_venta, total_credito, total_contado, valor_promedio_producto } = data;
+    const { id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto } = data;
     
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
         db.run(`INSERT INTO cargas_cerradas 
-            (id_empresa, sync_status, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, total_venta, total_credito, total_contado, valor_promedio_producto) 
-            VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [idEmpresa, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, total_venta, total_credito, total_contado, valor_promedio_producto], 
+            (id_empresa, sync_status, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto) 
+            VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [idEmpresa, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto], 
             function(err) {
                 if (err) {
                     event.reply('cerrar-carga-resultado', { success: false, msg: err.message });
@@ -680,7 +727,192 @@ ipcMain.handle('obtener-deudores-globales', async () => {
     });
 });
 
+ipcMain.handle('obtener-detalles-factura-carga', async (event, clienteNombre, id_carga) => {
+    return new Promise((resolve) => {
+        const query = `
+            SELECT 
+                tipo_medida, 
+                sub_medida, 
+                cantidad, 
+                precio, 
+                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS total,
+                fecha_entrada AS fecha,
+                CASE 
+                    WHEN id_carga = 0 THEN 'CARGA #0 - ' || tipo_medida || ' (' || sub_medida || ')'
+                    ELSE tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' ' || sub_medida ELSE '' END
+                END AS concepto_final
+            FROM ventas_cargas 
+            WHERE cliente COLLATE NOCASE = ? AND id_carga = ? 
+            AND metodo_pago = 'CRÉDITO' 
+            AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+            ORDER BY id_detalle ASC
+        `;
+        db.all(query, [clienteNombre.trim(), id_carga], (err, rows) => {
+            if (err) {
+                console.error("Error al obtener factura carga:", err.message);
+                resolve([]);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+});
 
+ipcMain.handle('obtener-factura-global-cliente', async (event, clienteNombre) => {
+    return new Promise((resolve) => {
+        const queryCompras = `
+            SELECT 
+                id_carga,
+                fecha_entrada AS fecha,
+                tipo_medida, 
+                sub_medida, 
+                cantidad, 
+                precio,
+                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS total_original,
+                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS total,
+                CASE 
+                    WHEN id_carga = 0 THEN 'DEUDA ' || tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' (' || sub_medida || ')' ELSE '' END
+                    ELSE tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' ' || sub_medida ELSE '' END
+                END AS concepto_final
+            FROM ventas_cargas
+            WHERE cliente COLLATE NOCASE = ? AND metodo_pago = 'CRÉDITO' AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+            ORDER BY fecha_entrada ASC
+        `;
+
+        const queryPagos = `
+            SELECT 
+                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM abonos_deudas WHERE cliente COLLATE NOCASE = ?), 0) 
+                - 
+                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM reversos_deudas WHERE cliente COLLATE NOCASE = ?), 0) AS total_pagado
+        `;
+
+        db.get(queryPagos, [clienteNombre.trim(), clienteNombre.trim()], (errPagos, rowPagos) => {
+            if (errPagos) {
+                console.error("Error al obtener pagos para factura global:", errPagos.message);
+                resolve([]);
+                return;
+            }
+
+            let abonoAcumulado = rowPagos ? (rowPagos.total_pagado || 0) : 0;
+
+            db.all(queryCompras, [clienteNombre.trim()], (errCompras, compras) => {
+                if (errCompras) {
+                    console.error("Error al obtener compras para factura global:", errCompras.message);
+                    resolve([]);
+                    return;
+                }
+
+                // Agrupamos por id_carga. Si es 0 (manual), lo tratamos de forma individual agregándole un índice para que no se junten.
+                const grupos = [];
+                let manualIndex = 0;
+                
+                for (const item of compras) {
+                    const key = item.id_carga === 0 ? `manual_${manualIndex++}` : `carga_${item.id_carga}`;
+                    let grupo = grupos.find(g => g.key === key);
+                    if (!grupo) {
+                        grupo = { key, id_carga: item.id_carga, fecha: item.fecha, items: [], total_grupo: 0 };
+                        grupos.push(grupo);
+                    }
+                    grupo.items.push(item);
+                    grupo.total_grupo += item.total_original;
+                }
+
+                const lineasDeudoras = [];
+                
+                for (const grupo of grupos) {
+                    if (abonoAcumulado >= grupo.total_grupo) {
+                        // Grupo pagado completamente
+                        abonoAcumulado -= grupo.total_grupo;
+                    } else {
+                        // Hay deuda viva en este grupo
+                        const restante = grupo.total_grupo - abonoAcumulado;
+                        const esParcial = abonoAcumulado > 0;
+                        const montoAbonado = abonoAcumulado;
+                        abonoAcumulado = 0; // se consumió el abono
+
+                        if (grupo.id_carga === 0) {
+                            // Es deuda manual, solo tiene 1 item
+                            const item = grupo.items[0];
+                            item.total = restante;
+                            if (esParcial) {
+                                item.cantidad = '---';
+                                item.concepto_final += ' (Saldo Restante)';
+                            }
+                            lineasDeudoras.push(item);
+                        } else {
+                            // Es una carga (factura compuesta)
+                            // Añadimos la linea maestra
+                            lineasDeudoras.push({
+                                isMaster: true,
+                                concepto_final: esParcial ? 'Factura Compuesta (Saldo Restante)' : 'Factura Compuesta',
+                                cantidad: '---',
+                                precio: '---',
+                                total: restante,
+                                fecha: grupo.fecha
+                            });
+                            
+                            // Añadimos los sub-items para el detalle
+                            for (const item of grupo.items) {
+                                lineasDeudoras.push({
+                                    isChild: true,
+                                    concepto_final: item.concepto_final,
+                                    cantidad: item.cantidad,
+                                    precio: item.precio,
+                                    total: item.total_original,
+                                    fecha: item.fecha
+                                });
+                            }
+                            
+                            // Si hubo un abono parcial, mostramos la línea de salida (descuento)
+                            if (esParcial) {
+                                lineasDeudoras.push({
+                                    isChild: true,
+                                    isPayment: true,
+                                    concepto_final: 'Abono Aplicado a esta carga',
+                                    cantidad: '---',
+                                    precio: '---',
+                                    total: -montoAbonado,
+                                    fecha: grupo.fecha // misma fecha para agrupar
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                resolve(lineasDeudoras);
+            });
+        });
+    });
+});
+
+ipcMain.handle('guardar-factura-pdf', async (event, clienteNombre, numeroFactura) => {
+    const docPath = app.getPath('documents');
+    const folderPath = require('path').join(docPath, 'Facturas_NEXUS');
+    const fs = require('fs');
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, { recursive: true });
+    }
+    
+    // Generar un nombre de archivo seguro
+    const safeCliente = clienteNombre.replace(/[^a-z0-9]/gi, '_').substring(0, 30);
+    const filename = `Factura_${numeroFactura}_${safeCliente}_${Date.now()}.pdf`;
+    const filePath = require('path').join(folderPath, filename);
+    
+    // Obtenemos la ventana actual
+    const win = BrowserWindow.fromWebContents(event.sender);
+    
+    try {
+        const pdfData = await win.webContents.printToPDF({
+            printBackground: true,
+            margins: { marginType: 'default' }
+        });
+        fs.writeFileSync(filePath, pdfData);
+        return { success: true, path: filePath };
+    } catch (error) {
+        console.error("Error al generar PDF:", error);
+        return { success: false, error: error.message };
+    }
+});
 ipcMain.handle('obtener-detalle-deuda-cliente-carga', async (event, clienteNombre, id_carga) => {
     return new Promise((resolve) => {
         const query = `
@@ -842,7 +1074,7 @@ ipcMain.handle('migrar-adopcion-datos', async (event, { idEmpresa }) => {
                 }
 
                 // 2. Actualizar registros huérfanos en todas las tablas
-                const tablasDatos = ['vehiculos', 'maestro_unidades', 'maestro_subtipos', 'clientes', 'vehiculo_cargas', 'ventas_cargas', 'cargas_cerradas', 'mermas_cargas', 'rendiciones_cargas', 'abonos_deudas', 'reversos_deudas', 'metodos_pago'];
+                const tablasDatos = ['vehiculos', 'maestro_unidades', 'maestro_subtipos', 'clientes', 'vehiculo_cargas', 'ventas_cargas', 'cargas_cerradas', 'mermas_cargas', 'rendiciones_cargas', 'abonos_deudas', 'reversos_deudas', 'metodos_pago', 'proveedores', 'deudas_proveedores', 'abonos_proveedores', 'movimientos_cestas'];
                 
                 let pending = tablasDatos.length;
                 let hasError = false;
@@ -1143,6 +1375,246 @@ ipcMain.handle('obtener-auditoria-unificada', async (event, id_carga) => {
         db.all(query, [id_carga, id_carga], (err, rows) => {
             if (err) console.error("Error al cruzar auditoría unificada:", err.message);
             resolve(rows || []);
+        });
+    });
+});
+
+// =========================================================================
+// IPC HANDLERS PARA CUENTAS POR PAGAR (PROVEEDORES)
+// =========================================================================
+
+ipcMain.handle('obtener-proveedores', async () => {
+    return new Promise((resolve) => {
+        db.all(`SELECT * FROM proveedores ORDER BY nombre ASC`, [], (err, rows) => {
+            if (err) resolve([]);
+            else resolve(rows || []);
+        });
+    });
+});
+
+ipcMain.handle('agregar-proveedor-detallado', async (event, data) => {
+    return new Promise((resolve) => {
+        const { nombre, rubro, anden, telefono } = data;
+        if (!nombre) return resolve({ success: false, msg: "El nombre del proveedor es obligatorio." });
+        const nom = nombre.trim().toUpperCase();
+
+        db.run(
+            `INSERT INTO proveedores (nombre, rubro, anden, telefono) VALUES (?, ?, ?, ?)
+             ON CONFLICT(nombre) DO UPDATE SET rubro=excluded.rubro, anden=excluded.anden, telefono=excluded.telefono`,
+            [nom, rubro ? rubro.trim() : '', anden ? anden.trim() : '', telefono ? telefono.trim() : ''],
+            function(err) {
+                if (err) resolve({ success: false, msg: err.message });
+                else resolve({ success: true, id: this.lastID, nombre: nom });
+            }
+        );
+    });
+});
+
+ipcMain.handle('agregar-deuda-proveedor', async (event, data) => {
+    return new Promise((resolve) => {
+        const { proveedor, concepto, cantidad, precio, monto, fecha } = data;
+        if (!proveedor || !concepto || (!monto && !precio)) {
+            resolve({ success: false, msg: "Faltan datos obligatorios." });
+            return;
+        }
+        
+        const provNombre = proveedor.trim().toUpperCase();
+        db.run(`INSERT OR IGNORE INTO proveedores (nombre) VALUES (?)`, [provNombre], () => {
+            const fechaFinal = fecha || new Date().toISOString();
+            const cant = parseFloat(cantidad) || 1;
+            const prec = parseFloat(precio) || 0;
+            const total = parseFloat(monto) || (cant * prec);
+
+            db.run(`INSERT INTO deudas_proveedores (proveedor, concepto, cantidad, precio, monto, fecha) VALUES (?, ?, ?, ?, ?, ?)`,
+                [provNombre, concepto.trim(), cant, prec, total, fechaFinal],
+                function(errIns) {
+                    if (errIns) {
+                        resolve({ success: false, msg: errIns.message });
+                    } else {
+                        resolve({ success: true, id: this.lastID });
+                    }
+                }
+            );
+        });
+    });
+});
+
+ipcMain.handle('registrar-abono-proveedor', async (event, data) => {
+    return new Promise((resolve) => {
+        const { proveedor, monto_divisa, monto_movil, metodo_pago, banco, fecha } = data;
+        if (!proveedor || (!monto_divisa && !monto_movil)) {
+            resolve({ success: false, msg: "Monto inválido." });
+            return;
+        }
+
+        const provNombre = proveedor.trim().toUpperCase();
+        const fechaFinal = fecha || new Date().toISOString();
+
+        db.run(`INSERT INTO abonos_proveedores (proveedor, monto_divisa, monto_movil, metodo_pago, banco, fecha) VALUES (?, ?, ?, ?, ?, ?)`,
+            [provNombre, parseFloat(monto_divisa) || 0, parseFloat(monto_movil) || 0, metodo_pago || 'EFECTIVO', banco || '', fechaFinal],
+            function(err) {
+                if (err) {
+                    resolve({ success: false, msg: err.message });
+                } else {
+                    resolve({ success: true, id: this.lastID });
+                }
+            }
+        );
+    });
+});
+
+ipcMain.handle('obtener-resumen-cuentas-pagar', async () => {
+    return new Promise((resolve) => {
+        const query = `
+            SELECT 
+                p.nombre AS proveedor,
+                COALESCE((SELECT SUM(monto) FROM deudas_proveedores WHERE proveedor = p.nombre AND estado_logico = 1), 0) AS total_deuda,
+                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM abonos_proveedores WHERE proveedor = p.nombre AND estado_logico = 1), 0) AS total_abonado
+            FROM proveedores p
+            ORDER BY p.nombre ASC
+        `;
+        db.all(query, [], (err, rows) => {
+            if (err) {
+                console.error("Error obteniendo resumen cuentas pagar:", err);
+                resolve([]);
+            } else {
+                const resultado = (rows || []).map(r => ({
+                    ...r,
+                    saldo_restante: Math.max(0, r.total_deuda - r.total_abonado)
+                })).filter(r => r.total_deuda > 0 || r.total_abonado > 0);
+                resolve(resultado);
+            }
+        });
+    });
+});
+
+ipcMain.handle('obtener-detalle-proveedor', async (event, nombreProveedor) => {
+    return new Promise((resolve) => {
+        if (!nombreProveedor) {
+            resolve({ deudas: [], abonos: [], total_deuda: 0, total_abonado: 0, saldo_restante: 0 });
+            return;
+        }
+
+        const prov = nombreProveedor.trim().toUpperCase();
+
+        db.all(`SELECT * FROM deudas_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errD, deudas) => {
+            db.all(`SELECT * FROM abonos_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errA, abonos) => {
+                const listDeudas = deudas || [];
+                const listAbonos = abonos || [];
+
+                const totalDeuda = listDeudas.reduce((acc, d) => acc + (parseFloat(d.monto) || 0), 0);
+                const totalAbonado = listAbonos.reduce((acc, a) => acc + (parseFloat(a.monto_divisa) || 0) + (parseFloat(a.monto_movil) || 0), 0);
+                const saldoRestante = Math.max(0, totalDeuda - totalAbonado);
+
+                resolve({
+                    deudas: listDeudas,
+                    abonos: listAbonos,
+                    total_deuda: totalDeuda,
+                    total_abonado: totalAbonado,
+                    saldo_restante: saldoRestante
+                });
+            });
+        });
+    });
+});
+
+ipcMain.handle('obtener-factura-global-proveedor', async (event, nombreProveedor) => {
+    return new Promise((resolve) => {
+        if (!nombreProveedor) return resolve([]);
+        const prov = nombreProveedor.trim().toUpperCase();
+
+        db.all(`SELECT * FROM deudas_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errD, deudas) => {
+            db.all(`SELECT * FROM abonos_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errA, abonos) => {
+                const listDeudas = deudas || [];
+                const listAbonos = abonos || [];
+                
+                let abonoAcumulado = listAbonos.reduce((acc, a) => acc + (parseFloat(a.monto_divisa) || 0) + (parseFloat(a.monto_movil) || 0), 0);
+                
+                const lineas = [];
+                for (const d of listDeudas) {
+                    if (abonoAcumulado >= d.monto) {
+                        abonoAcumulado -= d.monto;
+                    } else {
+                        const restante = d.monto - abonoAcumulado;
+                        const esParcial = abonoAcumulado > 0;
+                        const montoAbonado = abonoAcumulado;
+                        abonoAcumulado = 0;
+
+                        lineas.push({
+                            concepto_final: esParcial ? `${d.concepto} (Saldo Restante)` : d.concepto,
+                            cantidad: d.cantidad || 1,
+                            precio: d.precio ? `${parseFloat(d.precio).toFixed(2)}$` : `${parseFloat(d.monto).toFixed(2)}$`,
+                            total: restante,
+                            fecha: d.fecha
+                        });
+
+                        if (esParcial) {
+                            lineas.push({
+                                isChild: true,
+                                isPayment: true,
+                                concepto_final: 'Abono Aplicado a esta deuda',
+                                cantidad: '---',
+                                precio: '---',
+                                total: -montoAbonado,
+                                fecha: d.fecha
+                            });
+                        }
+                    }
+                }
+                resolve(lineas);
+            });
+        });
+    });
+});
+
+ipcMain.handle('eliminar-deuda-proveedor', async (event, id) => {
+    return new Promise((resolve) => {
+        db.run(`UPDATE deudas_proveedores SET estado_logico = 0 WHERE id = ?`, [id], (err) => {
+            resolve({ success: !err });
+        });
+    });
+});
+
+ipcMain.handle('eliminar-abono-proveedor', async (event, id) => {
+    return new Promise((resolve) => {
+        db.run(`UPDATE abonos_proveedores SET estado_logico = 0 WHERE id = ?`, [id], (err) => {
+            resolve({ success: !err });
+        });
+    });
+});
+
+// ==========================================
+// IPC PARA CONTROL DE CESTAS
+// ==========================================
+ipcMain.handle('guardar-movimiento-cesta', async (event, datos) => {
+    return new Promise((resolve) => {
+        const { fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad } = datos;
+        db.run(
+            `INSERT INTO movimientos_cestas (fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad) VALUES (?, ?, ?, ?, ?, ?)`,
+            [fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad],
+            function(err) {
+                if (err) {
+                    resolve({ success: false, msg: err.message });
+                } else {
+                    resolve({ success: true, id: this.lastID });
+                }
+            }
+        );
+    });
+});
+
+ipcMain.handle('obtener-movimientos-cestas', async () => {
+    return new Promise((resolve) => {
+        db.all(`SELECT * FROM movimientos_cestas ORDER BY fecha ASC, id ASC`, [], (err, rows) => {
+            resolve(rows || []);
+        });
+    });
+});
+
+ipcMain.handle('eliminar-movimiento-cesta', async (event, id) => {
+    return new Promise((resolve) => {
+        db.run(`DELETE FROM movimientos_cestas WHERE id = ?`, [id], (err) => {
+            resolve({ success: !err });
         });
     });
 });

@@ -86,14 +86,21 @@
     </style>
 
     <div id="vista-principal-historial" class="w-full animate-fadeIn">
-        <div class="mb-6 border-b border-slate-200 pb-4">
-            <h1 class="titulo-seccion">Historial de Cargas Cerradas</h1>
-            <p class="text-slate-500 mt-1 font-medium">Consulta los registros de mercancía y mermas procesadas</p>
+        <div class="mb-6 border-b border-slate-200 pb-4 flex justify-between items-end">
+            <div>
+                <h1 class="titulo-seccion">Historial de Cargas Cerradas</h1>
+                <p class="text-slate-500 mt-1 font-medium">Consulta los registros de mercancía y mermas procesadas</p>
+            </div>
+            <!-- Buscador -->
+            <div class="relative w-1/3">
+                <i class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">search</i>
+                <input type="text" id="input-busqueda-historial" onkeyup="filtrarHistorial()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium text-slate-700" placeholder="Buscar por unidad, N° cierre o fecha...">
+            </div>
         </div>
 
-        <div id="area-interactiva" style="display: flex; justify-content: space-between; width: 100%; padding-bottom: 8px; gap: 15px;">
+        <div id="area-interactiva" style="width: 100%; padding-bottom: 8px;">
             
-            <div id="cuadro-tabla" class="panel-estilizado flex-shrink-0" style="width: calc(75% - 15px); height: 620px;">
+            <div id="cuadro-tabla" class="panel-estilizado w-full" style="height: 620px;">
                 <div class="tabla-scroll-container custom-scrollbar">
                     <table class="historial-table">
                         <thead>
@@ -108,39 +115,6 @@
                         <tbody id="tabla-cerradas-body">
                         </tbody>
                     </table>
-                </div>
-            </div>
-
-            <div id="cuadro-detalle" class="panel-estilizado flex-shrink-0 flex flex-col overflow-y-auto" style="width: 25%; height: 620px;">
-                <div id="contenido-detalle" class="pnl-contenedor">
-                    <div class="pnl-header">
-                        <i id="icono-detalle" class="material-icons" style="font-size: 24px; color: #94a3b8;">info</i>
-                        <h2 id="titulo-detalle" class="pnl-titulo">Detalles</h2>
-                    </div>
-                    <div id="cuerpo-detalle" class="pnl-cuerpo">
-                        <p class="pnl-vacio">Selecciona una opción en la tabla para ver los detalles.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="tarjetas-resumen" class="barra-totales">
-            <div class="total-mini-card" style="border-left-color: #3b82f6;">
-                <span class="total-mini-label">Total en Venta General</span>
-                <span id="card-total-venta" class="total-mini-valor">0.00 $</span>
-            </div>
-            <div class="total-mini-card" style="border-left-color: #ef4444;">
-                <span class="total-mini-label">Recaudado Crédito</span>
-                <span id="card-total-credito" class="total-mini-valor valor-credito">0.00 $</span>
-            </div>
-            <div class="total-mini-card" style="border-left-color: #10b981;">
-                <span class="total-mini-label">Recaudado Contado</span>
-                <span id="card-total-contado" class="total-mini-valor valor-contado">0.00 $</span>
-            </div>
-            <div class="total-mini-card" style="border-left-color: #8b5cf6; flex-direction: column;">
-                <span class="total-mini-label">Promedio de venta por producto</span>
-                <div id="contenedor-promedios" style="display: flex; flex-direction: column; gap: 4px; margin-top: 8px; max-height: 60px; overflow-y: auto; padding-right: 4px;" class="custom-scrollbar">
-                    <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Seleccione una carga...</span>
                 </div>
             </div>
         </div>
@@ -164,18 +138,49 @@
             </div>
         </div>
 
-        <div class="barra-totales mb-6" style="margin-top: 0;">
-            <div class="total-mini-card" style="border-left-color: #f59e0b;">
-                <span class="total-mini-label">Total en Venta General</span>
-                <span id="lbl-planilla-venta" class="total-mini-valor" style="color: #d97706;">0.00 $</span>
+        <div class="barra-totales mb-6 flex-wrap" style="margin-top: 0; background: transparent; border: none; padding: 0;">
+            <div class="total-mini-card" style="background-color: #f59e0b; border-left: none; min-width: 200px; color: white;">
+                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Total en Venta General</span>
+                <span id="lbl-planilla-venta" class="total-mini-valor" style="color: white;">0.00 $</span>
             </div>
-            <div class="total-mini-card" style="border-left-color: #ef4444;">
-                <span class="total-mini-label">Recaudado Crédito</span>
-                <span id="lbl-planilla-credito" class="total-mini-valor valor-credito">0.00 $</span>
+            <div class="total-mini-card" style="background-color: #ef4444; border-left: none; min-width: 200px; color: white;">
+                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Recaudado Crédito</span>
+                <span id="lbl-planilla-credito" class="total-mini-valor" style="color: white;">0.00 $</span>
             </div>
-            <div class="total-mini-card" style="border-left-color: #10b981;">
-                <span class="total-mini-label">Recaudado Contado</span>
-                <span id="lbl-planilla-contado" class="total-mini-valor valor-contado">0.00 $</span>
+            <div class="total-mini-card" style="background-color: #10b981; border-left: none; min-width: 200px; color: white;">
+                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Recaudado Contado</span>
+                <span id="lbl-planilla-contado" class="total-mini-valor" style="color: white;">0.00 $</span>
+            </div>
+            <div class="total-mini-card" style="background-color: #0369a1; border-left: none; min-width: 200px; color: white;">
+                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Total Ganancia</span>
+                <span id="lbl-planilla-ganancia" class="total-mini-valor" style="color: white;">0.00 $</span>
+            </div>
+        </div>
+
+        <div id="contenedor-paneles-extra" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+            <!-- Promedios de Venta -->
+            <div class="panel-estilizado p-5">
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-indigo-500">analytics</i> Promedios de Venta</h3>
+                <div id="cuerpo-planilla-promedios" class="text-sm text-slate-600 flex flex-col gap-2">
+                </div>
+            </div>
+            <!-- Inventario y Sobrantes -->
+            <div class="panel-estilizado p-5">
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-blue-500">inventory_2</i> Resumen de Inventario</h3>
+                <div id="cuerpo-planilla-inventario" class="text-sm text-slate-600">
+                </div>
+            </div>
+            <!-- Mermas -->
+            <div class="panel-estilizado p-5">
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-red-500">delete_sweep</i> Mermas Declaradas</h3>
+                <div id="cuerpo-planilla-mermas" class="text-sm text-slate-600">
+                </div>
+            </div>
+            <!-- Rendiciones -->
+            <div class="panel-estilizado p-5">
+                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-purple-500">autorenew</i> Rendiciones</h3>
+                <div id="cuerpo-planilla-rendiciones" class="text-sm text-slate-600">
+                </div>
             </div>
         </div>
 
@@ -229,7 +234,17 @@
             return;
         }
 
-        tbody.innerHTML = historialCargas.map(c => {
+        renderHistorialTable(historialCargas);
+    }
+
+    function renderHistorialTable(data) {
+        const tbody = document.getElementById('tabla-cerradas-body');
+        if(data.length === 0){
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 p-6">No hay coincidencias.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(c => {
             const fEntrada = new Date(c.fecha_entrada).toLocaleString();
             const fCierre = new Date(c.fecha_cierre).toLocaleString();
 
@@ -239,144 +254,35 @@
                     <td class="font-extrabold uppercase text-slate-800">${c.vehiculo_nombre || 'Desconocido'}</td>
                     <td class="text-xs text-slate-500">${fEntrada}</td>
                     <td class="text-xs font-bold text-slate-600">${fCierre}</td>
-                    <td style="text-align: center; display: flex; justify-content: center; gap: 8px; padding-top: 12px; padding-bottom: 12px;">
-                        
+                    <td style="text-align: center; padding-top: 12px; padding-bottom: 12px;">
                         <button class="btn-detalle" style="background-color: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;" onclick="verPlanillaCompleta(${c.id_cierre}, ${c.id_carga}, event)" title="Ver Planilla de Ventas">
                             <i class="material-icons" style="font-size:16px;">table_chart</i> Planilla Completa
                         </button>
-                        
-                        <button class="btn-detalle" onclick="verEspecificaciones('mercancia', ${c.id_cierre}, event)" title="Resumen de Inventario y Sobrantes">
-                            <i class="material-icons" style="font-size:18px;">inventory_2</i>
-                        </button>
-                        
-                        <button class="btn-detalle" onclick="verEspecificaciones('merma', ${c.id_cierre}, event)" title="Mermas Declaradas">
-                            <i class="material-icons" style="font-size:18px;">delete_sweep</i>
-                        </button>
-
                     </td>
                 </tr>
             `;
         }).join('');
     }
 
+    window.filtrarHistorial = function() {
+        const query = document.getElementById('input-busqueda-historial').value.toLowerCase();
+        const filtrados = historialCargas.filter(c => {
+            const num = c.id_cierre.toString();
+            const unidad = (c.vehiculo_nombre || '').toLowerCase();
+            const fEnt = new Date(c.fecha_entrada).toLocaleString().toLowerCase();
+            const fCie = new Date(c.fecha_cierre).toLocaleString().toLowerCase();
+            return num.includes(query) || unidad.includes(query) || fEnt.includes(query) || fCie.includes(query);
+        });
+        renderHistorialTable(filtrados);
+    };
+
     window.seleccionarFila = function(idCierre) {
         document.querySelectorAll('.fila-historial').forEach(fila => fila.classList.remove('seleccionada'));
         const filaActual = document.getElementById(`fila-${idCierre}`);
         if(filaActual) filaActual.classList.add('seleccionada');
-
-        const datosCierre = historialCargas.find(c => c.id_cierre === idCierre);
-        if(!datosCierre) return;
-
-        const cardVenta = document.getElementById('card-total-venta');
-        if (cardVenta) cardVenta.innerText = `${(datosCierre.total_venta || 0).toFixed(2)} $`;
-
-        const cardCredito = document.getElementById('card-total-credito');
-        if (cardCredito) cardCredito.innerText = `${(datosCierre.total_credito || 0).toFixed(2)} $`;
-
-        const cardContado = document.getElementById('card-total-contado');
-        if (cardContado) cardContado.innerText = `${(datosCierre.total_contado || 0).toFixed(2)} $`;
-        
-        const contenedorPromedios = document.getElementById('contenedor-promedios');
-        if (contenedorPromedios) {
-            contenedorPromedios.innerHTML = ''; 
-
-            let promedios = datosCierre.promedios_por_producto;
-            if (!promedios && datosCierre.mercancia_json) {
-                try {
-                    const mercJSON = JSON.parse(datosCierre.mercancia_json);
-                    promedios = mercJSON.promedios_por_producto;
-                } catch(e) {
-                    console.warn("No se pudo extraer los promedios del JSON");
-                }
-            }
-
-            if (promedios && Object.keys(promedios).length > 0) {
-                for (const [producto, promedio] of Object.entries(promedios)) {
-                    contenedorPromedios.innerHTML += `
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px;">
-                            <span style="font-size: 0.75rem; color: #475569; font-weight: 700;">${producto}</span>
-                            <span style="font-size: 0.85rem; font-weight: 900; color: #6d28d9;">${parseFloat(promedio).toFixed(2)} $</span>
-                        </div>
-                    `;
-                }
-            } else {
-                contenedorPromedios.innerHTML = `<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Sin datos detallados</span>`;
-            }
-        }
     };
 
-    window.verEspecificaciones = function(tipo, idCierre, event) {
-        event.stopPropagation(); 
-        seleccionarFila(idCierre);
-        
-        document.querySelectorAll('.btn-detalle').forEach(btn => btn.classList.remove('activo'));
-        event.currentTarget.classList.add('activo');
-
-        const datosCierre = historialCargas.find(c => c.id_cierre === idCierre);
-        if(!datosCierre) return;
-        
-        cuerpoDetalle.innerHTML = '';
-        
-        if (tipo === 'mercancia') {
-            tituloDetalle.innerText = 'Resumen de Inventario';
-            iconoDetalle.innerText = 'inventory_2';
-            iconoDetalle.style.color = '#3b82f6';
-            
-            try {
-                const mercJSON = JSON.parse(datosCierre.mercancia_json || "{}");
-                
-                let html = `<div class="pnl-resumen-box"><span class="pnl-label">Unidades Vendidas:</span> <span class="pnl-valor-azul">${mercJSON.unidades_vendidas || 0}</span></div>`;
-                
-                html += `<h3 class="pnl-subtitulo">Sobrantes Declarados</h3>`;
-                const sobrantes = mercJSON.sobrantes || {};
-                
-                if (Object.keys(sobrantes).length === 0) {
-                    html += `<p class="pnl-vacio">No quedaron sobrantes en inventario.</p>`;
-                } else {
-                    for (const [producto, cant] of Object.entries(sobrantes)) {
-                        html += `<div class="panel-json-item"><span class="pnl-item-nombre">${producto}</span> <span class="badge-cant">${cant}</span></div>`;
-                    }
-                }
-                cuerpoDetalle.innerHTML = html;
-            } catch(e) {
-                cuerpoDetalle.innerHTML = `<p style="color:red;">Error leyendo JSON</p>`;
-            }
-
-        } else if (tipo === 'merma') {
-            tituloDetalle.innerText = 'Registro de Mermas';
-            iconoDetalle.innerText = 'delete_sweep';
-            iconoDetalle.style.color = '#ef4444';
-
-            try {
-                const mermaJSON = JSON.parse(datosCierre.mermas_json || "[]");
-                
-                if (mermaJSON.length === 0) {
-                    cuerpoDetalle.innerHTML = `<p class="pnl-vacio">Sin mermas registradas en esta carga.</p>`;
-                } else {
-                    let totalMermas = 0;
-                    let htmlList = '';
-                    mermaJSON.forEach(m => {
-                        totalMermas += m.cantidad;
-                        htmlList += `<div class="panel-json-item">
-                            <div class="pnl-item-col">
-                                <span class="pnl-item-nombre">${m.tipo_medida} ${m.sub_medida}</span>
-                                <span class="pnl-item-fecha">${new Date(m.fecha_registro).toLocaleString()}</span>
-                            </div>
-                            <span class="badge-merma">-${m.cantidad}</span>
-                        </div>`;
-                    });
-                    
-                    cuerpoDetalle.innerHTML = `
-                        <div class="pnl-resumen-box"><span class="pnl-label">Total Mermado:</span> <span class="pnl-valor-rojo">${totalMermas}</span></div>
-                        <h3 class="pnl-subtitulo">Detalle de Salidas</h3>
-                        ${htmlList}
-                    `;
-                }
-            } catch(e) {
-                cuerpoDetalle.innerHTML = `<p style="color:red;">Error leyendo JSON</p>`;
-            }
-        }
-    };
+    // verEspecificaciones fue eliminada ya que la planilla completa contendrá toda la información
 
     // ==============================================
     // LÓGICA DE LA VISTA DETALLE PLANILLA COMPLETA
@@ -399,6 +305,105 @@
         document.getElementById('lbl-planilla-venta').innerText = `${(datosCierre.total_venta || 0).toFixed(2)} $`;
         document.getElementById('lbl-planilla-credito').innerText = `${(datosCierre.total_credito || 0).toFixed(2)} $`;
         document.getElementById('lbl-planilla-contado').innerText = `${(datosCierre.total_contado || 0).toFixed(2)} $`;
+        
+        const lblGanancia = document.getElementById('lbl-planilla-ganancia');
+        if (lblGanancia) {
+            const gan = datosCierre.total_ganancia || 0;
+            lblGanancia.innerText = `${gan.toFixed(2)} $`;
+            // El color ahora siempre es blanco por el fondo de la tarjeta
+        }
+
+        // Llenar Promedios
+        const contenedorPromedios = document.getElementById('cuerpo-planilla-promedios');
+        if (contenedorPromedios) {
+            contenedorPromedios.innerHTML = '';
+            let promedios = null;
+            if (datosCierre.mercancia_json) {
+                try {
+                    const mercJSON = JSON.parse(datosCierre.mercancia_json);
+                    promedios = mercJSON.promedios_por_producto;
+                } catch(e) {}
+            }
+            if (promedios && Object.keys(promedios).length > 0) {
+                for (const [producto, promedio] of Object.entries(promedios)) {
+                    contenedorPromedios.innerHTML += `
+                        <div class="panel-json-item py-1">
+                            <span class="pnl-item-nombre text-xs">${producto}</span>
+                            <span class="text-indigo-600 font-bold text-sm">${parseFloat(promedio).toFixed(2)} $</span>
+                        </div>
+                    `;
+                }
+            } else {
+                contenedorPromedios.innerHTML = `<p class="pnl-vacio">Sin promedios calculados.</p>`;
+            }
+        }
+
+        // Llenar Inventario
+        const panelInv = document.getElementById('cuerpo-planilla-inventario');
+        if (panelInv) {
+            try {
+                const mercJSON = JSON.parse(datosCierre.mercancia_json || "{}");
+                let htmlInv = `<div class="pnl-resumen-box mb-3"><span class="pnl-label">Unidades Vendidas:</span> <span class="pnl-valor-azul">${mercJSON.unidades_vendidas || 0}</span></div>`;
+                htmlInv += `<h4 class="font-bold text-xs text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Sobrantes Declarados</h4>`;
+                const sobrantes = mercJSON.sobrantes || {};
+                if (Object.keys(sobrantes).length === 0) {
+                    htmlInv += `<p class="pnl-vacio">No quedaron sobrantes.</p>`;
+                } else {
+                    for (const [prod, cant] of Object.entries(sobrantes)) {
+                        htmlInv += `<div class="panel-json-item py-1"><span class="pnl-item-nombre text-xs">${prod}</span> <span class="badge-cant">${cant}</span></div>`;
+                    }
+                }
+                panelInv.innerHTML = htmlInv;
+            } catch(e) { panelInv.innerHTML = 'Error cargando inventario'; }
+        }
+
+        // Llenar Mermas
+        const panelMermas = document.getElementById('cuerpo-planilla-mermas');
+        if (panelMermas) {
+            try {
+                const mermaJSON = JSON.parse(datosCierre.mermas_json || "[]");
+                if (mermaJSON.length === 0) {
+                    panelMermas.innerHTML = `<p class="pnl-vacio">Sin mermas registradas.</p>`;
+                } else {
+                    let totalMermas = 0;
+                    let htmlMerma = '';
+                    mermaJSON.forEach(m => {
+                        totalMermas += m.cantidad;
+                        htmlMerma += `<div class="panel-json-item py-1"><div class="flex flex-col"><span class="font-bold text-xs text-slate-700">${m.tipo_medida} ${m.sub_medida}</span><span class="text-[0.6rem] text-slate-400">${new Date(m.fecha_registro).toLocaleString()}</span></div><span class="badge-merma">-${m.cantidad}</span></div>`;
+                    });
+                    panelMermas.innerHTML = `<div class="pnl-resumen-box mb-3"><span class="pnl-label">Total Mermado:</span> <span class="pnl-valor-rojo">${totalMermas}</span></div><h4 class="font-bold text-xs text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Detalle</h4>${htmlMerma}`;
+                }
+            } catch(e) { panelMermas.innerHTML = 'Error cargando mermas'; }
+        }
+
+        // Llenar Rendiciones
+        const panelRend = document.getElementById('cuerpo-planilla-rendiciones');
+        if (panelRend) {
+            try {
+                const rendJSON = JSON.parse(datosCierre.rendiciones_json || "[]");
+                if (rendJSON.length === 0) {
+                    panelRend.innerHTML = `<p class="pnl-vacio">Sin rendiciones registradas.</p>`;
+                } else {
+                    let htmlRend = '';
+                    rendJSON.forEach(r => {
+                        htmlRend += `
+                        <div class="mb-3 border border-slate-200 rounded p-2 bg-slate-50">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs font-bold text-slate-700">${r.producto_origen}</span>
+                                <span class="text-xs font-bold text-red-500">-${r.cantidad_restada}</span>
+                            </div>
+                            <div class="flex justify-center my-1"><i class="material-icons text-slate-300" style="font-size:16px;">arrow_downward</i></div>
+                            <div class="flex justify-between items-center mt-1">
+                                <span class="text-xs font-bold text-blue-600">${r.nombre_nuevo_producto}</span>
+                                <span class="text-xs font-bold text-emerald-600">+${r.cantidad_generada}</span>
+                            </div>
+                            <div class="text-[0.65rem] text-slate-400 mt-1 text-right">Precio asignado: <span class="font-bold text-slate-600">${r.precio_venta_nuevo_producto} $</span></div>
+                        </div>`;
+                    });
+                    panelRend.innerHTML = htmlRend;
+                }
+            } catch(e) { panelRend.innerHTML = 'Error cargando rendiciones'; }
+        }
 
         // Llenar tabla de modo lectura
         const tbody = document.getElementById('tabla-planilla-ro-body');

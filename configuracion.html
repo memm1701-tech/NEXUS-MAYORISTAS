@@ -69,8 +69,36 @@
                 </tbody>
             </table>
         </div>
+        <h2 class="section-title"><i class="material-icons">payments</i> 2. Métodos de Pago</h2>
+        <div class="panel mb-8">
+            <div class="grid-2" style="align-items: end; margin-bottom: 15px;">
+                <div>
+                    <label for="nombreMetodoPago">Nombre del Método (Ej. Zelle, Binance...):</label>
+                    <input type="text" id="nombreMetodoPago" placeholder="Ej: ZELLE" autocomplete="off" style="margin: 0; text-transform: uppercase;">
+                </div>
+                <div>
+                    <button onclick="registrarMetodoPago()" class="btn-main" style="width: 100%;">
+                        <i class="material-icons">add_box</i> Registrar Método
+                    </button>
+                </div>
+            </div>
 
-        <h2 class="section-title"><i class="material-icons">architecture</i> 2. Maestros de Unidades de Medida</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Método de Pago</th>
+                            <th style="text-align: right">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaMetodosPago">
+                        <tr><td colspan="2" class="empty-message">Cargando métodos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <h2 class="section-title"><i class="material-icons">architecture</i> 3. Maestros de Unidades de Medida</h2>
         <div class="grid-2">
             
             <div class="panel">
@@ -145,10 +173,10 @@
 
 <script>
 {
-    let ipc;
-    try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("Electron no detectado."); }
-
-    if (ipc) {
+    let ipc = window.nexusAPI;
+    if (!ipc) {
+        console.warn("Nexus API no detectado.");
+    } else {
         let vehiculoActualId = null;
 
         // VEHÍCULOS
@@ -248,12 +276,54 @@
                 </tr>`).join('');
         };
 
+        // METODOS DE PAGO
+        window.registrarMetodoPago = function() {
+            const input = document.getElementById('nombreMetodoPago');
+            const nombre = input.value.trim().toUpperCase();
+            if(!nombre) return;
+            ipc.send('guardar-metodo-pago', nombre);
+        };
+
+        window.eliminarMetodoPago = function(id) {
+            if(confirm("¿Seguro que deseas eliminar este método de pago?")) {
+                ipc.send('eliminar-metodo-pago', id);
+            }
+        };
+
+        window.toggleEstadoMetodoPago = function(id, estadoActual) {
+            const nuevoEstado = estadoActual === 1 ? 0 : 1;
+            ipc.send('cambiar-estado-metodo-pago', { id: id, estado: nuevoEstado });
+        };
+
+        window.cargarMetodosPago = async function() {
+            const tbody = document.getElementById('listaMetodosPago');
+            const metodos = await ipc.invoke('obtener-metodos-pago-config');
+            if (metodos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin métodos de pago.</td></tr>'; return; }
+            tbody.innerHTML = metodos.map(m => {
+                const iconoEstado = m.estado === 1 ? 'toggle_on' : 'toggle_off';
+                const colorEstado = m.estado === 1 ? '#10b981' : '#94a3b8';
+                const opacidadTexto = m.estado === 1 ? '1' : '0.5';
+                const textoTachado = m.estado === 1 ? 'none' : 'line-through';
+                
+                return `
+                <tr style="opacity: ${opacidadTexto}">
+                    <td class="font-bold text-gray-800" style="text-decoration: ${textoTachado};"><i class="material-icons align-middle text-gray-400 mr-2">payments</i>${m.nombre}</td>
+                    <td style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+                        <button class="btn-del" style="color: ${colorEstado};" onclick="toggleEstadoMetodoPago(${m.id}, ${m.estado})" title="${m.estado === 1 ? 'Deshabilitar' : 'Habilitar'}"><i class="material-icons">${iconoEstado}</i></button>
+                        <button class="btn-del" onclick="eliminarMetodoPago(${m.id})" title="Eliminar"><i class="material-icons">delete</i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        };
+
         ipc.removeAllListeners('resultado-operacion');
         ipc.on('resultado-operacion', (event, res) => {
             if(res.success) {
                 document.getElementById('nombreUnidadManual').value = '';
                 document.getElementById('nombreSubtipoManual').value = '';
+                document.getElementById('nombreMetodoPago').value = '';
                 cargarUnidadesMaestras();
+                cargarMetodosPago();
             }
         });
 
@@ -307,8 +377,10 @@
         ipc.removeAllListeners('eliminar-carga-resultado');
         ipc.on('eliminar-carga-resultado', (event, res) => { if(res.success) cargarTablaCargasVehiculo(); });
 
+        // Inicializar
         cargarVehiculos();
         cargarUnidadesMaestras();
+        cargarMetodosPago();
     }
 }
 </script>

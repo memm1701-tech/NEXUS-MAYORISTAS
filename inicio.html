@@ -128,17 +128,71 @@
            5. COMPORTAMIENTO MINIMIZADO
            ========================================= */
         .sidebar.collapsed { width: 56px; padding: 1.5rem 0.5rem; }
-        .sidebar.collapsed .sidebar-toggle-btn { left: 50%; transform: translateX(-50%); }
         
-        .sidebar.collapsed .sidebar-header img { width: 35px !important; height: 35px !important; margin-top: 35px; transition: all 0.3s ease; }
-        
+        /* Ocultar elementos del header al minimizar */
+        .sidebar.collapsed .main-sidebar-logo,
         .sidebar.collapsed .sidebar-header h3,
-        .sidebar.collapsed .sidebar-header h4 {
-            opacity: 0; transform: translateX(-20px); visibility: hidden; pointer-events: none; height: 0; margin: 0;
+        .sidebar.collapsed .sidebar-header h4,
+        .sidebar.collapsed #company-rif-display,
+        .sidebar.collapsed #sync-status-indicator,
+        .sidebar.collapsed #sync-last-time,
+        .sidebar.collapsed .footer-info {
+            display: none !important;
+            opacity: 0;
+            visibility: hidden;
+            height: 0;
+            margin: 0;
         }
 
-        .sidebar.collapsed .footer-info {
-            opacity: 0; visibility: hidden; height: 0; margin: 0; overflow: hidden; transition: all 0.3s ease;
+        /* Botón toggle al estar minimizado */
+        .sidebar.collapsed .sidebar-toggle-btn {
+            left: 50%;
+            transform: translateX(-50%);
+            top: 15px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar.collapsed .sidebar-toggle-btn .toggle-logo {
+            display: block;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .sidebar.collapsed .sidebar-toggle-btn .toggle-menu-icon {
+            display: none;
+        }
+
+        /* Hover sobre el logo minimizado: cambia a blanco y muestra las 3 rayitas */
+        .sidebar.collapsed .sidebar-toggle-btn:hover {
+            background-color: #ffffff !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .sidebar.collapsed .sidebar-toggle-btn:hover .toggle-logo {
+            display: none !important;
+        }
+
+        .sidebar.collapsed .sidebar-toggle-btn:hover .toggle-menu-icon {
+            display: block !important;
+            color: #1e293b;
+            font-size: 22px;
+        }
+
+        /* Cuando el sidebar está expandido */
+        .sidebar:not(.collapsed) .sidebar-toggle-btn .toggle-logo {
+            display: none;
+        }
+
+        .sidebar:not(.collapsed) .sidebar-toggle-btn .toggle-menu-icon {
+            display: block;
         }
 
         .sidebar-header h3, .sidebar-header h4, .footer-info {
@@ -277,11 +331,12 @@
         <aside class="sidebar" id="sidebar">
             <div>
                 <div class="sidebar-header">
-                    <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none">
-                        <i id="menu-icon-dynamic" class="material-icons">menu</i>
+                    <button id="desktop-menu-toggle" class="sidebar-toggle-btn focus:outline-none" title="Menu">
+                        <img src="logo_redondeado.png" alt="Logo NEXUS" class="toggle-logo">
+                        <i id="menu-icon-dynamic" class="material-icons toggle-menu-icon">menu</i>
                     </button>
                     
-                    <img src="logo_redondeado.png" alt="Logo NEXUS Mayorista" class="rounded-full mx-auto mb-2 mt-8" style="display: block; width: 100px; height: 100px; object-fit: cover; transition: all 0.3s ease;">
+                    <img src="logo_redondeado.png" alt="Logo NEXUS Mayorista" class="main-sidebar-logo rounded-full mx-auto mb-2 mt-8" style="display: block; width: 100px; height: 100px; object-fit: cover; transition: all 0.3s ease;">
                     
                     <h3 class="font-bold text-gray-800 uppercase tracking-wider text-[15px] mt-2">NEXUS <span style="color: #8cc63f;">MAYORISTAS</span></h3>
                     
@@ -296,38 +351,44 @@
                     <ul>
                         <li>
                             <a href="#" onclick="loadPage('cargas.html')">
-                                <i class="material-icons">local_shipping</i>
+                                <i class="material-icons-outlined">local_shipping</i>
                                 <span>Cargas</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" onclick="loadPage('tabla_ventas.html')">
-                                <i class="material-icons">payments</i>
+                                <i class="material-icons-outlined">payments</i>
                                 <span>Tabla de ventas</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" onclick="loadPage('cargas_cerradas.html')">
-                                <i class="material-icons">history</i>
+                                <i class="material-icons-outlined">history</i>
                                 <span>Cargas Cerradas</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" onclick="loadPage('cuentas_cobrar.html')">
-                                <i class="material-icons">receipt_long</i>
+                                <i class="material-icons-outlined">receipt_long</i>
                                 <span>Cuentas por cobrar</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" onclick="loadPage('deuda_clientes.html')">
-                                <i class="material-icons">account_box</i>
+                                <i class="material-icons-outlined">account_box</i>
                                 <span>Deuda / Clientes</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" onclick="loadPage('gestor_clientes.html')">
-                                <i class="material-icons">people</i>
+                                <i class="material-icons-outlined">people</i>
                                 <span>Gestor de Clientes</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" onclick="loadPage('cuentas.html')">
+                                <i class="material-icons-outlined">account_balance_wallet</i>
+                                <span>Cuentas</span>
                             </a>
                         </li>
                     </ul>
@@ -335,23 +396,17 @@
             </div>
             
             <div>
-                <div class="footer-info mb-4 text-center px-2" style="font-size: 0.75rem; color: #6B6B6B; white-space: normal;">
-                    <p class="font-bold text-gray-700">Desarrollado por Nexus Company</p>
-                    <p class="italic text-xs mt-1">De la familia de Nexus POS Global</p>
-                    <p class="mt-2" style="font-size: 0.65rem;">Copyright © 2026<br>Todos los derechos reservados</p>
-                </div>
-
                 <nav class="sidebar-nav">
                     <ul>
                         <li>
                             <a href="#" onclick="loadPage('configuracion.html')">
-                                <i class="material-icons">settings</i>
+                                <i class="material-icons-outlined">settings</i>
                                 <span>Configuración</span>
                             </a>
                         </li>
                         <li style="margin-top: 10px;">
                             <a href="#" onclick="cerrarSesionLocal()" style="color: #ef4444;">
-                                <i class="material-icons" style="color: #ef4444;">logout</i>
+                                <i class="material-icons-outlined" style="color: #ef4444;">logout</i>
                                 <span>Cerrar Sesión</span>
                             </a>
                         </li>
@@ -496,14 +551,6 @@
                     e.preventDefault();
                     sidebar.classList.toggle('collapsed');
                     mainContent.classList.toggle('expanded');
-                    
-                    if (menuIconDynamic) {
-                        menuIconDynamic.style.opacity = '0';
-                        setTimeout(() => {
-                            menuIconDynamic.textContent = sidebar.classList.contains('collapsed') ? 'chevron_right' : 'menu';
-                            menuIconDynamic.style.opacity = '1';
-                        }, 150);
-                    }
                 };
             }
 
@@ -548,7 +595,11 @@
             'abonos_deudas': '/api/maestro/abonos_deudas',
             'reversos_deudas': '/api/maestro/reversos_deudas',
             'configuracion_sistema': '/api/maestro/configuracion_sistema',
-            'metodos_pago': '/api/maestro/metodos_pago'
+            'metodos_pago': '/api/maestro/metodos_pago',
+            'proveedores': '/api/maestro/proveedores',
+            'deudas_proveedores': '/api/maestro/deudas_proveedores',
+            'abonos_proveedores': '/api/maestro/abonos_proveedores',
+            'movimientos_cestas': '/api/maestro/movimientos_cestas'
         };
 
         function actualizarUIConexion(estado) {
@@ -558,17 +609,24 @@
             
             if (estado === 'offline') {
                 indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Sin conexión (Offline)';
-                if (successMsg) successMsg.style.display = 'none';
+                if (successMsg) {
+                    successMsg.style.display = 'block';
+                    successMsg.className = 'text-[10px] text-red-500 mt-0.5 font-medium';
+                    successMsg.innerHTML = 'Sin sincronización';
+                }
             } else if (estado === 'syncing') {
-                indicator.innerHTML = '<i class="material-icons animate-spin" style="font-size: 14px;">sync</i> Sincronizando...';
-                if (successMsg) successMsg.style.display = 'none';
+                indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Conectado (Online)';
+                if (successMsg) {
+                    successMsg.style.display = 'block';
+                    successMsg.className = 'text-[10px] text-blue-500 mt-0.5 font-medium';
+                    successMsg.innerHTML = '<i class="material-icons animate-spin align-middle text-[12px] mr-0.5">sync</i> Sincronizando...';
+                }
             } else {
                 indicator.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Conectado (Online)';
-                // Si la llamamos con 'online_success', mostramos el msj
-                if (estado === 'online_success' && successMsg) {
+                if (successMsg) {
                     successMsg.style.display = 'block';
-                    // Ocultarlo después de 5 segundos
-                    setTimeout(() => { successMsg.style.display = 'none'; }, 5000);
+                    successMsg.className = 'text-[10px] text-green-600 mt-0.5 font-medium';
+                    successMsg.innerHTML = '<i class="material-icons align-middle text-[12px] mr-0.5">check_circle</i> Sincronización exitosa';
                 }
             }
         }

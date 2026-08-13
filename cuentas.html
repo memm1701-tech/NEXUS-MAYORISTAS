@@ -1,0 +1,119 @@
+<div id="contenedor-principal-cuentas" class="w-full min-h-[80vh] flex flex-col items-center justify-center p-6 bg-[#fafafa]">
+    
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .tarjeta-minimalista {
+            background-color: #ffffff;
+            border-radius: 1.25rem; /* 20px */
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            min-height: 320px;
+        }
+
+        .tarjeta-minimalista:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+            transform: translateY(-4px);
+        }
+
+        .icono-caja {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .tarjeta-minimalista:hover .icono-caja {
+            transform: scale(1.05);
+        }
+
+        .tarjeta-titulo {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        .tarjeta-desc {
+            font-size: 0.95rem;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.5;
+            max-width: 280px;
+        }
+
+        /* Colores Específicos */
+        .color-pagar { background-color: #fef2f2; color: #ef4444; }
+        .color-negocio { background-color: #eef2ff; color: #6366f1; }
+        .color-cestas { background-color: #fffbeb; color: #f59e0b; }
+    </style>
+
+    <div id="vista-tarjetas-cuentas" class="flex flex-col items-center gap-8 w-full max-w-5xl mx-auto" style="animation: fadeIn 0.5s ease-out forwards;">
+        <!-- Fila Superior: 2 Tarjetas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+            <!-- Tarjeta 1: Cuentas por Pagar -->
+            <div onclick="abrirModulo('cuentas_por_pagar')" class="tarjeta-minimalista">
+                <div class="icono-caja color-pagar">
+                    <i class="material-icons-outlined text-3xl">payments</i>
+                </div>
+                <h2 class="tarjeta-titulo">Cuentas por Pagar</h2>
+                <p class="tarjeta-desc">Gestiona y controla los pagos pendientes a proveedores y acreedores.</p>
+            </div>
+
+            <!-- Tarjeta 2: Cuentas del Negocio -->
+            <div onclick="abrirModulo('cuentas_negocio')" class="tarjeta-minimalista">
+                <div class="icono-caja color-negocio">
+                    <i class="material-icons-outlined text-3xl">account_balance</i>
+                </div>
+                <h2 class="tarjeta-titulo">Cuentas del Negocio</h2>
+                <p class="tarjeta-desc">Revisa los balances, movimientos y el estado general de los fondos.</p>
+            </div>
+        </div>
+
+        <!-- Fila Inferior: 1 Tarjeta Centrada -->
+        <div class="w-full md:w-1/2 flex justify-center">
+            <!-- Tarjeta 3: Control de Cestas -->
+            <div onclick="abrirModulo('control_cestas')" class="tarjeta-minimalista w-full">
+                <div class="icono-caja color-cestas">
+                    <i class="material-icons-outlined text-3xl">shopping_basket</i>
+                </div>
+                <h2 class="tarjeta-titulo">Control de Cestas</h2>
+                <p class="tarjeta-desc">Administra los envases y cestas prestadas o recibidas en las rutas.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+{
+    window.abrirModulo = function(modulo) {
+        if (modulo === 'cuentas_por_pagar') {
+            if (typeof loadPage === 'function') {
+                loadPage('cuentas_pagar.html');
+            }
+        } else if (modulo === 'control_cestas') {
+            if (typeof loadPage === 'function') {
+                loadPage('control_cestas.html');
+            }
+        } else {
+            console.log("Abriendo submódulo:", modulo);
+        }
+    };
+}
+</script>

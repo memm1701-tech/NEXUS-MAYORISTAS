@@ -28,6 +28,34 @@
         .vehiculo-card-mini i { color: #94a3b8; transition: color 0.2s; }
         .vehiculo-card-mini:hover i { color: #f59e0b; }
 
+        .vehiculo-activa-glass {
+            background: rgba(239, 68, 68, 0.55); /* Rojo medio translúcido */
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid #dc2626 !important;
+            box-shadow: 0 6px 12px rgba(239, 68, 68, 0.2) !important;
+        }
+        .vehiculo-activa-glass:hover {
+            border-color: #b91c1c !important;
+            background: rgba(239, 68, 68, 0.75);
+            box-shadow: 0 8px 15px rgba(239, 68, 68, 0.3) !important;
+        }
+        .vehiculo-activa-glass i, .vehiculo-activa-glass span {
+            color: white !important;
+        }
+        .status-activa {
+            margin-top: 8px;
+            font-size: 0.65rem;
+            font-weight: 900;
+            color: white;
+            background: #7f1d1d;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #450a0a;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
         .search-container { position: relative; width: 100%; max-width: 400px; }
         .search-input { width: 100%; padding: 12px 15px 12px 45px; border: 2px solid #e2e8f0; border-radius: 12px; outline: none; transition: 0.3s; font-size: 1em; }
         .search-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.05); }
@@ -51,8 +79,8 @@
         .restante-tipo { font-size: 0.85rem; font-weight: 800; color: #92400e; text-transform: uppercase; margin-top: 5px; text-align: center; }
         .restante-label { font-size: 0.7rem; color: #b45309; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .panel-excel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .excel-table-container { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .panel-excel { background: white; border-radius: 0; border: 1px solid #e2e8f0; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .excel-table-container { overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 0; }
         
         /* --- ESTILOS DE TABLA OPTIMIZADOS (RESPONSIVOS) --- */
         .excel-table { 
@@ -69,6 +97,7 @@
         .col-cliente { width: 22%; } 
         .col-metodo { width: 140px; }
         .col-banco { width: 130px; } 
+        .col-ganancia { width: 95px; background: #f8fafc; border-right: 2px solid #e2e8f0; }
         .col-tipo { width: auto; }   
         .col-plus { width: 45px; }   
 
@@ -115,19 +144,24 @@
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
-            background: #f1f5f9;
+            background: rgba(241, 245, 249, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             padding: 10px;
-            border-radius: 10px;
-            border: 1px solid #e2e8f0;
+            border-radius: 0;
+            border: 1px solid rgba(226, 232, 240, 0.5);
         }
         .total-mini-card {
             flex: 1;
-            background: white;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             padding: 8px 12px;
-            border-radius: 8px;
-            border-left: 4px solid #f59e0b;
+            border-radius: 0;
+            border: 1px solid rgba(255, 255, 255, 0.5);
             display: flex;
             flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .total-mini-label { font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
         .total-mini-valor { font-size: 1.1rem; font-weight: 900; color: #1e293b; }
@@ -313,16 +347,16 @@
 
         .merma-container {
             margin-top: 24px;
-            background-color: #fef2f2; 
-            border: 1px solid #fecaca;
-            border-radius: 12px;
+            background-color: white; 
+            border: 1px solid #e2e8f0;
+            border-radius: 0;
             padding: 16px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .merma-header-title {
             font-size: 0.875rem;
             font-weight: 700;
-            color: #991b1b;
+            color: #1e293b;
             text-transform: uppercase;
             margin-bottom: 12px;
             display: flex;
@@ -345,7 +379,7 @@
             width: 100%;
             height: 42px;
             padding: 0 12px;
-            border: 1px solid #fca5a5;
+            border: 1px solid #7dd3fc;
             border-radius: 8px;
             background-color: #ffffff;
             outline: none;
@@ -356,10 +390,10 @@
             text-transform: uppercase;
             box-sizing: border-box;
         }
-        .merma-input { text-align: center; color: #dc2626; font-weight: 800; }
+        .merma-input { text-align: center; color: #1e293b; font-weight: 800; }
         .merma-select:focus, .merma-input:focus {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
         }
 
         .merma-btn {
@@ -385,15 +419,15 @@
         .merma-table-container {
             margin-top: 16px;
             border: 1px solid #fee2e2;
-            border-radius: 8px;
+            border-radius: 0;
             overflow: hidden;
             background: white;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         .merma-table { width: 100%; border-collapse: collapse; text-align: left; }
         .merma-table th {
-            background-color: #fee2e2;
-            color: #991b1b;
+            background-color: #f8fafc;
+            color: #1e293b;
             font-size: 0.75rem;
             text-transform: uppercase;
             font-weight: 800;
@@ -418,6 +452,114 @@
             width: 100%;
         }
         .btn-delete-merma:hover { color: #b91c1c; }
+
+        .rendicion-container {
+            margin-top: 24px;
+            background-color: white; 
+            border: 1px solid #e2e8f0;
+            border-radius: 0;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .rendicion-header-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: #1e293b;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .rendicion-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        @media (min-width: 768px) { .rendicion-controls { flex-direction: row; } }
+        
+        .rendicion-input-wrapper { flex: 1; width: 100%; }
+        .rendicion-cant-wrapper { width: 100%; }
+        @media (min-width: 768px) { .rendicion-cant-wrapper { width: 120px; } }
+
+        .rendicion-select, .rendicion-input {
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            border: 1px solid #7dd3fc;
+            border-radius: 8px;
+            background-color: #ffffff;
+            outline: none;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            color: #334155;
+            font-weight: 600;
+            text-transform: uppercase;
+            box-sizing: border-box;
+        }
+        .rendicion-input { text-align: center; color: #1e293b; font-weight: 800; }
+        .rendicion-select:focus, .rendicion-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+
+        .rendicion-btn {
+            background-color: #9333ea;
+            color: white;
+            font-weight: 700;
+            padding: 0 24px;
+            border-radius: 8px;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            text-transform: uppercase;
+        }
+        @media (min-width: 768px) { .rendicion-btn { width: auto; flex-shrink: 0; } }
+        .rendicion-btn:hover { background-color: #7e22ce; }
+
+        .rendicion-table-container {
+            margin-top: 16px;
+            border: 1px solid #f3e8ff;
+            border-radius: 0;
+            overflow: hidden;
+            background: white;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .rendicion-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .rendicion-table th {
+            background-color: #f8fafc;
+            color: #1e293b;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            padding: 10px 16px;
+        }
+        .rendicion-table td {
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            border-bottom: 1px solid #faf5ff;
+        }
+        .rendicion-table tr:hover { background-color: #faf5ff; }
+        .btn-delete-rendicion {
+            color: #c084fc;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        .btn-delete-rendicion:hover { color: #7e22ce; }
 
         #modal-confirmacion-cierre {
             position: fixed;
@@ -608,15 +750,15 @@
     </div>
 
     <div class="barra-totales">
-        <div class="total-mini-card" style="border-left-color: #f59e0b;">
+        <div class="total-mini-card">
             <span class="total-mini-label">Total en Venta</span>
             <span id="resumen-total-venta" class="total-mini-valor">0.00 $</span>
         </div>
-        <div class="total-mini-card" style="border-left-color: #ef4444;">
+        <div class="total-mini-card">
             <span class="total-mini-label">Total Crédito</span>
             <span id="resumen-total-credito" class="total-mini-valor valor-credito">0.00 $</span>
         </div>
-        <div class="total-mini-card" style="border-left-color: #10b981;">
+        <div class="total-mini-card">
             <span class="total-mini-label">Total Contado</span>
             <span id="resumen-total-contado" class="total-mini-valor valor-contado">0.00 $</span>
         </div>
@@ -637,6 +779,7 @@
                         <th class="col-cliente">Cliente</th>
                         <th class="col-metodo">Método</th>
                         <th class="col-banco">Banco</th>
+                        <th class="col-ganancia">Ganancia</th>
                         <th class="col-tipo">Tipo Cesta Vendida</th>
                         <th class="col-plus">+</th>
                     </tr>
@@ -645,9 +788,21 @@
             </table>
         </div>
         
+        <!-- CONTROLES DE LA TABLA -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 5px;">
+            <button id="btn-expandir-filas" class="btn-ver-mas" style="margin-top: 0;" onclick="expandirFilas()">
+                <i class="material-icons text-sm">add_circle_outline</i> Ver más filas
+            </button>
+            
+            <div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 6px 15px; border-radius: 6px; font-weight: 800; color: #0369a1; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <span style="font-size: 0.75rem; text-transform: uppercase;">Total Ganancia:</span>
+                <span id="resumen-total-ganancia-tabla" style="font-size: 1.1rem;">0.00 $</span>
+            </div>
+        </div>
+
         <div class="merma-container">
             <h3 class="merma-header-title">
-                <i class="material-icons" style="font-size: 18px;">delete_sweep</i> Salida por Merma
+                Salida por Merma
             </h3>
             
             <div class="merma-controls">
@@ -671,18 +826,67 @@
                             <th style="width: 33%;">Fecha / Hora</th>
                             <th style="width: 33%;">Producto</th>
                             <th style="width: 16%; text-align: center;">Cant.</th>
+                            <th style="width: 16%; text-align: center;">Pérdida ($)</th>
                             <th style="width: 16%; text-align: center;">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-mermas-body">
                     </tbody>
                 </table>
+                <div style="display: flex; justify-content: flex-end; margin-top: 5px;">
+                    <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 15px; border-radius: 6px; font-weight: 800; color: #1e293b; display: flex; gap: 10px; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <span style="font-size: 0.75rem; text-transform: uppercase;">Total Pérdida:</span>
+                        <span id="resumen-total-merma-tabla" style="font-size: 1.1rem;">0.00 $</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="flex items-center justify-between w-full" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 24px;">
-            <button id="btn-expandir-filas" class="btn-ver-mas" style="margin-top: 0;" onclick="expandirFilas()">
-                <i class="material-icons text-sm">add_circle_outline</i> Ver más filas
-            </button>
+
+        <div class="rendicion-container">
+            <h3 class="rendicion-header-title">
+                Rendimiento de Producto
+            </h3>
+            
+            <div class="rendicion-controls">
+                <div class="rendicion-input-wrapper">
+                    <select id="select-rendicion-origen" class="rendicion-select">
+                        <option value="">-- PRODUCTO ORIGEN --</option>
+                    </select>
+                </div>
+                <div class="rendicion-cant-wrapper">
+                    <input type="number" id="input-rendicion-cant-restada" class="rendicion-input" placeholder="CANT. RESTA">
+                </div>
+                <div class="rendicion-input-wrapper">
+                    <input type="text" id="input-rendicion-nuevo-nombre" class="rendicion-input" placeholder="NOMBRE NUEVO PROD." style="text-align: left;">
+                </div>
+                <div class="rendicion-cant-wrapper">
+                    <input type="number" id="input-rendicion-cant-generada" class="rendicion-input" placeholder="CANT. GENERA">
+                </div>
+                <div class="rendicion-cant-wrapper">
+                    <input type="number" id="input-rendicion-nuevo-precio" class="rendicion-input" placeholder="PRECIO VENTA" step="0.01">
+                </div>
+                <button onclick="procesarRendicion()" class="rendicion-btn">
+                    <i class="material-icons" style="font-size: 18px;">add_task</i> Crear
+                </button>
+            </div>
+
+            <div class="rendicion-table-container hidden" id="contenedor-tabla-rendiciones">
+                <table class="rendicion-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Fecha</th>
+                            <th style="width: 25%;">Se restó</th>
+                            <th style="width: 25%;">Se generó</th>
+                            <th style="width: 15%; text-align: center;">Precio U. ($)</th>
+                            <th style="width: 15%; text-align: center;">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-rendiciones-body">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="flex items-center justify-end w-full" style="display: flex; justify-content: flex-end; align-items: center; width: 100%; margin-top: 24px;">
 
             <button onclick="cerrarCargaActiva()" class="btn-cerrar-carga">
                 <i class="material-icons" style="font-size: 20px;">task_alt</i>
@@ -697,6 +901,7 @@
 
     let vehiculosCuentasCache = [];
     let inventarioOriginal = {};
+    let preciosCompraMap = {};
     let vehiculoActualId = null;
     let filasActuales = 20;
     let clientesCache = []; 
@@ -704,6 +909,7 @@
     let focoClienteIndex = -1;
     let cargaActivaActual = null;
     let accionConfirmadaCallback = null;
+    let metodosPagoGlobal = ["CRÉDITO"];
 
     const vistaSeleccion = document.getElementById('vista-seleccion-cuentas');
     const vistaDetalle = document.getElementById('vista-cobros-detalle');
@@ -740,6 +946,11 @@
         vehiculosCuentasCache = vehiculosCrudos || [];
         renderizarGaleriaCuentas(vehiculosCuentasCache);
         await cargarClientesBaseDatos(); // Cargamos los clientes al inicio
+        
+        const metodosExtra = await ipc.invoke('obtener-metodos-pago');
+        if (metodosExtra) {
+            metodosPagoGlobal = ["CRÉDITO", ...metodosExtra.map(m => m.nombre)];
+        }
     }
 
     window.filtrarVehiculosCuentas = function() {
@@ -750,12 +961,19 @@
 
     function renderizarGaleriaCuentas(lista) {
         const grid = document.getElementById('grid-vehiculos-cuentas');
-        grid.innerHTML = lista.map(v => `
-            <div class="vehiculo-card-mini" onclick="seleccionarVehiculoParaCobros(${v.id}, '${v.nombre}')">
+        grid.innerHTML = lista.map(v => {
+            const tieneActiva = v.tiene_activa > 0;
+            const extraClass = tieneActiva ? 'vehiculo-activa-glass' : '';
+            const statusLabel = tieneActiva ? `<div class="status-activa">Carga en curso,<br>sin cerrar</div>` : '';
+            
+            return `
+            <div class="vehiculo-card-mini ${extraClass}" onclick="seleccionarVehiculoParaCobros(${v.id}, '${v.nombre}')">
                 <i class="material-icons text-3xl mb-2">payments</i>
                 <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
+                ${statusLabel}
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     window.volverASeleccionCuentas = function() {
@@ -785,15 +1003,36 @@
                 renderizarTablaMermas();
                 document.getElementById('select-merma-tipo').innerHTML = '<option value="">-- SELECCIONAR PRODUCTO --</option>';
                 
+                rendicionesGuardadas = [];
+                renderizarTablaRendiciones();
+                document.getElementById('select-rendicion-origen').innerHTML = '<option value="">-- PRODUCTO ORIGEN --</option>';
+
                 return;
             }
 
             inventarioOriginal = {};
+            preciosCompraMap = {};
             const itemsCarga = cargaActivaActual.datos_parseados || [];
             itemsCarga.forEach(c => {
-                const clave = `${c.categoria} ${c.subtipo}`;
+                const clave = `${c.categoria} ${c.subtipo}`.trim();
                 inventarioOriginal[clave] = (inventarioOriginal[clave] || 0) + c.cantidad;
+                preciosCompraMap[clave] = c.p_compra || 0;
             });
+            
+            rendicionesGuardadas = await ipc.invoke('obtener-rendiciones-carga', cargaActivaActual.id_carga);
+            rendicionesGuardadas.forEach(r => {
+                if (inventarioOriginal[r.producto_origen] !== undefined) {
+                    inventarioOriginal[r.producto_origen] -= r.cantidad_restada;
+                }
+                const nuevoProd = r.nombre_nuevo_producto;
+                inventarioOriginal[nuevoProd] = (inventarioOriginal[nuevoProd] || 0) + r.cantidad_generada;
+                
+                const pCompraOriginal = preciosCompraMap[r.producto_origen] || 0;
+                const costoTotal = r.cantidad_restada * pCompraOriginal;
+                const pCompraNuevo = r.cantidad_generada > 0 ? (costoTotal / r.cantidad_generada) : 0;
+                preciosCompraMap[nuevoProd] = pCompraNuevo;
+            });
+
             const cobrosGuardados = await ipc.invoke('obtener-ventas-carga', cargaActivaActual.id_carga);
             
             const configFilas = cobrosGuardados.find(d => d.fila_id === "0"); 
@@ -802,10 +1041,13 @@
             // Consultar Mermas Activas de esta carga
             mermasGuardadas = await ipc.invoke('obtener-mermas-carga', cargaActivaActual.id_carga);
             renderizarTablaMermas();
+            renderizarTablaRendiciones();
 
-            // Rellenar el select de la barra de mermas
-            const opcionesMermas = Object.keys(inventarioOriginal).map(opt => `<option value="${opt}">${opt.toUpperCase()}</option>`).join('');
-            document.getElementById('select-merma-tipo').innerHTML = '<option value="">-- SELECCIONAR PRODUCTO --</option>' + opcionesMermas;
+            // Rellenar el select de la barra de mermas y rendiciones
+            const opcionesInventarioFiltrado = Object.keys(inventarioOriginal).filter(opt => inventarioOriginal[opt] >= 0);
+            const opcionesDropdown = opcionesInventarioFiltrado.map(opt => `<option value="${opt}">${opt.toUpperCase()}</option>`).join('');
+            document.getElementById('select-merma-tipo').innerHTML = '<option value="">-- SELECCIONAR PRODUCTO --</option>' + opcionesDropdown;
+            document.getElementById('select-rendicion-origen').innerHTML = '<option value="">-- PRODUCTO ORIGEN --</option>' + opcionesDropdown;
 
             renderizarCargaOriginalUI(inventarioOriginal);
             generarFilasExcel(Object.keys(inventarioOriginal), cobrosGuardados, 1, filasActuales);
@@ -941,6 +1183,7 @@
         let totalVenta = 0;
         let totalCredito = 0;
         let totalContado = 0;
+        let totalGananciaGlobal = 0;
 
         inputsCant.forEach(input => {
             const fila = input.closest('tr');
@@ -960,6 +1203,21 @@
                 totalContado += subtotal;
             }
 
+            // CALCULO DE GANANCIA POR FILA
+            let gananciaFila = 0;
+            if (tipo) {
+                const pCompraUnitario = preciosCompraMap[tipo] || 0;
+                gananciaFila = (precio - pCompraUnitario) * cant;
+            }
+            totalGananciaGlobal += gananciaFila;
+            
+            // Reflejar la ganancia en la UI de la celda
+            const cellGanancia = fila.querySelector('.cell-ganancia-div');
+            if (cellGanancia) {
+                cellGanancia.innerText = `${gananciaFila.toFixed(2)} $`;
+                cellGanancia.style.color = gananciaFila > 0 ? '#10b981' : (gananciaFila < 0 ? '#ef4444' : '#64748b');
+            }
+
             if (tipo && saldosActuales[tipo] !== undefined) {
                 saldosActuales[tipo] -= cant;
             }
@@ -977,6 +1235,12 @@
         document.getElementById('resumen-total-venta').innerText = `${totalVenta.toFixed(2)} $`;
         document.getElementById('resumen-total-credito').innerText = `${totalCredito.toFixed(2)} $`;
         document.getElementById('resumen-total-contado').innerText = `${totalContado.toFixed(2)} $`;
+        
+        const gananciaTotalTabla = document.getElementById('resumen-total-ganancia-tabla');
+        if (gananciaTotalTabla) {
+            gananciaTotalTabla.innerText = `${totalGananciaGlobal.toFixed(2)} $`;
+            gananciaTotalTabla.style.color = totalGananciaGlobal > 0 ? '#0369a1' : (totalGananciaGlobal < 0 ? '#ef4444' : '#0369a1');
+        }
 
         const contenedor = document.getElementById('contenedor-cards-restantes');
         if (Object.keys(saldosActuales).length === 0) {
@@ -1002,7 +1266,7 @@
         const tbody = document.getElementById('tabla-excel-body');
         if (inicio === 1) tbody.innerHTML = '';
         
-        const metodosPago = ["CRÉDITO", "DÓLAR FÍSICO", "PAGO MÓVIL", "TRANSFERENCIA", "BS FÍSICO"];
+        const metodosPago = typeof metodosPagoGlobal !== 'undefined' ? metodosPagoGlobal : ["CRÉDITO", "EFECTIVO", "PAGO MÓVIL", "TRANSFERENCIA", "DIVISA"];
         const bancosList = ["BNC", "VENEZUELA", "BANESCO", "PROVINCIAL", "MERCANTIL"];
 
         const selectMetodosHTML = (seleccionado) => `
@@ -1080,6 +1344,9 @@
                 <select class="excel-select cell-banco" data-fila="${idFila}" onchange="manejarCambioFila('${idFila}')" onkeydown="avanzarConEnter(event, this)">
                     ${selectBancos(data.banco)}
                 </select>
+            </td>
+            <td class="col-ganancia">
+                <div class="cell-ganancia-div" data-fila="${idFila}" style="padding: 10px; text-align: right; font-weight: 800; color: #64748b; font-size: 0.85em; white-space: nowrap;">0.00 $</div>
             </td>
             <td class="col-tipo">
                 <select class="excel-select cell-tipo" data-fila="${idFila}" onchange="manejarCambioFila('${idFila}')" onkeydown="avanzarConEnter(event, this)">
@@ -1199,6 +1466,13 @@
                 });
                 
                 const mermasJson = JSON.stringify(mermasGuardadas);
+                const rendicionesJson = typeof rendicionesGuardadas !== 'undefined' ? JSON.stringify(rendicionesGuardadas) : "[]";
+                
+                let totalGananciaCierre = 0;
+                const celdaGanancia = document.getElementById('resumen-total-ganancia-tabla');
+                if(celdaGanancia) {
+                    totalGananciaCierre = parseFloat(celdaGanancia.innerText.replace(/[^\d.-]/g, '')) || 0;
+                }
 
                 const dataCierre = {
                     id_carga: cargaActivaActual.id_carga,
@@ -1206,9 +1480,11 @@
                     fecha_entrada: cargaActivaActual.fecha_entrada,
                     mercancia_json: mercanciaJson,
                     mermas_json: mermasJson,
+                    rendiciones_json: rendicionesJson,
                     total_venta: totalVenta,
                     total_credito: totalCredito,
                     total_contado: totalContado,
+                    total_ganancia: totalGananciaCierre,
                     valor_promedio_producto: valorPromedio
                 };
 
@@ -1311,18 +1587,34 @@
         }
 
         contenedor.classList.remove('hidden');
-        tbody.innerHTML = mermasGuardadas.map(m => `
+        
+        let totalPerdidaMermas = 0;
+
+        tbody.innerHTML = mermasGuardadas.map(m => {
+            const claveProducto = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            const pCompra = preciosCompraMap[claveProducto] || 0;
+            const dineroPerdido = m.cantidad * pCompra;
+            totalPerdidaMermas += dineroPerdido;
+
+            return `
             <tr>
                 <td>${new Date(m.fecha_registro).toLocaleString()}</td>
                 <td>${m.tipo_medida} ${m.sub_medida}</td>
-                <td style="text-align: center; color: #dc2626; font-weight: 800;">${m.cantidad}</td>
-                <td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${m.cantidad}</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${dineroPerdido.toFixed(2)} $</td>
+                <td style="text-align: center;">
                     <button onclick="eliminarMerma(${m.merma_id})" class="btn-delete-merma" title="Eliminar Registro">
                         <i class="material-icons" style="font-size: 20px;">delete</i>
                     </button>
                 </td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
+
+        const totalDiv = document.getElementById('resumen-total-merma-tabla');
+        if (totalDiv) {
+            totalDiv.innerText = `${totalPerdidaMermas.toFixed(2)} $`;
+        }
     };
 
     window.eliminarMerma = function(merma_id) {
@@ -1342,6 +1634,126 @@
                         actualizarSaldosUI(); 
                     } else {
                         mostrarToast("Error al revertir merma.", "error");
+                    }
+                });
+            }
+        );
+    };
+
+    window.procesarRendicion = function() {
+        if (!cargaActivaActual || !ipc) return;
+
+        const selectOrigen = document.getElementById('select-rendicion-origen');
+        const inputCantRestada = document.getElementById('input-rendicion-cant-restada');
+        const inputNuevoNombre = document.getElementById('input-rendicion-nuevo-nombre');
+        const inputCantGenerada = document.getElementById('input-rendicion-cant-generada');
+        const inputNuevoPrecio = document.getElementById('input-rendicion-nuevo-precio');
+        
+        const valorOrigen = selectOrigen.value;
+        const cantRestada = parseInt(inputCantRestada.value);
+        const nuevoNombre = inputNuevoNombre.value.trim().toUpperCase();
+        const cantGenerada = parseInt(inputCantGenerada.value);
+        const nuevoPrecio = parseFloat(inputNuevoPrecio.value);
+
+        if (!valorOrigen || isNaN(cantRestada) || cantRestada <= 0 || !nuevoNombre || isNaN(cantGenerada) || cantGenerada <= 0 || isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+            mostrarToast("Completa todos los campos de rendición correctamente.", "error");
+            return;
+        }
+
+        const saldosValidacion = { ...inventarioOriginal };
+        
+        document.querySelectorAll('.cell-cant').forEach(input => {
+            const cantVendida = parseInt(input.value) || 0;
+            const fila = input.closest('tr');
+            const tipo = fila.querySelector('.cell-tipo').value;
+            if (tipo && saldosValidacion[tipo] !== undefined) saldosValidacion[tipo] -= cantVendida;
+        });
+
+        mermasGuardadas.forEach(m => {
+            const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+            if (saldosValidacion[claveMerma] !== undefined) saldosValidacion[claveMerma] -= m.cantidad;
+        });
+
+        const stockDisponible = saldosValidacion[valorOrigen] || 0;
+
+        if (cantRestada > stockDisponible) {
+            abrirModalConfirmacion(
+                "Stock Insuficiente",
+                `No puedes restar ${cantRestada} unidades de ${valorOrigen} porque solo te quedan ${stockDisponible}.`,
+                "Entendido",
+                () => {}, 
+                false 
+            );
+            return; 
+        }
+
+        ipc.send('guardar-rendicion-carga', {
+            id_carga: cargaActivaActual.id_carga,
+            vehiculo_id: vehiculoActualId,
+            producto_origen: valorOrigen,
+            cantidad_restada: cantRestada,
+            nombre_nuevo_producto: nuevoNombre,
+            precio_venta_nuevo_producto: nuevoPrecio,
+            cantidad_generada: cantGenerada
+        });
+
+        ipc.once('guardar-rendicion-resultado', async (event, response) => {
+            if (response.success) {
+                mostrarToast("Rendición procesada con éxito.", "success");
+                selectOrigen.value = "";
+                inputCantRestada.value = "";
+                inputNuevoNombre.value = "";
+                inputCantGenerada.value = "";
+                inputNuevoPrecio.value = "";
+                
+                seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
+            } else {
+                mostrarToast("Error al procesar rendición: " + response.msg, "error");
+            }
+        });
+    };
+
+    window.renderizarTablaRendiciones = function() {
+        const contenedor = document.getElementById('contenedor-tabla-rendiciones');
+        const tbody = document.getElementById('tabla-rendiciones-body');
+
+        if (!rendicionesGuardadas || rendicionesGuardadas.length === 0) {
+            contenedor.classList.add('hidden');
+            return;
+        }
+
+        contenedor.classList.remove('hidden');
+
+        tbody.innerHTML = rendicionesGuardadas.map(r => {
+            return `
+            <tr>
+                <td>${new Date(r.fecha_registro).toLocaleString()}</td>
+                <td style="color: #1e293b; font-weight: 800;">-${r.cantidad_restada} ${r.producto_origen}</td>
+                <td style="color: #1e293b; font-weight: 800;">+${r.cantidad_generada} ${r.nombre_nuevo_producto}</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${r.precio_venta_nuevo_producto.toFixed(2)} $</td>
+                <td style="text-align: center;">
+                    <button onclick="eliminarRendicion(${r.rendicion_id})" class="btn-delete-rendicion" title="Eliminar Rendición">
+                        <i class="material-icons" style="font-size: 20px;">delete</i>
+                    </button>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    };
+
+    window.eliminarRendicion = function(rendicion_id) {
+        abrirModalConfirmacion(
+            "¿Revertir Rendición?",
+            "¿Deseas revertir esta rendición y devolver la mercancía al producto original?",
+            "Sí, Revertir",
+            () => {
+                ipc.send('eliminar-rendicion-carga', rendicion_id);
+                ipc.once('eliminar-rendicion-resultado', async (event, response) => {
+                    if (response.success) {
+                        mostrarToast("Rendición revertida.", "success");
+                        seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
+                    } else {
+                        mostrarToast("Error al revertir rendición.", "error");
                     }
                 });
             }
