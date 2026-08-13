@@ -606,9 +606,14 @@
                     showMessage('Inicio de sesión exitoso', 'success');
                     // Extraer idEmpresa real o usar mock
                     const idEmpresa = result.data?.idEmpresa || 'EMP-TEST-123';
+                    const sesionData = {
+                        ...(result.data || {}),
+                        rol: 'admin',
+                        idEmpresa: idEmpresa
+                    };
                     
                     if (window.nexusAPI && window.nexusAPI.guardarSesion) {
-                        await window.nexusAPI.guardarSesion(result.data || { rol: 'admin', idEmpresa });
+                        await window.nexusAPI.guardarSesion(sesionData);
                     }
 
                     if (window.nexusAPI && window.nexusAPI.ejecutarMigracion) {
@@ -645,8 +650,14 @@
 
                 if (result.success) {
                     showMessage('Inicio de sesión exitoso', 'success');
+                    const idEmpresa = result.data?.idEmpresa || 'EMP-TEST-123';
+                    const sesionData = {
+                        ...(result.data || {}),
+                        rol: 'cajera',
+                        idEmpresa: idEmpresa
+                    };
                     if (window.nexusAPI && window.nexusAPI.guardarSesion) {
-                        await window.nexusAPI.guardarSesion(result.data || { rol: 'cajera' });
+                        await window.nexusAPI.guardarSesion(sesionData);
                     }
                     if (window.nexusAPI) window.nexusAPI.abrirVentanaPrincipal('inicio_cajera.html');
                 } else {

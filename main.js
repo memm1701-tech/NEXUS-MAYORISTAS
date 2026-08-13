@@ -1029,11 +1029,23 @@ ipcMain.handle('guardar-sesion', async (event, datosSesion) => {
 ipcMain.handle('obtener-sesion', async () => {
     return new Promise((resolve) => {
         db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'sesion_usuario'`, [], (err, row) => {
-            if (err || !row) return resolve(null);
-            try {
-                resolve(JSON.parse(row.valor));
-            } catch(e) {
-                resolve(null);
+            let sesion = null;
+            if (!err && row && row.valor) {
+                try {
+                    sesion = JSON.parse(row.valor);
+                } catch(e) {}
+            }
+            if (!sesion) sesion = { rol: 'admin' };
+            
+            if (!sesion.idEmpresa) {
+                db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errOwner, rowOwner) => {
+                    if (!errOwner && rowOwner && rowOwner.valor) {
+                        sesion.idEmpresa = rowOwner.valor;
+                    }
+                    resolve(sesion);
+                });
+            } else {
+                resolve(sesion);
             }
         });
     });
