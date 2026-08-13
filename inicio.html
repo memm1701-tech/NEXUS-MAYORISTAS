@@ -340,11 +340,12 @@
                     
                     <h3 class="font-bold text-gray-800 uppercase tracking-wider text-[15px] mt-2">NEXUS <span style="color: #8cc63f;">MAYORISTAS</span></h3>
                     
-                    <div id="company-rif-display" class="font-medium text-gray-600 mt-1" style="font-size: 0.8rem;">RIF: J-50807000-3</div>
+                    <div id="company-rif-display" class="font-medium text-gray-600 mt-1" style="font-size: 0.8rem;">RIF: Cargando...</div>
                     <div id="sync-status-indicator" class="mt-2 text-[0.8rem] flex items-center justify-center gap-1.5 text-gray-600 transition-colors duration-300">
                         <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span> Preparando motor...
                     </div>
                     <div id="sync-last-time" class="text-[10px] text-green-600 mt-0.5" style="display: none;">Sincronización exitosa</div>
+                    <div id="sync-empresa-id-display" class="text-[10px] text-purple-600 font-semibold mt-1">ID Empresa: Obteniendo...</div>
                 </div>
 
                 <nav class="sidebar-nav">
@@ -701,6 +702,26 @@
                         } else {
                             console.log("No hay nuevos registros pendientes por subir en este ciclo.");
                         }
+
+                        // --- NUEVO: FASE 2: Bajada de Datos (PULL) ---
+                        console.log("Iniciando fase de bajada (PULL)...");
+                        for (const tabla of tablas) {
+                            try {
+                                const urlBajada = `${SERVER_URL}${RUTAS_VPS[tabla]}?id_empresa=${idEmpresaActual || ''}`;
+                                const res = await fetch(urlBajada);
+                                if (res.ok) {
+                                    const datosRemotos = await res.json();
+                                    if (datosRemotos && datosRemotos.length > 0) {
+                                        // console.log(`Descargados ${datosRemotos.length} registros de '${tabla}' desde el VPS.`);
+                                        await window.nexusAPI.invoke('insertar-o-actualizar-lote-remoto', { tabla: tabla, datos: datosRemotos });
+                                    }
+                                } else {
+                                    console.error(`Error al bajar datos de '${tabla}':`, res.status);
+                                }
+                            } catch (errPull) {
+                                console.error(`Error de red al bajar tabla '${tabla}':`, errPull);
+                            }
+                        }
                     } else {
                         console.warn("Nexus API .invoke no disponible para la sincronización.");
                     }
@@ -716,30 +737,51 @@
         }
 
         async function iniciarEntorno() {
-            // Forzamos el inicio del motor independientemente de la sesión
-            // Esto arregla el error de "Preparando motor..." estático
             setInterval(iniciarSincronizacionSilenciosa, 10000); // Cada 10s
-            iniciarSincronizacionSilenciosa();
             
             if (window.nexusAPI && window.nexusAPI.obtenerSesion) {
                 try {
                     const sesion = await window.nexusAPI.obtenerSesion();
+                    console.log("Sesión obtenida en inicio.html:", sesion);
+                    
+                    const rifDisplay = document.getElementById('company-rif-display');
+                    const empDisplay = document.getElementById('sync-empresa-id-display');
+                    
                     if (sesion && sesion.idEmpresa) {
                         idEmpresaActual = sesion.idEmpresa;
                         
-                        // Mostrar RIF
-                        const rifDisplay = document.getElementById('company-rif-display');
                         if (rifDisplay) {
                             rifDisplay.textContent = 'RIF: ' + idEmpresaActual;
                             rifDisplay.style.display = 'block';
                         }
+                        if (empDisplay) {
+                            empDisplay.textContent = 'Empresa: ' + idEmpresaActual;
+                            empDisplay.className = 'text-[10px] text-purple-700 font-semibold mt-1 bg-purple-50 py-0.5 px-2 rounded border border-purple-200 inline-block';
+                        }
+                    } else {
+                        if (rifDisplay) rifDisplay.textContent = 'RIF: No asignado';
+                        if (empDisplay) {
+                            empDisplay.textContent = 'Empresa: NINGUNA (sesion vacia/nula)';
+                            empDisplay.className = 'text-[10px] text-red-600 font-semibold mt-1 bg-red-50 py-0.5 px-2 rounded border border-red-200 inline-block';
+                        }
                     }
                 } catch (e) {
                     console.error("Error al obtener sesión:", e);
+                    const empDisplay = document.getElementById('sync-empresa-id-display');
+                    if (empDisplay) {
+                        empDisplay.textContent = 'Empresa: Error al leer sesión';
+                        empDisplay.className = 'text-[10px] text-red-600 font-semibold mt-1';
+                    }
                 }
             } else {
                 console.warn("Nexus API IPC no detectado en inicio.html");
+                const empDisplay = document.getElementById('sync-empresa-id-display');
+                if (empDisplay) {
+                    empDisplay.textContent = 'Empresa: API IPC no disponible';
+                }
             }
+
+            iniciarSincronizacionSilenciosa();
         }
 
         // Lanzar entorno al cargar

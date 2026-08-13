@@ -1140,6 +1140,44 @@ ipcMain.handle('marcar-como-sincronizado-lote', async (event, { tabla, ids }) =>
     });
 });
 
+ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos }) => {
+    return new Promise((resolve) => {
+        if (!datos || datos.length === 0) return resolve({ success: true });
+
+        let completed = 0;
+        let hasError = false;
+
+        db.serialize(() => {
+            db.run("BEGIN TRANSACTION");
+            datos.forEach(registro => {
+                // Forzar que el estado de sincronización sea 1 porque viene de la nube
+                registro.sync_status = 1;
+
+                const columnas = Object.keys(registro);
+                const valores = Object.values(registro);
+                const placeholders = columnas.map(() => '?').join(',');
+
+                const query = `INSERT OR REPLACE INTO ${tabla} (${columnas.join(',')}) VALUES (${placeholders})`;
+
+                db.run(query, valores, (err) => {
+                    if (err) {
+                        console.error(`Error Upsert en ${tabla}:`, err);
+                        hasError = true;
+                    }
+                    completed++;
+                    if (completed === datos.length) {
+                        if (hasError) {
+                            db.run("ROLLBACK", () => resolve({ success: false, message: 'Error en transaccion de bajada' }));
+                        } else {
+                            db.run("COMMIT", () => resolve({ success: true }));
+                        }
+                    }
+                });
+            });
+        });
+    });
+});
+
 
 // ==================== RESTAURADOS Y ACTUALIZADOS ====================
 
@@ -1398,15 +1436,18 @@ ipcMain.handle('agregar-proveedor-detallado', async (event, data) => {
         if (!nombre) return resolve({ success: false, msg: "El nombre del proveedor es obligatorio." });
         const nom = nombre.trim().toUpperCase();
 
-        db.run(
-            `INSERT INTO proveedores (nombre, rubro, anden, telefono) VALUES (?, ?, ?, ?)
-             ON CONFLICT(nombre) DO UPDATE SET rubro=excluded.rubro, anden=excluded.anden, telefono=excluded.telefono`,
-            [nom, rubro ? rubro.trim() : '', anden ? anden.trim() : '', telefono ? telefono.trim() : ''],
-            function(err) {
-                if (err) resolve({ success: false, msg: err.message });
-                else resolve({ success: true, id: this.lastID, nombre: nom });
-            }
-        );
+        db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
+            let idEmpresa = rowConfig ? rowConfig.valor : null;
+            db.run(
+                `INSERT INTO proveedores (id_empresa, sync_status, nombre, rubro, anden, telefono) VALUES (?, 0, ?, ?, ?, ?)
+                 ON CONFLICT(nombre) DO UPDATE SET rubro=excluded.rubro, anden=excluded.anden, telefono=excluded.telefono`,
+                [idEmpresa, nom, rubro ? rubro.trim() : '', anden ? anden.trim() : '', telefono ? telefono.trim() : ''],
+                function(err) {
+                    if (err) resolve({ success: false, msg: err.message });
+                    else resolve({ success: true, id: this.lastID, nombre: nom });
+                }
+            );
+        });
     });
 });
 
@@ -1419,22 +1460,25 @@ ipcMain.handle('agregar-deuda-proveedor', async (event, data) => {
         }
         
         const provNombre = proveedor.trim().toUpperCase();
-        db.run(`INSERT OR IGNORE INTO proveedores (nombre) VALUES (?)`, [provNombre], () => {
-            const fechaFinal = fecha || new Date().toISOString();
-            const cant = parseFloat(cantidad) || 1;
-            const prec = parseFloat(precio) || 0;
-            const total = parseFloat(monto) || (cant * prec);
+        db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
+            let idEmpresa = rowConfig ? rowConfig.valor : null;
+            db.run(`INSERT OR IGNORE INTO proveedores (id_empresa, sync_status, nombre) VALUES (?, 0, ?)`, [idEmpresa, provNombre], () => {
+                const fechaFinal = fecha || new Date().toISOString();
+                const cant = parseFloat(cantidad) || 1;
+                const prec = parseFloat(precio) || 0;
+                const total = parseFloat(monto) || (cant * prec);
 
-            db.run(`INSERT INTO deudas_proveedores (proveedor, concepto, cantidad, precio, monto, fecha) VALUES (?, ?, ?, ?, ?, ?)`,
-                [provNombre, concepto.trim(), cant, prec, total, fechaFinal],
-                function(errIns) {
-                    if (errIns) {
-                        resolve({ success: false, msg: errIns.message });
-                    } else {
-                        resolve({ success: true, id: this.lastID });
+                db.run(`INSERT INTO deudas_proveedores (id_empresa, sync_status, proveedor, concepto, cantidad, precio, monto, fecha) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
+                    [idEmpresa, provNombre, concepto.trim(), cant, prec, total, fechaFinal],
+                    function(errIns) {
+                        if (errIns) {
+                            resolve({ success: false, msg: errIns.message });
+                        } else {
+                            resolve({ success: true, id: this.lastID });
+                        }
                     }
-                }
-            );
+                );
+            });
         });
     });
 });
@@ -1450,16 +1494,19 @@ ipcMain.handle('registrar-abono-proveedor', async (event, data) => {
         const provNombre = proveedor.trim().toUpperCase();
         const fechaFinal = fecha || new Date().toISOString();
 
-        db.run(`INSERT INTO abonos_proveedores (proveedor, monto_divisa, monto_movil, metodo_pago, banco, fecha) VALUES (?, ?, ?, ?, ?, ?)`,
-            [provNombre, parseFloat(monto_divisa) || 0, parseFloat(monto_movil) || 0, metodo_pago || 'EFECTIVO', banco || '', fechaFinal],
-            function(err) {
-                if (err) {
-                    resolve({ success: false, msg: err.message });
-                } else {
-                    resolve({ success: true, id: this.lastID });
+        db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
+            let idEmpresa = rowConfig ? rowConfig.valor : null;
+            db.run(`INSERT INTO abonos_proveedores (id_empresa, sync_status, proveedor, monto_divisa, monto_movil, metodo_pago, banco, fecha) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
+                [idEmpresa, provNombre, parseFloat(monto_divisa) || 0, parseFloat(monto_movil) || 0, metodo_pago || 'EFECTIVO', banco || '', fechaFinal],
+                function(err) {
+                    if (err) {
+                        resolve({ success: false, msg: err.message });
+                    } else {
+                        resolve({ success: true, id: this.lastID });
+                    }
                 }
-            }
-        );
+            );
+        });
     });
 });
 
@@ -1589,17 +1636,20 @@ ipcMain.handle('eliminar-abono-proveedor', async (event, id) => {
 ipcMain.handle('guardar-movimiento-cesta', async (event, datos) => {
     return new Promise((resolve) => {
         const { fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad } = datos;
-        db.run(
-            `INSERT INTO movimientos_cestas (fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad) VALUES (?, ?, ?, ?, ?, ?)`,
-            [fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad],
-            function(err) {
-                if (err) {
-                    resolve({ success: false, msg: err.message });
-                } else {
-                    resolve({ success: true, id: this.lastID });
+        db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
+            let idEmpresa = rowConfig ? rowConfig.valor : null;
+            db.run(
+                `INSERT INTO movimientos_cestas (id_empresa, sync_status, fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
+                [idEmpresa, fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad],
+                function(err) {
+                    if (err) {
+                        resolve({ success: false, msg: err.message });
+                    } else {
+                        resolve({ success: true, id: this.lastID });
+                    }
                 }
-            }
-        );
+            );
+        });
     });
 });
 
