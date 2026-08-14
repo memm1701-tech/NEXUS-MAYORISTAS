@@ -364,7 +364,15 @@
         };
 
         ipc.removeAllListeners('guardar-carga-resultado');
-        ipc.on('guardar-carga-resultado', (event, res) => { if(res.success) { document.getElementById('cantidadCarga').value = ''; cargarTablaCargasVehiculo(); } });
+        ipc.on('guardar-carga-resultado', (event, res) => { 
+            if(res.success) { 
+                const el = document.getElementById('cantidadCarga');
+                if (el) el.value = ''; 
+                if (typeof cargarTablaCargasVehiculo === 'function' && document.getElementById('listaCargasVehiculo')) {
+                    cargarTablaCargasVehiculo(); 
+                }
+            } 
+        });
 
         window.cargarTablaCargasVehiculo = async function() {
             const tbody = document.getElementById('listaCargasVehiculo');

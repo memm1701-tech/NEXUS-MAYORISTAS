@@ -596,7 +596,7 @@
                 if(btnSpinner) btnSpinner.classList.remove('hidden');
 
                 const result = await loginConSuperTokens(email, password, 'admin');
-                console.log('Respuesta API Login Admin:', result);
+                console.log('🔑 [LOGIN RESPONSE] Resultado completo de la API:', result);
                 
                 if(btn) btn.disabled = false;
                 if(btnText) btnText.classList.remove('hidden');
@@ -604,14 +604,23 @@
 
                 if (result.success) {
                     showMessage('Inicio de sesión exitoso', 'success');
-                    // Extraer idEmpresa real o usar mock
-                    const idEmpresa = result.data?.idEmpresa || 'EMP-TEST-123';
+                    
+                    // Logueamos la estructura completa del usuario/token
+                    console.log('%c 🔐 [DATOS DE SESIÓN/TOKEN] Estructura recibida:', 'color: #3b82f6; font-weight: bold; font-size: 13px;', result.data);
+
+                    // Extraer idEmpresa del objeto devuelto o metadata
+                    const idEmpresa = result.data?.idEmpresa || result.data?.metadata?.idEmpresa || 'EMP-TEST-123';
+                    
                     const sesionData = {
                         ...(result.data || {}),
                         rol: 'admin',
-                        idEmpresa: idEmpresa
+                        idEmpresa: idEmpresa,
+                        email: email,
+                        fecha_login: new Date().toISOString()
                     };
                     
+                    console.log('%c ✅ [SESIÓN A GUARDAR] Objeto guardado localmente:', 'color: #10b981; font-weight: bold; font-size: 13px;', sesionData);
+
                     if (window.nexusAPI && window.nexusAPI.guardarSesion) {
                         await window.nexusAPI.guardarSesion(sesionData);
                     }
@@ -619,16 +628,18 @@
                     if (window.nexusAPI && window.nexusAPI.ejecutarMigracion) {
                         try {
                             const migracion = await window.nexusAPI.ejecutarMigracion(idEmpresa);
+                            console.log('🔄 [MIGRACIÓN ADOPCIÓN DATOS]:', migracion);
                             if (!migracion.success) {
                                 showMessage('Error de datos: ' + migracion.message, 'error');
                                 return;
                             }
                         } catch(err) {
-                            console.error(err);
+                            console.error('❌ Error ejecutando migración:', err);
                         }
                     }
                     if (window.nexusAPI) window.nexusAPI.abrirVentanaPrincipal('inicio.html');
                 } else {
+                    console.warn('⚠️ [LOGIN FALLIDO]:', result.message);
                     showMessage(result.message, 'error');
                 }
             });
@@ -650,7 +661,7 @@
 
                 if (result.success) {
                     showMessage('Inicio de sesión exitoso', 'success');
-                    const idEmpresa = result.data?.idEmpresa || 'EMP-TEST-123';
+                    const idEmpresa = result.data?.idEmpresa || result.data?.metadata?.idEmpresa || 'EMP-TEST-123';
                     const sesionData = {
                         ...(result.data || {}),
                         rol: 'cajera',
@@ -715,8 +726,7 @@
 <script>// Inicialización de SuperTokens
     const API_URL = 'http://68.168.218.147:4030';
     
-    // Función para manejar Login (con el SDK de SuperTokens si se importara, 
-    // pero simulamos las peticiones REST nativas como pidió el documento)
+    // Función para manejar Login
     async function loginConSuperTokens(email, password, rolEsperado) {
         try {
             const response = await fetch(API_URL + '/auth/signin', {
@@ -730,13 +740,36 @@
             
             if (response.ok) {
                 const data = await response.json();
+                console.log('%c 📥 [SUPERTOKENS RAW RESPONSE]:', 'color: #8b5cf6; font-weight: bold;', data);
                 if (data.status === 'OK') {
-                    // El SDK manejaría las cookies automáticamente si CORS/Credentials están bien.
-                    return { success: true, data: data };
+                    let idEmpresaReal = null;
+                    let userMetadata = {};
+
+                    if (data.user && data.user.id) {
+                        try {
+                            const metaRes = await fetch(API_URL + '/auth-api/obtener-metadata/' + data.user.id);
+                            if (metaRes.ok) {
+                                const metaJson = await metaRes.json();
+                                userMetadata = metaJson.metadata || {};
+                                idEmpresaReal = userMetadata.idEmpresa;
+                            }
+                        } catch(mErr) {
+                            console.error('Error consultando metadata:', mErr);
+                        }
+                    }
+
+                    if (!idEmpresaReal) {
+                        const ownerIdLocal = localStorage.getItem('owner_id_empresa') || localStorage.getItem('id_empresa');
+                        idEmpresaReal = data.idEmpresa || ownerIdLocal || 'EMP-TEST-123';
+                    }
+
+                    return { success: true, data: { ...data, idEmpresa: idEmpresaReal, metadata: userMetadata } };
                 } else {
+                    console.warn('⚠️ [SUPERTOKENS STATUS]:', data.status, data);
                     return { success: false, message: 'Credenciales inválidas' };
                 }
             } else {
+                console.error('❌ [SUPERTOKENS HTTP ERROR]:', response.status, response.statusText);
                 return { success: false, message: 'Error de red o servidor' };
             }
         } catch(e) {
