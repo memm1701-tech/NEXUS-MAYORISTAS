@@ -1157,6 +1157,37 @@ ipcMain.handle('cerrar-sesion', async () => {
     });
 });
 
+// Obtener Configuración General del Sistema
+ipcMain.handle('obtener-configuracion', async () => {
+    return new Promise((resolve) => {
+        db.all(`SELECT clave, valor FROM configuracion_sistema`, [], (err, rows) => {
+            if (err || !rows) return resolve({});
+            const config = {};
+            rows.forEach(r => {
+                config[r.clave] = r.valor;
+            });
+            resolve(config);
+        });
+    });
+});
+
+// Guardar Configuración General del Sistema
+ipcMain.handle('guardar-configuracion', async (event, configObj) => {
+    return new Promise((resolve) => {
+        if (!configObj || typeof configObj !== 'object') return resolve({ success: false });
+        const keys = Object.keys(configObj);
+        if (keys.length === 0) return resolve({ success: true });
+        
+        let pending = keys.length;
+        keys.forEach(k => {
+            db.run(`INSERT OR REPLACE INTO configuracion_sistema (clave, valor) VALUES (?, ?)`, [k, String(configObj[k])], () => {
+                pending--;
+                if (pending === 0) resolve({ success: true });
+            });
+        });
+    });
+});
+
 ipcMain.on('cerrar-y-volver-login', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (win) {
