@@ -583,21 +583,22 @@
         let idEmpresaActual = null;
         let SERVER_URL = 'http://68.168.218.147:4020'; // Puerto 4020 del VPS Maestro
 
+        // ORDEN JERÁRQUICO ESTRICTO: Tablas maestras/padres primero, luego cabeceras, y finalmente detalles dependientes
         const RUTAS_VPS = {
             'vehiculos': '/api/maestro/vehiculos',
             'maestro_unidades': '/api/maestro/maestro_unidades',
+            'configuracion_sistema': '/api/maestro/configuracion_sistema',
+            'metodos_pago': '/api/maestro/metodos_pago',
+            'proveedores': '/api/maestro/proveedores',
             'maestro_subtipos': '/api/maestro/maestro_subtipos',
             'clientes': '/api/maestro/clientes',
             'vehiculo_cargas': '/api/maestro/vehiculo_cargas',
             'ventas_cargas': '/api/maestro/ventas_cargas',
-            'cargas_cerradas': '/api/maestro/cargas_cerradas',
             'mermas_cargas': '/api/maestro/mermas_cargas',
             'rendiciones_cargas': '/api/maestro/rendiciones_cargas',
+            'cargas_cerradas': '/api/maestro/cargas_cerradas',
             'abonos_deudas': '/api/maestro/abonos_deudas',
             'reversos_deudas': '/api/maestro/reversos_deudas',
-            'configuracion_sistema': '/api/maestro/configuracion_sistema',
-            'metodos_pago': '/api/maestro/metodos_pago',
-            'proveedores': '/api/maestro/proveedores',
             'deudas_proveedores': '/api/maestro/deudas_proveedores',
             'abonos_proveedores': '/api/maestro/abonos_proveedores',
             'movimientos_cestas': '/api/maestro/movimientos_cestas'
@@ -675,10 +676,15 @@
                                 console.log(`Subiendo ${registros.length} registros de la tabla '${tabla}'...`);
                                 
                                 try {
+                                    // Sanitizar payload: Si es ventas_cargas, omitir id_detalle local para no colisionar con el pkey de PostgreSQL
+                                    const payloadLote = tabla === 'ventas_cargas'
+                                        ? registros.map(({ id_detalle, ...resto }) => resto)
+                                        : registros;
+
                                     const res = await fetch(SERVER_URL + RUTAS_VPS[tabla], {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(registros) // Mandamos el lote
+                                        body: JSON.stringify(payloadLote) // Mandamos el lote sanitizado
                                     });
 
                                     if (res.ok) {
@@ -737,7 +743,7 @@
         }
 
         async function iniciarEntorno() {
-            setInterval(iniciarSincronizacionSilenciosa, 10000); // Cada 10s
+            setInterval(iniciarSincronizacionSilenciosa, 1500); // Cada 1.5s
             
             if (window.nexusAPI && window.nexusAPI.obtenerSesion) {
                 try {

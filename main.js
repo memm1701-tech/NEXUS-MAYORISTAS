@@ -352,13 +352,28 @@ ipcMain.handle('obtener-resumen-deudas', async () => {
                 COALESCE(vh.nombre, 'SISTEMA - SALDOS ANTERIORES') AS vehiculo_nombre,
                 COALESCE(vc.fecha_entrada, v.fecha_entrada) AS fecha_entrada,
                 cc.fecha_cierre,
-                SUM((CAST(REPLACE(v.precio, '$', '') AS REAL) * CAST(v.cantidad AS INTEGER)) - v.pagado) AS total_deuda,
-                GROUP_CONCAT(DISTINCT CASE WHEN v.estado_zinc = 0 THEN v.cliente END) AS clientes_deudores
+                ROUND(
+                    SUM(CAST(REPLACE(v.precio, '$', '') AS REAL) * CAST(v.cantidad AS INTEGER)) 
+                    - COALESCE(ab.total_abonos, 0) 
+                    + COALESCE(rev.total_reversos, 0)
+                , 2) AS total_deuda,
+                GROUP_CONCAT(DISTINCT v.cliente) AS clientes_deudores
             FROM ventas_cargas v
             LEFT JOIN vehiculo_cargas vc ON v.id_carga = vc.id_carga
             LEFT JOIN vehiculos vh ON v.vehiculo_id = vh.id
             LEFT JOIN cargas_cerradas cc ON v.id_carga = cc.id_carga
+            LEFT JOIN (
+                SELECT id_carga, SUM(monto_divisa + monto_movil) AS total_abonos
+                FROM abonos_deudas
+                GROUP BY id_carga
+            ) ab ON v.id_carga = ab.id_carga
+            LEFT JOIN (
+                SELECT id_carga, SUM(monto_divisa + monto_movil) AS total_reversos
+                FROM reversos_deudas
+                GROUP BY id_carga
+            ) rev ON v.id_carga = rev.id_carga
             WHERE v.metodo_pago = 'CRÉDITO'
+              AND (v.id_carga > 0 OR (v.id_carga = 0 AND v.tipo_medida = 'DEUDA ANTIGUA'))
             GROUP BY v.id_carga, v.vehiculo_id, vehiculo_nombre, COALESCE(vc.fecha_entrada, v.fecha_entrada), cc.fecha_cierre
             HAVING total_deuda > 0.01
             ORDER BY v.id_carga DESC
@@ -375,7 +390,26 @@ ipcMain.handle('obtener-resumen-deudas', async () => {
     });
 });
 
+const SERVER_URL_API = 'http://68.168.218.147:4020';
+
+async function eliminarRemoto(tabla, id) {
+    if (!id) return;
+    try {
+        const res = await fetch(`${SERVER_URL_API}/api/maestro/${tabla}/${id}`, {
+            method: 'DELETE'
+        });
+        if (res.ok) {
+            console.log(`[Sync DELETE Éxito] Eliminado ID ${id} de '${tabla}' en el VPS.`);
+        } else {
+            console.warn(`[Sync DELETE Respuesta Error] '${tabla}' ID ${id}: ${res.status}`);
+        }
+    } catch (e) {
+        console.error(`[Sync DELETE Error Red] No se pudo conectar al VPS para eliminar '${tabla}' ID ${id}:`, e.message);
+    }
+}
+
 ipcMain.on('eliminar-cliente', (event, id) => {
+    eliminarRemoto('clientes', id);
     db.run(`DELETE FROM clientes WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
@@ -429,7 +463,13 @@ ipcMain.handle('obtener-subtipos-maestros', async (event, unidad_id) => {
 });
 
 ipcMain.on('eliminar-unidad-maestra', (event, id) => {
+    eliminarRemoto('maestro_unidades', id);
     db.run(`DELETE FROM maestro_unidades WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+});
+
+ipcMain.on('eliminar-subtipo-maestro', (event, id) => {
+    eliminarRemoto('maestro_subtipos', id);
+    db.run(`DELETE FROM maestro_subtipos WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 // --- IPC para Métodos de Pago ---
@@ -462,6 +502,7 @@ ipcMain.on('cambiar-estado-metodo-pago', (event, { id, estado }) => {
 });
 
 ipcMain.on('eliminar-metodo-pago', (event, id) => {
+    eliminarRemoto('metodos_pago', id);
     db.run(`DELETE FROM metodos_pago WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
@@ -504,13 +545,19 @@ ipcMain.on('guardar-carga-vehiculo', (event, data) => {
 
 ipcMain.on('eliminar-fila-venta', (event, data) => {
     const { id_carga, fila_id } = data;
-    db.run(`DELETE FROM ventas_cargas WHERE id_carga = ? AND fila_id = ?`, [id_carga, fila_id], (err) => {
-        event.reply('eliminar-fila-venta-resultado', { success: !err });
+    db.get(`SELECT id_detalle FROM ventas_cargas WHERE id_carga = ? AND fila_id = ?`, [id_carga, fila_id], (err, row) => {
+        if (row && row.id_detalle) {
+            eliminarRemoto('ventas_cargas', row.id_detalle);
+        }
+        db.run(`DELETE FROM ventas_cargas WHERE id_carga = ? AND fila_id = ?`, [id_carga, fila_id], (err) => {
+            event.reply('eliminar-fila-venta-resultado', { success: !err });
+        });
     });
 });
 
 ipcMain.on('eliminar-carga-vehiculo', (event, carga_id) => {
-    db.run(`DELETE FROM vehiculo_cargas WHERE id = ?`, [carga_id], function(err) {
+    eliminarRemoto('vehiculo_cargas', carga_id);
+    db.run(`DELETE FROM vehiculo_cargas WHERE id = ? OR id_carga = ?`, [carga_id, carga_id], function(err) {
         event.reply('eliminar-carga-resultado', { success: !err });
     });
 });
@@ -540,20 +587,31 @@ ipcMain.on('cerrar-carga-vehiculo', (event, data) => {
     
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
-        db.run(`INSERT INTO cargas_cerradas 
-            (id_empresa, sync_status, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto) 
-            VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [idEmpresa, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto], 
-            function(err) {
-                if (err) {
-                    event.reply('cerrar-carga-resultado', { success: false, msg: err.message });
-                    return;
-                }
-                db.run(`UPDATE vehiculo_cargas SET estado = 'CERRADA' WHERE id_carga = ?`, [id_carga], function(err2) {
+        
+        db.get(`SELECT id_cierre FROM cargas_cerradas WHERE id_carga = ?`, [id_carga], (errCheck, rowCheck) => {
+            if (rowCheck) {
+                // Ya existe el cierre, nos aseguramos de que el vehículo esté marcado como CERRADA
+                db.run(`UPDATE vehiculo_cargas SET estado = 'CERRADA', sync_status = 0 WHERE id_carga = ?`, [id_carga], function(err2) {
                     event.reply('cerrar-carga-resultado', { success: !err2, msg: err2 ? err2.message : '' });
                 });
+                return;
             }
-        );
+
+            db.run(`INSERT INTO cargas_cerradas 
+                (id_empresa, sync_status, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto) 
+                VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [idEmpresa, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto], 
+                function(err) {
+                    if (err) {
+                        event.reply('cerrar-carga-resultado', { success: false, msg: err.message });
+                        return;
+                    }
+                    db.run(`UPDATE vehiculo_cargas SET estado = 'CERRADA', sync_status = 0 WHERE id_carga = ?`, [id_carga], function(err2) {
+                        event.reply('cerrar-carga-resultado', { success: !err2, msg: err2 ? err2.message : '' });
+                    });
+                }
+            );
+        });
     });
 });
 
@@ -571,7 +629,7 @@ ipcMain.on('guardar-deuda-antigua-sistema', (event, data) => {
             ) VALUES (?, 0, ?, 0, 0, ?, ?, ?, ?, ?, 1, 'CRÉDITO', '', 0.0, 0)
         `;
         
-        const fila_id = "ANT_" + Date.now(); 
+        const fila_id = (tipoMedida === 'DEUDA ANTIGUA' ? "ANT_" : "MAN_") + Date.now(); 
         const precioStr = `${data.monto} $`;
 
         db.run(query, [idEmpresa, fila_id, data.fecha, data.cliente, tipoMedida, data.descripcion, precioStr], function(err) {
@@ -595,12 +653,28 @@ ipcMain.handle('obtener-cargas-deuda-cliente', async (event, clienteNombre) => {
                 COALESCE(vh.nombre, 'SISTEMA - SALDOS ANTERIORES') AS vehiculo_nombre,
                 COALESCE(vc.fecha_entrada, v.fecha_entrada) AS fecha_entrada,
                 cc.fecha_cierre,
-                SUM((CAST(REPLACE(v.precio, '$', '') AS REAL) * CAST(v.cantidad AS INTEGER)) - v.pagado) AS total_deuda_carga
+                ROUND(
+                    SUM(CAST(REPLACE(v.precio, '$', '') AS REAL) * CAST(v.cantidad AS INTEGER)) 
+                    - COALESCE(ab.total_abonos, 0) 
+                    + COALESCE(rev.total_reversos, 0)
+                , 2) AS total_deuda_carga
             FROM ventas_cargas v
             LEFT JOIN vehiculo_cargas vc ON v.id_carga = vc.id_carga
             LEFT JOIN vehiculos vh ON v.vehiculo_id = vh.id
             LEFT JOIN cargas_cerradas cc ON v.id_carga = cc.id_carga
-            WHERE v.cliente COLLATE NOCASE = ? AND v.metodo_pago = 'CRÉDITO'
+            LEFT JOIN (
+                SELECT id_carga, cliente, SUM(monto_divisa + monto_movil) AS total_abonos
+                FROM abonos_deudas
+                GROUP BY id_carga, cliente COLLATE NOCASE
+            ) ab ON v.id_carga = ab.id_carga AND v.cliente COLLATE NOCASE = ab.cliente COLLATE NOCASE
+            LEFT JOIN (
+                SELECT id_carga, cliente, SUM(monto_divisa + monto_movil) AS total_reversos
+                FROM reversos_deudas
+                GROUP BY id_carga, cliente COLLATE NOCASE
+            ) rev ON v.id_carga = rev.id_carga AND v.cliente COLLATE NOCASE = rev.cliente COLLATE NOCASE
+            WHERE v.cliente COLLATE NOCASE = ? 
+              AND v.metodo_pago = 'CRÉDITO'
+              AND (v.id_carga > 0 OR (v.id_carga = 0 AND v.tipo_medida = 'DEUDA ANTIGUA'))
             GROUP BY v.id_carga, v.vehiculo_id, vehiculo_nombre, COALESCE(vc.fecha_entrada, v.fecha_entrada), cc.fecha_cierre
             HAVING total_deuda_carga > 0.01
             ORDER BY v.id_carga DESC
@@ -712,13 +786,37 @@ ipcMain.handle('obtener-deudores-globales', async () => {
     return new Promise((resolve) => {
         const query = `
             SELECT 
-                cliente,
-                SUM((CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) - pagado) AS total_deuda
-            FROM ventas_cargas
-            WHERE metodo_pago = 'CRÉDITO' AND cliente IS NOT NULL AND cliente != ''
-            GROUP BY cliente COLLATE NOCASE
+                sub.cliente,
+                ROUND(SUM(sub.cargo) - SUM(sub.abono), 2) AS total_deuda
+            FROM (
+                SELECT 
+                    cliente,
+                    (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS cargo,
+                    0 AS abono
+                FROM ventas_cargas
+                WHERE metodo_pago = 'CRÉDITO' AND cliente IS NOT NULL AND cliente != '' AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+                
+                UNION ALL
+                
+                SELECT 
+                    cliente,
+                    0 AS cargo,
+                    (monto_divisa + monto_movil) AS abono
+                FROM abonos_deudas
+                WHERE cliente IS NOT NULL AND cliente != ''
+                
+                UNION ALL
+                
+                SELECT 
+                    cliente,
+                    (monto_divisa + monto_movil) AS cargo,
+                    0 AS abono
+                FROM reversos_deudas
+                WHERE cliente IS NOT NULL AND cliente != ''
+            ) sub
+            GROUP BY sub.cliente COLLATE NOCASE
             HAVING total_deuda > 0.01
-            ORDER BY cliente ASC
+            ORDER BY sub.cliente ASC
         `;
         db.all(query, [], (err, rows) => {
             if (err) console.error("Error obteniendo deudores globales:", err.message);
@@ -1154,13 +1252,54 @@ ipcMain.handle('marcar-como-sincronizado-lote', async (event, { tabla, ids }) =>
 
 ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos }) => {
     return new Promise((resolve) => {
-        if (!datos || datos.length === 0) return resolve({ success: true });
-
-        let completed = 0;
-        let hasError = false;
+        const pkMap = {
+            'vehiculos': 'id',
+            'maestro_unidades': 'id',
+            'maestro_subtipos': 'id',
+            'clientes': 'id',
+            'vehiculo_cargas': 'id_carga',
+            'ventas_cargas': 'id_detalle',
+            'cargas_cerradas': 'id_cierre',
+            'mermas_cargas': 'merma_id',
+            'rendiciones_cargas': 'rendicion_id',
+            'abonos_deudas': 'id_abono',
+            'reversos_deudas': 'id_reverso',
+            'configuracion_sistema': 'id',
+            'metodos_pago': 'id',
+            'proveedores': 'id',
+            'cuentas_bancarias': 'id_cuenta',
+            'movimientos_bancarios': 'id_movimiento'
+        };
+        const pk = pkMap[tabla];
 
         db.serialize(() => {
             db.run("BEGIN TRANSACTION");
+
+            if (!datos || datos.length === 0) {
+                if (pk) {
+                    db.run(`DELETE FROM ${tabla} WHERE sync_status = 1`, (err) => {
+                        db.run(err ? "ROLLBACK" : "COMMIT", () => resolve({ success: !err }));
+                    });
+                } else {
+                    db.run("COMMIT", () => resolve({ success: true }));
+                }
+                return;
+            }
+
+            // Eliminar registros locales que ya no existen en el VPS (solo si estaban marcados como sincronizados)
+            if (pk) {
+                const remoteIds = datos.map(r => r[pk]).filter(id => id !== undefined && id !== null);
+                if (remoteIds.length > 0) {
+                    const placeholdersDel = remoteIds.map(() => '?').join(',');
+                    db.run(`DELETE FROM ${tabla} WHERE sync_status = 1 AND ${pk} NOT IN (${placeholdersDel})`, remoteIds, (errDel) => {
+                        if (errDel) console.error(`Error borrando huerfanos en ${tabla}:`, errDel);
+                    });
+                }
+            }
+
+            let completed = 0;
+            let hasError = false;
+
             datos.forEach(registro => {
                 // Forzar que el estado de sincronización sea 1 porque viene de la nube
                 registro.sync_status = 1;
@@ -1198,7 +1337,7 @@ ipcMain.handle('obtener-detalle-deudores-carga', async (event, id_carga) => {
         const query = `
             SELECT cliente, tipo_medida, sub_medida, cantidad, precio, pagado
             FROM ventas_cargas 
-            WHERE id_carga = ? AND metodo_pago = 'CRÉDITO'
+            WHERE id_carga = ? AND metodo_pago = 'CRÉDITO' AND (id_carga > 0 OR tipo_medida = 'DEUDA ANTIGUA')
             ORDER BY cliente ASC
         `;
         db.all(query, [id_carga], (err, rows) => {

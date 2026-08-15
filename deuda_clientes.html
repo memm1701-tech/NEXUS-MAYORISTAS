@@ -671,7 +671,7 @@ window.renderizarCuaderno = function() {
             const monto = parseFloat(document.getElementById('lib-cargo').value) || 0;
             if (monto <= 0) { mostrarToast("Ingresa un monto de deuda válido.", "error"); return; }
             
-            let tipoDeDeuda = fechaSeleccionada < fechaHoy ? 'DEUDA ANTIGUA' : 'DEUDA';
+            let tipoDeDeuda = 'DEUDA MANUAL';
 
             ipc.send('guardar-deuda-antigua-sistema', {
                 cliente: clienteSeleccionadoActual, monto: monto, fecha: fechaParaBD, descripcion: concepto, tipo_medida: tipoDeDeuda

@@ -35,6 +35,48 @@
 
     .hidden { display: none !important; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Modal Personalizado de Confirmación */
+    .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.2s ease-out;
+    }
+    .modal-box {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 24px;
+        width: 90%;
+        max-width: 380px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        text-align: center;
+        border: 1px solid rgba(255,255,255,0.8);
+    }
+    .modal-icon {
+        width: 48px;
+        height: 48px;
+        background: #ffe4e6;
+        color: #e11d48;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px auto;
+    }
+    .modal-icon i { font-size: 24px; }
+    .modal-title { font-size: 1.25em; color: #0f172a; margin: 0 0 8px 0; font-weight: 800; }
+    .modal-msg { font-size: 0.9em; color: #475569; margin: 0 0 20px 0; line-height: 1.4; font-weight: 500; }
+    .modal-actions { display: flex; gap: 12px; }
+    .btn-modal-cancel { flex: 1; padding: 12px; background: #f1f5f9; color: #475569; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 0.9em; }
+    .btn-modal-cancel:hover { background: #e2e8f0; }
+    .btn-modal-danger { flex: 1; padding: 12px; background: #e11d48; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.2s; font-size: 0.9em; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.25); }
+    .btn-modal-danger:hover { background: #be123c; }
 </style>
 
 <div class="config-container">
@@ -162,11 +204,21 @@
                 </div>
             </div>
         </div>
-        <div class="table-container">
-            <table>
-                <thead><tr><th>Tipo</th><th>Tamaño</th><th>Cant.</th><th style="text-align: right">Acción</th></tr></thead>
-                <tbody id="listaCargasVehiculo"></tbody>
-            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL PERSONALIZADO DE CONFIRMACIÓN EN ESCRITORIO -->
+<div id="modalConfirmacionCustom" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-icon">
+            <i class="material-icons">delete_forever</i>
+        </div>
+        <h3 class="modal-title">¿Confirmar Eliminación?</h3>
+        <p id="modalMensajeCustom" class="modal-msg">¿Estás seguro de realizar esta acción?</p>
+        <div class="modal-actions">
+            <button onclick="cerrarModalConfirmacion()" class="btn-modal-cancel">Cancelar</button>
+            <button id="btnConfirmarCustom" class="btn-modal-danger">Aceptar</button>
         </div>
     </div>
 </div>
@@ -194,8 +246,9 @@
 
         window.cargarVehiculos = async function() {
             const tbody = document.getElementById('listaVehiculos');
+            if (!tbody) return;
             const vehiculos = await ipc.invoke('obtener-vehiculos');
-            if (vehiculos.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty-message">Sin vehículos.</td></tr>'; return; }
+            if (!vehiculos || vehiculos.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty-message">Sin vehículos.</td></tr>'; return; }
             tbody.innerHTML = vehiculos.map(v => `
                 <tr>
                     <td class="font-bold text-gray-800"><i class="material-icons align-middle text-gray-400 mr-2">local_shipping</i>${v.nombre}</td>
@@ -214,16 +267,22 @@
         };
 
         window.cargarUnidadesMaestras = async function() {
-            const lista = await ipc.invoke('obtener-unidades-maestras');
             const tbody = document.getElementById('tablaUnidadesRaiz');
             const selectPadre = document.getElementById('selectUnidadPadre');
             const selectCarga = document.getElementById('selectCargaCategoria');
+            if (!tbody || !selectPadre || !selectCarga) return;
+
+            const lista = await ipc.invoke('obtener-unidades-maestras');
             
+            // Guardar valores actuales para no perder el foco/selección
+            const prevPadre = selectPadre.value;
+            const prevCarga = selectCarga.value;
+
             tbody.innerHTML = '';
             selectPadre.innerHTML = '';
             selectCarga.innerHTML = '<option value="">Seleccione...</option>';
 
-            if (lista.length === 0) {
+            if (!lista || lista.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin categorías</td></tr>';
                 return;
             }
@@ -234,16 +293,62 @@
                 selectCarga.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
             });
 
-            // AUTO-SELECCIÓN DEL PRIMER ELEMENTO
+            // AUTO-SELECCIÓN O RESTAURACIÓN
             if (lista.length > 0) {
-                const primerId = lista[0].id;
-                selectPadre.value = primerId;
-                cargarSubtiposTabla(primerId);
+                if (prevPadre && lista.some(u => u.id.toString() === prevPadre)) {
+                    selectPadre.value = prevPadre;
+                } else {
+                    selectPadre.value = lista[0].id;
+                }
+                
+                if (prevCarga && lista.some(u => u.id.toString() === prevCarga)) {
+                    selectCarga.value = prevCarga;
+                }
+                
+                cargarSubtiposTabla(selectPadre.value);
             }
         };
 
+        // SISTEMA DE MODAL PERSONALIZADO
+        window.confirmarAccionCustom = function(mensaje, onConfirm) {
+            document.getElementById('modalMensajeCustom').innerText = mensaje;
+            const modal = document.getElementById('modalConfirmacionCustom');
+            const btnConfirm = document.getElementById('btnConfirmarCustom');
+            
+            modal.classList.remove('hidden');
+            
+            btnConfirm.onclick = function() {
+                modal.classList.add('hidden');
+                if (onConfirm) onConfirm();
+            };
+        };
+
+        window.cerrarModalConfirmacion = function() {
+            document.getElementById('modalConfirmacionCustom').classList.add('hidden');
+        };
+
         window.eliminarUnidad = function(id) {
-            if(confirm("¿Eliminar categoría?")) ipc.send('eliminar-unidad-maestra', id);
+            confirmarAccionCustom("¿Seguro que deseas eliminar esta categoría y sus variaciones?", () => {
+                ipc.send('eliminar-unidad-maestra', id);
+            });
+        };
+
+        window.eliminarSubtipo = function(id) {
+            confirmarAccionCustom("¿Seguro que deseas eliminar esta variación?", () => {
+                ipc.send('eliminar-subtipo-maestro', id);
+            });
+        };
+
+        window.eliminarMetodoPago = function(id) {
+            confirmarAccionCustom("¿Seguro que deseas eliminar este método de pago?", () => {
+                ipc.send('eliminar-metodo-pago', id);
+            });
+        };
+
+        window.eliminarCargaVehiculo = function(id) { 
+            confirmarAccionCustom("¿Seguro que deseas eliminar esta carga?", () => {
+                ipc.send('eliminar-carga-vehiculo', id);
+            });
         };
 
         document.getElementById('selectUnidadPadre').addEventListener('change', (e) => cargarSubtiposTabla(e.target.value));
@@ -284,12 +389,6 @@
             ipc.send('guardar-metodo-pago', nombre);
         };
 
-        window.eliminarMetodoPago = function(id) {
-            if(confirm("¿Seguro que deseas eliminar este método de pago?")) {
-                ipc.send('eliminar-metodo-pago', id);
-            }
-        };
-
         window.toggleEstadoMetodoPago = function(id, estadoActual) {
             const nuevoEstado = estadoActual === 1 ? 0 : 1;
             ipc.send('cambiar-estado-metodo-pago', { id: id, estado: nuevoEstado });
@@ -298,7 +397,8 @@
         window.cargarMetodosPago = async function() {
             const tbody = document.getElementById('listaMetodosPago');
             const metodos = await ipc.invoke('obtener-metodos-pago-config');
-            if (metodos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin métodos de pago.</td></tr>'; return; }
+            if (!tbody) return;
+            if (!metodos || metodos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin métodos de pago.</td></tr>'; return; }
             tbody.innerHTML = metodos.map(m => {
                 const iconoEstado = m.estado === 1 ? 'toggle_on' : 'toggle_off';
                 const colorEstado = m.estado === 1 ? '#10b981' : '#94a3b8';
@@ -316,72 +416,14 @@
             }).join('');
         };
 
-        ipc.removeAllListeners('resultado-operacion');
-        ipc.on('resultado-operacion', (event, res) => {
-            if(res.success) {
-                document.getElementById('nombreUnidadManual').value = '';
-                document.getElementById('nombreSubtipoManual').value = '';
-                document.getElementById('nombreMetodoPago').value = '';
-                cargarUnidadesMaestras();
-                cargarMetodosPago();
-            }
-        });
-
-        // CARGAS VEHÍCULO
-        window.abrirConfiguracionVehiculo = function(id, nombre) {
-            vehiculoActualId = id;
-            document.getElementById('titulo-vehiculo').innerHTML = `Vehículo: <span style="color:#2563eb">${nombre}</span>`;
-            document.getElementById('vista-principal').classList.add('hidden');
-            document.getElementById('vista-detalles').classList.remove('hidden');
-            cargarTablaCargasVehiculo();
-        };
-
-        window.volverVistaPrincipal = function() {
-            vehiculoActualId = null;
-            document.getElementById('vista-detalles').classList.add('hidden');
-            document.getElementById('vista-principal').classList.remove('hidden');
-        };
-
-        document.getElementById('selectCargaCategoria').addEventListener('change', async (e) => {
-            const selectSub = document.getElementById('selectCargaSubtipo');
-            if(!e.target.value) { selectSub.disabled = true; return; }
-            const subtipos = await ipc.invoke('obtener-subtipos-maestros', e.target.value);
-            selectSub.disabled = false;
-            selectSub.innerHTML = subtipos.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
-        });
-
-        window.agregarCargaVehiculo = function() {
-            const cat = document.getElementById('selectCargaCategoria');
-            const sub = document.getElementById('selectCargaSubtipo');
-            const cant = document.getElementById('cantidadCarga').value;
-            if(!cat.value || !sub.value || cant <= 0) return;
-            ipc.send('guardar-carga-vehiculo', {
-                vehiculo_id: vehiculoActualId,
-                tipo_medida: cat.options[cat.selectedIndex].text,
-                subtipo_medida: sub.value,
-                cantidad: parseInt(cant)
-            });
-        };
-
-        ipc.removeAllListeners('guardar-carga-resultado');
-        ipc.on('guardar-carga-resultado', (event, res) => { 
-            if(res.success) { 
-                const el = document.getElementById('cantidadCarga');
-                if (el) el.value = ''; 
-                if (typeof cargarTablaCargasVehiculo === 'function' && document.getElementById('listaCargasVehiculo')) {
-                    cargarTablaCargasVehiculo(); 
-                }
-            } 
-        });
-
         window.cargarTablaCargasVehiculo = async function() {
             const tbody = document.getElementById('listaCargasVehiculo');
             const cargas = await ipc.invoke('obtener-cargas-vehiculo', vehiculoActualId);
-            if (cargas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin cargas.</td></tr>'; return; }
+            if (!tbody) return;
+            if (!cargas || cargas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin cargas.</td></tr>'; return; }
             tbody.innerHTML = cargas.map(c => `<tr><td class="font-bold">${c.tipo_medida}</td><td>${c.subtipo_medida}</td><td class="font-bold text-blue-600">${c.cantidad}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarCargaVehiculo(${c.id})"><i class="material-icons">delete</i></button></td></tr>`).join('');
         };
 
-        window.eliminarCargaVehiculo = function(id) { if(confirm("¿Eliminar?")) ipc.send('eliminar-carga-vehiculo', id); };
         ipc.removeAllListeners('eliminar-carga-resultado');
         ipc.on('eliminar-carga-resultado', (event, res) => { if(res.success) cargarTablaCargasVehiculo(); });
 
@@ -389,6 +431,28 @@
         cargarVehiculos();
         cargarUnidadesMaestras();
         cargarMetodosPago();
+
+        // ACTUALIZACIÓN SILENCIOSA EN TIEMPO REAL
+        window.actualizacionSilenciosaConfig = async function() {
+            // Si el usuario navegó fuera de la pantalla de configuración, detiene la ejecución
+            if (!document.getElementById('listaVehiculos')) return;
+
+            // Evitamos actualizar si el usuario está tipeando un nuevo nombre
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) {
+                return;
+            }
+            
+            await cargarVehiculos();
+            await cargarUnidadesMaestras();
+            await cargarMetodosPago();
+            
+            if (vehiculoActualId && typeof cargarCargasVehiculo === 'function') {
+                await cargarCargasVehiculo(vehiculoActualId);
+            }
+        };
+
+        setInterval(actualizacionSilenciosaConfig, 3000);
     }
 }
 </script>

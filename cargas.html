@@ -58,6 +58,64 @@
         
         .hidden { display: none !important; }
 
+        /* ========== TOGGLE SWITCH "FIJAR EN FACTURACIÓN" ========== */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+        .toggle-label-text {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            user-select: none;
+            cursor: pointer;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input { display: none; }
+        .toggle-track {
+            position: absolute; inset: 0;
+            background-color: #cbd5e1;
+            border-radius: 999px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .toggle-track::before {
+            content: '';
+            position: absolute;
+            width: 18px; height: 18px;
+            left: 3px; top: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .toggle-switch input:checked + .toggle-track { background-color: #10b981; }
+        .toggle-switch input:checked + .toggle-track::before { transform: translateX(20px); }
+
+        .badge-pendiente {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 2px 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
         /* ========================================================
            CORRECCIONES DE ESTILOS FORZADOS (Anti-Purge Tailwind) 
            ======================================================== */
@@ -172,7 +230,17 @@
                         <div><label class="cargas-label">Categoría</label><select id="nc-categoria" class="cargas-select"><option value="">Seleccione...</option></select></div>
                         <div><label class="cargas-label">Variación</label><select id="nc-subtipo" class="cargas-select" disabled><option value="">Esperando...</option></select></div>
                         <div><label class="cargas-label">Cantidad</label><input type="number" id="nc-cantidad" class="cargas-input" placeholder="0"></div>
-                        <div><label class="cargas-label">P. Compra</label><input type="number" id="nc-pcompra" class="cargas-input" placeholder="0.00" step="0.01"></div>
+                        <div>
+                            <div class="toggle-wrapper" style="margin-bottom:8px;">
+                                <label class="toggle-label-text" for="toggle-precio-frontera" title="Activa esto si no sabes el precio de compra ahora; lo pondrás en la Tabla de Ventas">Fijar en Facturación</label>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-precio-frontera" onchange="onTogglePrecioFrontera(this)">
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                            <label class="cargas-label" id="label-pcompra">P. Compra</label>
+                            <input type="number" id="nc-pcompra" class="cargas-input" placeholder="0.00" step="0.01">
+                        </div>
                         <div class="md:col-span-2 mt-2"><button onclick="agregarItemAlaCarga()" class="cargas-btn-main w-full" style="background: #2563eb; height: 46px;"><i class="material-icons">add</i> Añadir a la Carga</button></div>
                     </div>
                 </div>
@@ -182,7 +250,7 @@
             <h2 class="text-lg font-bold text-slate-700 mb-4 border-b pb-2">Resumen de Carga temporal</h2>
             <div class="cargas-table-container">
                 <table class="cargas-table">
-                    <thead><tr><th>Categoría</th><th>Variación</th><th>Cantidad</th><th>P. Compra</th><th style="text-align: right">Acción</th></tr></thead>
+                    <thead><tr><th>Categoría</th><th>Variación</th><th>Cantidad</th><th>P. Compra / Estado</th><th style="text-align: right">Acción</th></tr></thead>
                     <tbody id="tabla-items-carga"><tr><td colspan="5" class="text-center text-slate-400 italic p-6">No hay ítems registrados.</td></tr></tbody>
                     <tfoot id="tabla-footer-total" class="hidden">
                         <tr class="total-row">
@@ -427,22 +495,51 @@
         selS.innerHTML = '<option value="">Seleccione...</option>' + subtipos.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
     });
 
+    window.onTogglePrecioFrontera = function(checkbox) {
+        const inputPCompra = document.getElementById('nc-pcompra');
+        const labelPCompra = document.getElementById('label-pcompra');
+        if (checkbox.checked) {
+            inputPCompra.disabled = true;
+            inputPCompra.value = '';
+            inputPCompra.placeholder = 'Se fijará en Facturación';
+            inputPCompra.style.background = '#f1f5f9';
+            inputPCompra.style.color = '#94a3b8';
+            if (labelPCompra) labelPCompra.style.color = '#10b981';
+        } else {
+            inputPCompra.disabled = false;
+            inputPCompra.placeholder = '0.00';
+            inputPCompra.style.background = '';
+            inputPCompra.style.color = '';
+            if (labelPCompra) labelPCompra.style.color = '';
+        }
+    };
+
     window.agregarItemAlaCarga = function() {
         const cat = document.getElementById('nc-categoria');
         const sub = document.getElementById('nc-subtipo');
         const cant = document.getElementById('nc-cantidad');
         const pcompra = document.getElementById('nc-pcompra');
-        if(!cat.value || !sub.value || cant.value <= 0 || pcompra.value < 0) return;
+        const toggleFrontera = document.getElementById('toggle-precio-frontera');
+        const esFrontera = toggleFrontera ? toggleFrontera.checked : false;
+
+        if(!cat.value || !sub.value || !cant.value || parseInt(cant.value) <= 0) return;
+        if (!esFrontera && (pcompra.value === '' || parseFloat(pcompra.value) < 0)) return;
 
         listaCargaActual.push({
             id: Date.now(),
-            categoria: cat.options[cat.selectedIndex].text,
-            subtipo: sub.value,
+            categoria: cat.options[cat.selectedIndex].text.toUpperCase(),
+            subtipo: sub.value.toUpperCase(),
             cantidad: parseInt(cant.value),
-            p_compra: parseFloat(pcompra.value) || 0
+            p_compra: esFrontera ? 0 : (parseFloat(pcompra.value) || 0),
+            precio_compra_pendiente: esFrontera
         });
-        cant.value = "";
-        pcompra.value = "";
+        cant.value = '';
+        pcompra.value = '';
+        // Resetear toggle al estado OFF
+        if (toggleFrontera) {
+            toggleFrontera.checked = false;
+            onTogglePrecioFrontera(toggleFrontera);
+        }
         renderizarTablaCarga();
     };
 
@@ -459,12 +556,19 @@
         }
 
         tfoot.classList.remove('hidden');
-        tbody.innerHTML = listaCargaActual.map(item => `
+        tbody.innerHTML = listaCargaActual.map(item => {
+            const pCompraDisplay = item.precio_compra_pendiente
+                ? `<span class="badge-pendiente">⏳ PENDIENTE</span>`
+                : `<span style="font-weight:800;color:#1e293b;">$${(parseFloat(item.p_compra)||0).toFixed(2)}</span>`;
+            return `
             <tr>
-                <td class="font-bold">${item.categoria}</td><td>${item.subtipo}</td><td class="font-bold text-blue-600 text-lg">${item.cantidad}</td><td class="font-bold text-slate-700 text-lg">$${item.p_compra.toFixed(2)}</td>
+                <td class="font-bold">${item.categoria}</td>
+                <td>${item.subtipo}</td>
+                <td class="font-bold text-blue-600 text-lg">${item.cantidad}</td>
+                <td>${pCompraDisplay}</td>
                 <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem(${item.id})"><i class="material-icons">delete</i></button></td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
 
         const total = listaCargaActual.reduce((acc, cur) => acc + cur.cantidad, 0);
         valorTotal.innerText = total;
@@ -618,5 +722,23 @@
         const categoriasBD = [...new Set(cargasBD.map(i => i.categoria))];
         labelTotal.innerText = (categoriasBD.length === 1) ? `${categoriasBD[0]}S EN UNIDAD:` : "UNIDADES A BORDO:";
     }
+
+    // ACTUALIZACIÓN SILENCIOSA EN TIEMPO REAL
+    window.actualizacionSilenciosaCargas = async function() {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) return;
+
+        if (typeof vistaSeleccionVehiculo !== 'undefined' && !vistaSeleccionVehiculo.classList.contains('hidden')) {
+            await cargarVehiculosNuevos();
+        }
+        if (typeof vistaGestion2 !== 'undefined' && !vistaGestion2.classList.contains('hidden')) {
+            await cargarVehiculosGestion();
+        }
+        if (typeof vistaGestion3 !== 'undefined' && !vistaGestion3.classList.contains('hidden') && vehiculoAuditoriaId) {
+            await cargarTablaBaseDatos();
+        }
+    };
+
+    setInterval(actualizacionSilenciosaCargas, 3000);
 }
 </script>

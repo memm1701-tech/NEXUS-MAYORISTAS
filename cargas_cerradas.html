@@ -1,6 +1,7 @@
 <div id="contenedor-historial-cerradas" class="w-full min-h-[80vh] flex flex-col p-6 transition-all duration-300">
     
     <style>
+        /* --- ESTILOS UNIFICADOS Y 100% PUROS PARA CARGAS CERRADAS --- */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -8,193 +9,480 @@
         .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
         .hidden { display: none !important; }
 
+        /* --- TIPOGRAFÍA Y CABECERAS --- */
         .titulo-seccion {
             font-size: 1.875rem; 
             font-weight: 800; 
             color: #1e293b; 
             letter-spacing: -0.025em; 
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        /* --- CONTENEDOR DE TABLA CON SCROLL --- */
-        .tabla-scroll-container {
-            height: 100%; 
-            overflow-y: auto;
+        .subtitulo-seccion {
+            color: #64748b;
+            margin-top: 4px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        /* --- BÚSQUEDA --- */
+        .search-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 15px 10px 42px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #334155;
+            box-sizing: border-box;
+        }
+
+        .search-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        /* --- PANELES --- */
+        .panel-principal {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            margin-bottom: 24px;
+            box-sizing: border-box;
+        }
+
+        .titulo-panel {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #334155;
+            margin-top: 0;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
             border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 12px;
+            text-transform: uppercase;
         }
 
-        /* Estilos de Tabla Principal */
-        .historial-table { width: 100%; border-collapse: collapse; font-size: 0.9em; position: relative; }
-        .historial-table thead th { position: sticky; top: 0; background: #f1f5f9; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1); }
-        .historial-table th { text-align: left; color: #475569; padding: 8px 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; }
-        .historial-table td { padding: 8px 11px; border-bottom: 1px solid #f1f5f9; color: #1e293b; font-weight: 500; transition: background-color 0.2s; }
-        
-        .fila-historial { cursor: pointer; }
-        .fila-historial:hover td { background-color: #f8fafc; }
-        .fila-historial.seleccionada td { background-color: #eff6ff; border-bottom-color: #bfdbfe; }
+        /* --- BADGES Y CARDS CABECERA --- */
+        .badge-estado-cerrada {
+            background: #ecfdf5;
+            color: #047857;
+            border: 1px solid #a7f3d0;
+            font-size: 0.75rem;
+            font-weight: 900;
+            padding: 5px 14px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-        /* Botones de acción en tabla */
+        .badge-cierre-num {
+            background: #f1f5f9;
+            color: #334155;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .card-ganancia-destacada {
+            background: #10b981;
+            color: #ffffff;
+            padding: 16px 24px;
+            border-radius: 14px;
+            font-weight: 900;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            border: none;
+            min-width: 180px;
+        }
+
+        .card-ganancia-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            color: #e2e8f0;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .card-ganancia-valor {
+            font-size: 1.6rem;
+            font-weight: 900;
+            color: #ffffff;
+            margin-top: 2px;
+        }
+
+        .header-icon-box {
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 14px;
+            border-radius: 16px;
+            border: 1px solid #dbeafe;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* --- BOTONES --- */
+        .btn-volver {
+            background: #e2e8f0;
+            color: #475569;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            width: fit-content;
+        }
+
+        .btn-volver:hover {
+            background: #cbd5e1;
+            color: #1e293b;
+        }
+
         .btn-detalle {
-            background-color: #ffffff; border: 1px solid #cbd5e1; color: #475569; padding: 6px 12px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 5px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
         }
-        .btn-detalle:hover { background-color: #f1f5f9; color: #1e293b; border-color: #94a3b8; }
-        .btn-detalle.activo { background-color: #3b82f6; color: white; border-color: #2563eb; }
 
-        /* Botón de retroceso */
-        .btn-volver { background: #e2e8f0; color: #475569; padding: 10px 20px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; width: fit-content; }
-        .btn-volver:hover { background: #cbd5e1; color: #1e293b; }
+        .btn-detalle:hover {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-color: #93c5fd;
+        }
 
-        /* Tarjetas de Totales Siempre Visibles */
-        .barra-totales { display: flex; gap: 10px; background: #f1f5f9; padding: 10px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 20px; }
-        .total-mini-card { flex: 1; background: white; padding: 12px 15px; border-radius: 8px; border-left: 4px solid #f59e0b; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .total-mini-label { font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
-        .total-mini-valor { font-size: 1.25rem; font-weight: 900; color: #1e293b; margin-top: 4px; transition: color 0.3s; }
-        .valor-credito { color: #ef4444; } 
-        .valor-contado { color: #10b981; }
+        /* --- BARRA DE TOTALES --- */
+        .barra-totales {
+            display: flex;
+            gap: 15px;
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
 
-        /* Paneles */
-        .panel-estilizado { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; border-radius: 0.75rem !important; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025) !important; overflow: hidden !important; }
+        .total-mini-card {
+            flex: 1;
+            min-width: 180px;
+            background: #ffffff;
+            padding: 16px 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
 
-        .pnl-contenedor { padding: 24px; }
-        .pnl-header { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
-        .pnl-titulo { font-size: 1.125rem; font-weight: 800; color: #1e293b; text-transform: uppercase; margin: 0; }
-        .pnl-cuerpo { font-size: 0.875rem; color: #475569; }
-        
-        .pnl-resumen-box { margin-bottom: 20px; display: flex; align-items: baseline; }
-        .pnl-label { font-weight: 800; font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; }
-        .pnl-valor-azul { font-weight: 900; color: #2563eb; font-size: 1.25rem; margin-left: 8px; }
-        .pnl-valor-rojo { font-weight: 900; color: #dc2626; font-size: 1.25rem; margin-left: 8px; }
-        
-        .pnl-subtitulo { font-weight: 800; color: #334155; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-        .pnl-vacio { font-style: italic; color: #94a3b8; font-size: 0.8rem; text-align: center; margin-top: 20px; }
-        
-        .panel-json-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-        .panel-json-item:last-child { border-bottom: none; }
-        
-        .pnl-item-col { display: flex; flex-direction: column; gap: 2px; }
-        .pnl-item-nombre { font-weight: 700; font-size: 0.8rem; color: #334155; }
-        .pnl-item-fecha { font-size: 0.65rem; color: #94a3b8; font-weight: 600; }
-        
+        .total-mini-label {
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+
+        .total-mini-valor {
+            font-size: 1.5rem;
+            font-weight: 900;
+            margin-top: 6px;
+            color: #1e293b;
+        }
+
+        /* --- TARJETAS PROMEDIOS --- */
+        .contenedor-restantes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .restante-card {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            padding: 15px 20px;
+            min-width: 160px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .restante-valor {
+            font-size: 1.8rem;
+            font-weight: 900;
+            color: #d97706;
+            line-height: 1;
+        }
+
+        .restante-tipo {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: #92400e;
+            text-transform: uppercase;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        .restante-label {
+            font-size: 0.7rem;
+            color: #b45309;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- TABLAS ESTILO EXCEL UNIFICADAS --- */
+        .tabla-scroll-container {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .historial-table, .excel-table-ro {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .historial-table th, .historial-table td,
+        .excel-table-ro th, .excel-table-ro td {
+            border: 1px solid #cbd5e1;
+        }
+
+        .historial-table thead th, .excel-table-ro thead th {
+            background: #f1f5f9;
+            padding: 10px 14px;
+            color: #475569;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.3px;
+        }
+
+        .historial-table td, .excel-table-ro td {
+            padding: 10px 14px;
+            color: #1e293b;
+            font-size: 0.85rem;
+            font-weight: 600;
+            vertical-align: middle;
+            text-transform: uppercase;
+        }
+
+        .historial-table tr:hover td, .excel-table-ro tr:hover td {
+            background-color: #f8fafc;
+        }
+
+        .fila-historial {
+            cursor: pointer;
+        }
+
+        .fila-historial.seleccionada td {
+            background-color: #eff6ff;
+            border-bottom-color: #bfdbfe;
+        }
+
+        /* Badges de Inventario */
         .badge-cant { background: #dbeafe; color: #1d4ed8; font-weight: 900; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; }
         .badge-merma { background: #fee2e2; color: #b91c1c; font-weight: 900; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; }
-
-        /* --- TABLA EXCEL SOLO LECTURA --- */
-        .excel-table-ro { width: 100%; border-collapse: collapse; min-width: 900px; }
-        .excel-table-ro th { background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 8px; color: #475569; font-weight: 800; text-align: center; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; position: sticky; top: 0; z-index: 5;}
-        .excel-table-ro td { border: 1px solid #cbd5e1; padding: 10px 8px; text-align: center; color: #1e293b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
-        .excel-table-ro tr:hover td { background-color: #f8fafc; }
-        .row-subfila-ro td { background-color: #f8fafc; border-style: dashed; }
+        .panel-json-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .panel-json-item:last-child { border-bottom: none; }
     </style>
 
+    <!-- VISTA PRINCIPAL: LISTADO DE CARGAS CERRADAS -->
     <div id="vista-principal-historial" class="w-full animate-fadeIn">
-        <div class="mb-6 border-b border-slate-200 pb-4 flex justify-between items-end">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
             <div>
-                <h1 class="titulo-seccion">Historial de Cargas Cerradas</h1>
-                <p class="text-slate-500 mt-1 font-medium">Consulta los registros de mercancía y mermas procesadas</p>
+                <h1 class="titulo-seccion">
+                    <i class="material-icons" style="color: #4f46e5; font-size: 2.2rem;">archive</i>
+                    Historial de Cargas Cerradas
+                </h1>
+                <p class="subtitulo-seccion">Consulta los registros financieros e inventario histórico de viajes finalizados</p>
             </div>
+
             <!-- Buscador -->
-            <div class="relative w-1/3">
-                <i class="material-icons absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400">search</i>
-                <input type="text" id="input-busqueda-historial" onkeyup="filtrarHistorial()" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-medium text-slate-700" placeholder="Buscar por unidad, N° cierre o fecha...">
+            <div class="search-container">
+                <i class="material-icons search-icon">search</i>
+                <input type="text" id="input-busqueda-historial" onkeyup="filtrarHistorial()" class="search-input" placeholder="Buscar por vehículo, N° cierre o fecha...">
             </div>
         </div>
 
-        <div id="area-interactiva" style="width: 100%; padding-bottom: 8px;">
-            
-            <div id="cuadro-tabla" class="panel-estilizado w-full" style="height: 620px;">
-                <div class="tabla-scroll-container custom-scrollbar">
-                    <table class="historial-table">
-                        <thead>
-                            <tr>
-                                <th>Nº Cierre</th>
-                                <th>Unidad</th>
-                                <th>F. Entrada</th>
-                                <th>F. Cierre</th>
-                                <th style="text-align: center;">Acciones y Consultas</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabla-cerradas-body">
-                        </tbody>
-                    </table>
-                </div>
+        <div class="panel-principal">
+            <h2 class="titulo-panel">
+                <i class="material-icons" style="color: #6366f1;">receipt_long</i> Registro General de Cierres
+            </h2>
+
+            <div class="tabla-scroll-container custom-scrollbar">
+                <table class="historial-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 90px; text-align: center;">Nº Cierre</th>
+                            <th>Vehículo / Unidad</th>
+                            <th>Fecha Entrada</th>
+                            <th>Fecha Cierre</th>
+                            <th style="text-align: center; width: 180px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-cerradas-body">
+                        <tr><td colspan="5" class="text-center text-slate-400 p-6">Cargando historial...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
+    <!-- VISTA DETALLE: PLANILLA COMPLETA DE CARGA CERRADA -->
     <div id="vista-detalle-planilla" class="hidden w-full animate-fadeIn">
-        <button onclick="volverAlHistorial()" class="btn-volver mb-6">
-            <i class="material-icons">arrow_back</i> Volver al Historial
-        </button>
+        <!-- BOTÓN VOLVER Y ESTADO -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 24px;">
+            <button onclick="volverAlHistorial()" class="btn-volver">
+                <i class="material-icons">arrow_back</i> Volver al Historial
+            </button>
+            <span class="badge-estado-cerrada">
+                Carga Cerrada
+            </span>
+        </div>
         
-        <div class="mb-6 flex items-center gap-4">
-            <i class="material-icons text-5xl text-blue-500">table_chart</i>
-            <div>
-                <h2 class="text-2xl font-black text-slate-800 uppercase tracking-wide">
-                    Planilla de Ventas: <span id="lbl-planilla-vehiculo" class="text-blue-600">---</span>
-                </h2>
-                <p class="text-slate-500 font-medium mt-1">
-                    <span style="background: #e2e8f0; color: #334155; padding: 2px 8px; border-radius: 6px; font-weight: 800; font-size: 0.8rem; margin-right: 8px;">CIERRE N° <span id="lbl-planilla-cierre"></span></span> 
-                    Fecha de cierre: <span id="lbl-planilla-fecha" class="font-bold text-slate-700"></span>
-                </p>
+        <!-- CABECERA PRINCIPAL -->
+        <div class="panel-principal" style="margin-bottom: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div class="header-icon-box">
+                        <i class="material-icons" style="font-size: 32px;">local_shipping</i>
+                    </div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-size: 0.75rem; font-weight: 900; text-transform: uppercase; color: #4f46e5; letter-spacing: 0.5px;">Planilla Completa</span>
+                            <span class="badge-cierre-num">
+                                CIERRE N° <span id="lbl-planilla-cierre"></span>
+                            </span>
+                        </div>
+                        <h2 style="font-size: 1.6rem; font-weight: 900; color: #1e293b; text-transform: uppercase; margin: 4px 0 0 0;">
+                            <span id="lbl-planilla-vehiculo">---</span>
+                        </h2>
+                        <p style="font-size: 0.8rem; color: #64748b; font-weight: 500; margin: 4px 0 0 0;">
+                            Fecha de cierre: <span id="lbl-planilla-fecha" style="font-weight: 700; color: #334155;"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- TARJETA DESTACADA GANANCIA NETA -->
+                <div class="card-ganancia-destacada">
+                    <span class="card-ganancia-label">Total Ganancia Neta</span>
+                    <span id="lbl-planilla-ganancia" class="card-ganancia-valor">0.00 $</span>
+                </div>
             </div>
         </div>
 
-        <div class="barra-totales mb-6 flex-wrap" style="margin-top: 0; background: transparent; border: none; padding: 0;">
-            <div class="total-mini-card" style="background-color: #f59e0b; border-left: none; min-width: 200px; color: white;">
-                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Total en Venta General</span>
-                <span id="lbl-planilla-venta" class="total-mini-valor" style="color: white;">0.00 $</span>
+        <!-- BARRA DE TOTALES -->
+        <div class="barra-totales">
+            <div class="total-mini-card">
+                <span class="total-mini-label">Total Venta General</span>
+                <span id="lbl-planilla-venta" class="total-mini-valor" style="color: #1e293b;">0.00 $</span>
             </div>
-            <div class="total-mini-card" style="background-color: #ef4444; border-left: none; min-width: 200px; color: white;">
-                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Recaudado Crédito</span>
-                <span id="lbl-planilla-credito" class="total-mini-valor" style="color: white;">0.00 $</span>
+            <div class="total-mini-card">
+                <span class="total-mini-label">Recaudado Crédito</span>
+                <span id="lbl-planilla-credito" class="total-mini-valor" style="color: #e11d48;">0.00 $</span>
             </div>
-            <div class="total-mini-card" style="background-color: #10b981; border-left: none; min-width: 200px; color: white;">
-                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Recaudado Contado</span>
-                <span id="lbl-planilla-contado" class="total-mini-valor" style="color: white;">0.00 $</span>
-            </div>
-            <div class="total-mini-card" style="background-color: #0369a1; border-left: none; min-width: 200px; color: white;">
-                <span class="total-mini-label" style="color: rgba(255,255,255,0.9);">Total Ganancia</span>
-                <span id="lbl-planilla-ganancia" class="total-mini-valor" style="color: white;">0.00 $</span>
+            <div class="total-mini-card">
+                <span class="total-mini-label">Recaudado Contado</span>
+                <span id="lbl-planilla-contado" class="total-mini-valor" style="color: #059669;">0.00 $</span>
             </div>
         </div>
 
-        <div id="contenedor-paneles-extra" class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-            <!-- Promedios de Venta -->
-            <div class="panel-estilizado p-5">
-                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-indigo-500">analytics</i> Promedios de Venta</h3>
-                <div id="cuerpo-planilla-promedios" class="text-sm text-slate-600 flex flex-col gap-2">
-                </div>
+        <!-- SECCIÓN PRECIO PROMEDIO DE VENTA POR PRODUCTO -->
+        <div class="panel-principal">
+            <h3 class="titulo-panel">
+                <i class="material-icons" style="color: #9333ea;">analytics</i> Precio Promedio de Venta por Producto
+            </h3>
+            <div id="cuerpo-planilla-promedios" class="contenedor-restantes"></div>
+        </div>
+
+        <!-- 3 BLOQUES: INVENTARIO, MERMAS Y RENDICIONES -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-bottom: 24px;">
+            <!-- Resumen de Inventario -->
+            <div class="panel-principal" style="margin-bottom: 0;">
+                <h3 class="titulo-panel">
+                    <i class="material-icons" style="color: #3b82f6;">inventory_2</i> Sobrantes en Almacén
+                </h3>
+                <div id="cuerpo-planilla-inventario" style="font-size: 0.875rem; color: #475569;"></div>
             </div>
-            <!-- Inventario y Sobrantes -->
-            <div class="panel-estilizado p-5">
-                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-blue-500">inventory_2</i> Resumen de Inventario</h3>
-                <div id="cuerpo-planilla-inventario" class="text-sm text-slate-600">
-                </div>
+
+            <!-- Mermas Declaradas -->
+            <div class="panel-principal" style="margin-bottom: 0;">
+                <h3 class="titulo-panel">
+                    <i class="material-icons" style="color: #f43f5e;">delete_sweep</i> Mermas Declaradas
+                </h3>
+                <div id="cuerpo-planilla-mermas" style="font-size: 0.875rem; color: #475569;"></div>
             </div>
-            <!-- Mermas -->
-            <div class="panel-estilizado p-5">
-                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-red-500">delete_sweep</i> Mermas Declaradas</h3>
-                <div id="cuerpo-planilla-mermas" class="text-sm text-slate-600">
-                </div>
-            </div>
+
             <!-- Rendiciones -->
-            <div class="panel-estilizado p-5">
-                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2 flex items-center gap-2"><i class="material-icons text-purple-500">autorenew</i> Rendiciones</h3>
-                <div id="cuerpo-planilla-rendiciones" class="text-sm text-slate-600">
-                </div>
+            <div class="panel-principal" style="margin-bottom: 0;">
+                <h3 class="titulo-panel">
+                    <i class="material-icons" style="color: #a855f7;">autorenew</i> Rendiciones Procesadas
+                </h3>
+                <div id="cuerpo-planilla-rendiciones" style="font-size: 0.875rem; color: #475569;"></div>
             </div>
         </div>
 
-        <div class="panel-estilizado" style="padding: 0;">
-            <div style="padding: 15px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
-                <h3 class="text-sm font-bold text-slate-600 uppercase tracking-wider m-0">Detalle de líneas de venta (Modo Lectura)</h3>
-            </div>
-            <div class="tabla-scroll-container custom-scrollbar" style="max-height: 500px; padding: 20px; background: #f8fafc;">
-                <table class="excel-table-ro" style="background: white;">
+        <!-- TABLA DE LÍNEAS DE VENTA EN MODO LECTURA -->
+        <div class="panel-principal">
+            <h3 class="titulo-panel">
+                <i class="material-icons" style="color: #4f46e5;">table_chart</i> Detalle de Líneas de Venta (Modo Lectura)
+            </h3>
+
+            <div class="tabla-scroll-container custom-scrollbar" style="max-height: 500px;">
+                <table class="excel-table-ro">
                     <thead>
                         <tr>
-                            <th style="width: 60px;"># Fila</th>
-                            <th style="width: 80px;">Cant.</th>
-                            <th style="width: 120px;">Precio U.</th>
+                            <th style="width: 75px; text-align: center;"># Fila</th>
+                            <th style="width: 85px; text-align: center;">Cant.</th>
+                            <th style="width: 110px; text-align: center;">Precio U.</th>
+                            <th style="width: 120px; text-align: right;">Ganancia</th>
                             <th>Tipo Cesta / Producto</th>
                             <th style="width: 25%;">Cliente</th>
                             <th style="width: 140px;">Método</th>
@@ -202,7 +490,7 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-planilla-ro-body">
-                        <tr><td colspan="7" class="text-center p-6 text-slate-400">Cargando datos de la planilla...</td></tr>
+                        <tr><td colspan="8" class="text-center p-6 text-slate-400 font-medium">Cargando datos de la planilla...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -217,11 +505,6 @@
 
     let historialCargas = [];
 
-    // Referencias DOM Vista Principal
-    const cuerpoDetalle = document.getElementById('cuerpo-detalle');
-    const tituloDetalle = document.getElementById('titulo-detalle');
-    const iconoDetalle = document.getElementById('icono-detalle');
-
     async function cargarHistorial() {
         if (!ipc) return;
         const tbody = document.getElementById('tabla-cerradas-body');
@@ -229,7 +512,7 @@
         
         historialCargas = await ipc.invoke('obtener-historial-cerradas');
         
-        if(historialCargas.length === 0){
+        if (!historialCargas || historialCargas.length === 0){
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 p-6">No hay cargas cerradas en el historial.</td></tr>';
             return;
         }
@@ -239,7 +522,7 @@
 
     function renderHistorialTable(data) {
         const tbody = document.getElementById('tabla-cerradas-body');
-        if(data.length === 0){
+        if(!data || data.length === 0){
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-400 p-6">No hay coincidencias.</td></tr>';
             return;
         }
@@ -250,12 +533,12 @@
 
             return `
                 <tr id="fila-${c.id_cierre}" class="fila-historial" onclick="seleccionarFila(${c.id_cierre})">
-                    <td class="font-bold text-slate-600">#${c.id_cierre}</td>
+                    <td class="font-bold text-slate-600 text-center">#${c.id_cierre}</td>
                     <td class="font-extrabold uppercase text-slate-800">${c.vehiculo_nombre || 'Desconocido'}</td>
                     <td class="text-xs text-slate-500">${fEntrada}</td>
                     <td class="text-xs font-bold text-slate-600">${fCierre}</td>
-                    <td style="text-align: center; padding-top: 12px; padding-bottom: 12px;">
-                        <button class="btn-detalle" style="background-color: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;" onclick="verPlanillaCompleta(${c.id_cierre}, ${c.id_carga}, event)" title="Ver Planilla de Ventas">
+                    <td style="text-align: center; padding-top: 10px; padding-bottom: 10px;">
+                        <button class="btn-detalle" onclick="verPlanillaCompleta(${c.id_cierre}, ${c.id_carga}, event)" title="Ver Planilla de Ventas">
                             <i class="material-icons" style="font-size:16px;">table_chart</i> Planilla Completa
                         </button>
                     </td>
@@ -267,7 +550,7 @@
     window.filtrarHistorial = function() {
         const query = document.getElementById('input-busqueda-historial').value.toLowerCase();
         const filtrados = historialCargas.filter(c => {
-            const num = c.id_cierre.toString();
+            const num = (c.id_cierre || '').toString();
             const unidad = (c.vehiculo_nombre || '').toLowerCase();
             const fEnt = new Date(c.fecha_entrada).toLocaleString().toLowerCase();
             const fCie = new Date(c.fecha_cierre).toLocaleString().toLowerCase();
@@ -282,13 +565,8 @@
         if(filaActual) filaActual.classList.add('seleccionada');
     };
 
-    // verEspecificaciones fue eliminada ya que la planilla completa contendrá toda la información
-
-    // ==============================================
-    // LÓGICA DE LA VISTA DETALLE PLANILLA COMPLETA
-    // ==============================================
     window.verPlanillaCompleta = async function(id_cierre, id_carga, event) {
-        event.stopPropagation();
+        if(event) event.stopPropagation();
         const datosCierre = historialCargas.find(c => c.id_cierre === id_cierre);
         if(!datosCierre) return;
 
@@ -296,21 +574,19 @@
         document.getElementById('vista-principal-historial').classList.add('hidden');
         document.getElementById('vista-detalle-planilla').classList.remove('hidden');
 
-        // Llenar datos informativos de cabecera
+        // Llenar cabecera
         document.getElementById('lbl-planilla-vehiculo').innerText = datosCierre.vehiculo_nombre || 'Desconocido';
         document.getElementById('lbl-planilla-cierre').innerText = id_cierre;
         document.getElementById('lbl-planilla-fecha').innerText = new Date(datosCierre.fecha_cierre).toLocaleString();
 
-        // Llenar tarjetas con los totales del cierre histórico
-        document.getElementById('lbl-planilla-venta').innerText = `${(datosCierre.total_venta || 0).toFixed(2)} $`;
-        document.getElementById('lbl-planilla-credito').innerText = `${(datosCierre.total_credito || 0).toFixed(2)} $`;
-        document.getElementById('lbl-planilla-contado').innerText = `${(datosCierre.total_contado || 0).toFixed(2)} $`;
+        // Llenar tarjetas con los totales
+        document.getElementById('lbl-planilla-venta').innerText = `${(parseFloat(datosCierre.total_venta) || 0).toFixed(2)} $`;
+        document.getElementById('lbl-planilla-credito').innerText = `${(parseFloat(datosCierre.total_credito) || 0).toFixed(2)} $`;
+        document.getElementById('lbl-planilla-contado').innerText = `${(parseFloat(datosCierre.total_contado) || 0).toFixed(2)} $`;
         
         const lblGanancia = document.getElementById('lbl-planilla-ganancia');
         if (lblGanancia) {
-            const gan = datosCierre.total_ganancia || 0;
-            lblGanancia.innerText = `${gan.toFixed(2)} $`;
-            // El color ahora siempre es blanco por el fondo de la tarjeta
+            lblGanancia.innerText = `${(parseFloat(datosCierre.total_ganancia) || 0).toFixed(2)} $`;
         }
 
         // Llenar Promedios
@@ -320,21 +596,26 @@
             let promedios = null;
             if (datosCierre.mercancia_json) {
                 try {
-                    const mercJSON = JSON.parse(datosCierre.mercancia_json);
+                    const mercJSON = typeof datosCierre.mercancia_json === 'string' ? JSON.parse(datosCierre.mercancia_json) : datosCierre.mercancia_json;
                     promedios = mercJSON.promedios_por_producto;
                 } catch(e) {}
             }
             if (promedios && Object.keys(promedios).length > 0) {
-                for (const [producto, promedio] of Object.entries(promedios)) {
-                    contenedorPromedios.innerHTML += `
-                        <div class="panel-json-item py-1">
-                            <span class="pnl-item-nombre text-xs">${producto}</span>
-                            <span class="text-indigo-600 font-bold text-sm">${parseFloat(promedio).toFixed(2)} $</span>
+                contenedorPromedios.innerHTML = Object.entries(promedios).map(([producto, promedio]) => {
+                    const partes = producto.split(' ');
+                    const promNum = parseFloat(promedio) || 0;
+                    return `
+                        <div class="restante-card" style="border-color: #e9d5ff; background: #faf5ff;">
+                            <span class="restante-valor" style="color: #7e22ce;">$${promNum.toFixed(2)}</span>
+                            <span class="restante-tipo" style="color: #581c87;">${partes[0].toUpperCase()} <br> 
+                                <span style="font-size: 0.75rem; color: #9333ea;">${partes.slice(1).join(' ').toUpperCase()}</span>
+                            </span>
+                            <span class="restante-label" style="margin-top: 8px; color: #7e22ce;">PROMEDIO DE CIERRE</span>
                         </div>
                     `;
-                }
+                }).join('');
             } else {
-                contenedorPromedios.innerHTML = `<p class="pnl-vacio">Sin promedios calculados.</p>`;
+                contenedorPromedios.innerHTML = `<div style="width: 100%; text-align: center; padding: 16px; color: #94a3b8; font-weight: 500; font-size: 0.85rem;">Sin promedios calculados.</div>`;
             }
         }
 
@@ -342,102 +623,104 @@
         const panelInv = document.getElementById('cuerpo-planilla-inventario');
         if (panelInv) {
             try {
-                const mercJSON = JSON.parse(datosCierre.mercancia_json || "{}");
-                let htmlInv = `<div class="pnl-resumen-box mb-3"><span class="pnl-label">Unidades Vendidas:</span> <span class="pnl-valor-azul">${mercJSON.unidades_vendidas || 0}</span></div>`;
-                htmlInv += `<h4 class="font-bold text-xs text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Sobrantes Declarados</h4>`;
-                const sobrantes = mercJSON.sobrantes || {};
-                if (Object.keys(sobrantes).length === 0) {
-                    htmlInv += `<p class="pnl-vacio">No quedaron sobrantes.</p>`;
+                const mercJSON = typeof datosCierre.mercancia_json === 'string' ? JSON.parse(datosCierre.mercancia_json || "{}") : (datosCierre.mercancia_json || {});
+                const sobrantes = mercJSON.sobrantes || (typeof mercanciaJSON === 'object' && !mercanciaJSON.promedios_por_producto ? mercanciaJSON : {});
+                
+                let htmlInv = `<div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;"><span style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase;">Unidades Vendidas:</span> <span style="font-weight: 900; color: #4f46e5; font-size: 1.1rem;">${mercJSON.unidades_vendidas || 0} u.</span></div>`;
+                htmlInv += `<h4 style="font-weight: 800; font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin: 0 0 8px 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">Sobrantes Declarados</h4>`;
+                
+                if (!sobrantes || Object.keys(sobrantes).length === 0) {
+                    htmlInv += `<p style="font-size: 0.8rem; color: #94a3b8; font-style: italic; padding: 8px 0; margin: 0;">No quedaron sobrantes.</p>`;
                 } else {
                     for (const [prod, cant] of Object.entries(sobrantes)) {
-                        htmlInv += `<div class="panel-json-item py-1"><span class="pnl-item-nombre text-xs">${prod}</span> <span class="badge-cant">${cant}</span></div>`;
+                        htmlInv += `<div class="panel-json-item"><span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 800; color: #334155;">${prod}</span> <span class="badge-cant">${cant} u.</span></div>`;
                     }
                 }
                 panelInv.innerHTML = htmlInv;
-            } catch(e) { panelInv.innerHTML = 'Error cargando inventario'; }
+            } catch(e) { panelInv.innerHTML = '<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Sin datos de sobrantes.</span>'; }
         }
 
         // Llenar Mermas
         const panelMermas = document.getElementById('cuerpo-planilla-mermas');
         if (panelMermas) {
             try {
-                const mermaJSON = JSON.parse(datosCierre.mermas_json || "[]");
-                if (mermaJSON.length === 0) {
-                    panelMermas.innerHTML = `<p class="pnl-vacio">Sin mermas registradas.</p>`;
+                const mermaJSON = typeof datosCierre.mermas_json === 'string' ? JSON.parse(datosCierre.mermas_json || "[]") : (datosCierre.mermas_json || []);
+                if (!mermaJSON || mermaJSON.length === 0) {
+                    panelMermas.innerHTML = `<p style="font-size: 0.8rem; color: #94a3b8; font-style: italic; padding: 8px 0; margin: 0;">Sin mermas registradas.</p>`;
                 } else {
                     let totalMermas = 0;
                     let htmlMerma = '';
                     mermaJSON.forEach(m => {
                         totalMermas += m.cantidad;
-                        htmlMerma += `<div class="panel-json-item py-1"><div class="flex flex-col"><span class="font-bold text-xs text-slate-700">${m.tipo_medida} ${m.sub_medida}</span><span class="text-[0.6rem] text-slate-400">${new Date(m.fecha_registro).toLocaleString()}</span></div><span class="badge-merma">-${m.cantidad}</span></div>`;
+                        htmlMerma += `<div class="panel-json-item"><div style="display: flex; flex-direction: column;"><span style="font-weight: 800; font-size: 0.8rem; color: #334155; text-transform: uppercase;">${m.tipo_medida} ${m.sub_medida}</span><span style="font-size: 0.65rem; color: #94a3b8; font-weight: 500;">${new Date(m.fecha_registro).toLocaleString()}</span></div><span class="badge-merma">-${m.cantidad} u.</span></div>`;
                     });
-                    panelMermas.innerHTML = `<div class="pnl-resumen-box mb-3"><span class="pnl-label">Total Mermado:</span> <span class="pnl-valor-rojo">${totalMermas}</span></div><h4 class="font-bold text-xs text-slate-500 uppercase mb-2 border-b border-slate-100 pb-1">Detalle</h4>${htmlMerma}`;
+                    panelMermas.innerHTML = `<div style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; background: #fff1f2; padding: 10px 14px; border-radius: 8px; border: 1px solid #ffe4e6;"><span style="font-size: 0.75rem; font-weight: 800; color: #e11d48; text-transform: uppercase;">Total Mermado:</span> <span style="font-weight: 900; color: #e11d48; font-size: 1.1rem;">-${totalMermas} u.</span></div><h4 style="font-weight: 800; font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin: 0 0 8px 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">Detalle</h4>${htmlMerma}`;
                 }
-            } catch(e) { panelMermas.innerHTML = 'Error cargando mermas'; }
+            } catch(e) { panelMermas.innerHTML = '<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Sin mermas registradas.</span>'; }
         }
 
         // Llenar Rendiciones
         const panelRend = document.getElementById('cuerpo-planilla-rendiciones');
         if (panelRend) {
             try {
-                const rendJSON = JSON.parse(datosCierre.rendiciones_json || "[]");
-                if (rendJSON.length === 0) {
-                    panelRend.innerHTML = `<p class="pnl-vacio">Sin rendiciones registradas.</p>`;
+                const rendJSON = typeof datosCierre.rendiciones_json === 'string' ? JSON.parse(datosCierre.rendiciones_json || "[]") : (datosCierre.rendiciones_json || []);
+                if (!rendJSON || rendJSON.length === 0) {
+                    panelRend.innerHTML = `<p style="font-size: 0.8rem; color: #94a3b8; font-style: italic; padding: 8px 0; margin: 0;">Sin rendiciones procesadas.</p>`;
                 } else {
                     let htmlRend = '';
                     rendJSON.forEach(r => {
                         htmlRend += `
-                        <div class="mb-3 border border-slate-200 rounded p-2 bg-slate-50">
-                            <div class="flex justify-between items-center mb-1">
-                                <span class="text-xs font-bold text-slate-700">${r.producto_origen}</span>
-                                <span class="text-xs font-bold text-red-500">-${r.cantidad_restada}</span>
+                        <div style="margin-bottom: 10px; border: 1px solid #f3e8ff; border-radius: 12px; padding: 12px; background: #faf5ff;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 800; color: #e11d48; text-transform: uppercase;">
+                                <span>-${r.cantidad_restada} ${r.producto_origen}</span>
                             </div>
-                            <div class="flex justify-center my-1"><i class="material-icons text-slate-300" style="font-size:16px;">arrow_downward</i></div>
-                            <div class="flex justify-between items-center mt-1">
-                                <span class="text-xs font-bold text-blue-600">${r.nombre_nuevo_producto}</span>
-                                <span class="text-xs font-bold text-emerald-600">+${r.cantidad_generada}</span>
+                            <div style="display: flex; justify-content: center; margin: 4px 0;"><i class="material-icons" style="color: #d8b4fe; font-size: 16px;">arrow_downward</i></div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 800; color: #059669; text-transform: uppercase;">
+                                <span>+${r.cantidad_generada} ${r.nombre_nuevo_producto}</span>
+                                <span style="color: #7e22ce; font-weight: 900;">${parseFloat(r.precio_venta_nuevo_producto || 0).toFixed(2)} $</span>
                             </div>
-                            <div class="text-[0.65rem] text-slate-400 mt-1 text-right">Precio asignado: <span class="font-bold text-slate-600">${r.precio_venta_nuevo_producto} $</span></div>
                         </div>`;
                     });
                     panelRend.innerHTML = htmlRend;
                 }
-            } catch(e) { panelRend.innerHTML = 'Error cargando rendiciones'; }
+            } catch(e) { panelRend.innerHTML = '<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Sin rendiciones procesadas.</span>'; }
         }
 
         // Llenar tabla de modo lectura
         const tbody = document.getElementById('tabla-planilla-ro-body');
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-slate-400">Consultando líneas de venta en la base de datos...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center p-6 text-slate-400">Consultando líneas de venta en la base de datos...</td></tr>';
 
         if (ipc) {
             const lineasVenta = await ipc.invoke('obtener-ventas-carga', id_carga);
             
-            // Filtramos las líneas vacías para dejar un reporte limpio y fácil de auditar
-            // Mostramos si el usuario llenó la cantidad, puso un cliente o estableció un precio
-            const lineasValidas = lineasVenta.filter(l => (parseInt(l.cantidad) > 0) || (l.cliente && l.cliente.trim() !== '') || (l.precio && l.precio.trim() !== ''));
+            const lineasValidas = (lineasVenta || []).filter(l => (parseInt(l.cantidad) > 0) || (l.cliente && l.cliente.trim() !== '') || (l.precio && l.precio.trim() !== ''));
 
             if (lineasValidas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center p-6 text-slate-400 font-bold">No se registraron transacciones manuales en la planilla de esta carga.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 24px; color: #94a3b8; font-weight: 700;">No se registraron transacciones manuales en la planilla de esta carga.</td></tr>';
                 return;
             }
 
-            // Ordenamos lógicamente por fila_id (Para que sub-líneas como "1_1" queden debajo de "1")
             lineasValidas.sort((a, b) => a.fila_id.localeCompare(b.fila_id, undefined, {numeric: true}));
 
             tbody.innerHTML = lineasValidas.map(l => {
                 const esSubfila = l.fila_id.includes('_');
                 const badgeSub = esSubfila ? `<span style="background: #e2e8f0; color: #64748b; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">SUB</span>` : '';
                 const mercancia = `${l.tipo_medida || ''} ${l.sub_medida || ''}`.trim();
+                const cantNum = parseFloat(l.cantidad) || 0;
+                const precNum = parseFloat(String(l.precio || '0').replace('$', '').trim()) || 0;
+                const pCompra = parseFloat(l.p_compra || l.pCompra || 0);
+                const gananciaRow = pCompra > 0 ? (precNum - pCompra) * cantNum : 0;
                 
                 return `
-                    <tr class="${esSubfila ? 'row-subfila-ro' : ''}">
-                        <td style="color: #64748b; font-weight: 800; background: ${esSubfila ? 'transparent' : '#f1f5f9'};">${l.fila_id} ${badgeSub}</td>
-                        <td style="color: #2563eb; font-weight: 900; font-size: 1rem;">${l.cantidad || '-'}</td>
-                        <td style="color: #059669; font-weight: 800;">${l.precio || '-'}</td>
+                    <tr style="background: ${esSubfila ? '#f8fafc' : '#ffffff'};">
+                        <td style="color: #64748b; font-weight: 800; text-align: center; background: ${esSubfila ? 'transparent' : '#f8fafc'};">${l.fila_id} ${badgeSub}</td>
+                        <td style="color: #2563eb; font-weight: 900; font-size: 0.95rem; text-align: center;">${l.cantidad || '-'}</td>
+                        <td style="color: #059669; font-weight: 800; text-align: center;">${l.precio ? `$${precNum.toFixed(2)}` : '-'}</td>
+                        <td style="color: ${gananciaRow > 0 ? '#10b981' : '#64748b'}; font-weight: 900; text-align: right; padding-right: 15px;">${gananciaRow > 0 ? `$${gananciaRow.toFixed(2)}` : '-'}</td>
                         <td style="font-weight: 800; color: #334155; text-align: left; padding-left: 15px;">${mercancia || '-'}</td>
                         <td style="font-weight: 900; color: #1e293b; text-align: left; padding-left: 15px;">${l.cliente || '<span style="color:#94a3b8">---</span>'}</td>
-                        <td style="color: #d97706; font-weight: 800;">${l.metodo_pago || '-'}</td>
-                        <td style="color: #475569; font-weight: 700;">${l.banco || '-'}</td>
+                        <td style="color: #d97706; font-weight: 800; text-align: center;">${l.metodo_pago || '-'}</td>
+                        <td style="color: #475569; font-weight: 700; text-align: center;">${l.banco || '-'}</td>
                     </tr>
                 `;
             }).join('');
@@ -449,7 +732,7 @@
         document.getElementById('vista-principal-historial').classList.remove('hidden');
     };
 
+    // Cargar historial al cargar el script
     cargarHistorial();
 }
 </script>
-</div>

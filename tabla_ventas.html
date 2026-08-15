@@ -638,6 +638,60 @@
             cursor: pointer; transition: all 0.2s; width: 100%; text-transform: uppercase; letter-spacing: 0.5px;
         }
         .btn-cerrar-resumen:hover { background-color: #2563eb; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
+
+        /* ======== TARJETA PRECIO DE COMPRA PENDIENTE ======== */
+        .card-precio-pendiente {
+            background: linear-gradient(135deg, #fff7ed 0%, #fffbf5 100%);
+            border: 1.5px solid #fed7aa;
+            border-radius: 12px;
+            padding: 14px 16px;
+            min-width: 180px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(234, 88, 12, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        .card-precio-pendiente::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #f97316, #fb923c);
+        }
+        .card-precio-pendiente .badge-top {
+            font-size: 0.6rem; font-weight: 900; color: #ea580c; text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 4px;
+            display: flex; align-items: center; gap: 4px;
+        }
+        .card-precio-pendiente .producto-nombre {
+            font-size: 0.9rem; font-weight: 900; color: #7c2d12; text-align: center;
+            text-transform: uppercase; margin-bottom: 8px; line-height: 1.2;
+        }
+        .input-precio-pendiente {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #fdba74;
+            border-radius: 8px;
+            background: white;
+            font-size: 1rem;
+            font-weight: 800;
+            color: #c2410c;
+            text-align: center;
+            outline: none;
+            transition: all 0.2s;
+            box-sizing: border-box;
+        }
+        .input-precio-pendiente:focus {
+            border-color: #f97316;
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.2);
+            color: #7c2d12;
+        }
+        .input-precio-pendiente::placeholder { color: #fdba74; font-weight: 700; }
+        .label-input-pendiente {
+            font-size: 0.65rem; font-weight: 800; color: #9a3412; text-transform: uppercase;
+            margin-top: 5px; text-align: center;
+        }
     </style>
 
     <div id="toast-container"></div>
@@ -799,6 +853,12 @@
                 <span id="resumen-total-ganancia-tabla" style="font-size: 1.1rem;">0.00 $</span>
             </div>
         </div>
+    </div>
+
+    <div class="mt-6">
+        <h3 class="text-sm font-bold text-slate-500 uppercase mb-3">Precio Promedio de Venta en Vivo por Producto</h3>
+        <div id="contenedor-cards-promedios-envivo" class="contenedor-restantes"></div>
+    </div>
 
         <div class="merma-container">
             <h3 class="merma-header-title">
@@ -854,7 +914,7 @@
                     </select>
                 </div>
                 <div class="rendicion-cant-wrapper">
-                    <input type="number" id="input-rendicion-cant-restada" class="rendicion-input" placeholder="CANT. RESTA">
+                    <input type="number" id="input-rendicion-cant-restada" class="rendicion-input" placeholder="CANT. RESTA (0 si no resta)">
                 </div>
                 <div class="rendicion-input-wrapper">
                     <input type="text" id="input-rendicion-nuevo-nombre" class="rendicion-input" placeholder="NOMBRE NUEVO PROD." style="text-align: left;">
@@ -902,6 +962,7 @@
     let vehiculosCuentasCache = [];
     let inventarioOriginal = {};
     let preciosCompraMap = {};
+    let preciosPendienteMap = {}; // { clave: true } — productos con precio_compra_pendiente
     let vehiculoActualId = null;
     let filasActuales = 20;
     let clientesCache = []; 
@@ -910,6 +971,8 @@
     let cargaActivaActual = null;
     let accionConfirmadaCallback = null;
     let metodosPagoGlobal = ["CRÉDITO"];
+    const SERVER_URL = 'http://68.168.218.147:4020';
+    let idEmpresaLocal = null;
 
     const vistaSeleccion = document.getElementById('vista-seleccion-cuentas');
     const vistaDetalle = document.getElementById('vista-cobros-detalle');
@@ -951,6 +1014,13 @@
         if (metodosExtra) {
             metodosPagoGlobal = ["CRÉDITO", ...metodosExtra.map(m => m.nombre)];
         }
+
+        try {
+            const config = await ipc.invoke('obtener-configuracion');
+            if (config && config.owner_id_empresa) {
+                idEmpresaLocal = config.owner_id_empresa;
+            }
+        } catch(e) {}
     }
 
     window.filtrarVehiculosCuentas = function() {
@@ -961,6 +1031,7 @@
 
     function renderizarGaleriaCuentas(lista) {
         const grid = document.getElementById('grid-vehiculos-cuentas');
+        if (!grid) return;
         grid.innerHTML = lista.map(v => {
             const tieneActiva = v.tiene_activa > 0;
             const extraClass = tieneActiva ? 'vehiculo-activa-glass' : '';
@@ -997,6 +1068,8 @@
                 document.getElementById('tabla-excel-body').innerHTML = '<tr><td colspan="8" class="text-center text-slate-400 p-6">Sin carga activa. Vaya al módulo de Cargas.</td></tr>';
                 renderizarCargaOriginalUI({});
                 document.getElementById('contenedor-cards-restantes').innerHTML = '';
+                const elProm = document.getElementById('contenedor-cards-promedios-envivo');
+                if (elProm) elProm.innerHTML = '';
                 
                 // === FIX VISUAL: Limpieza de Mermas si no hay carga ===
                 mermasGuardadas = [];
@@ -1012,11 +1085,32 @@
 
             inventarioOriginal = {};
             preciosCompraMap = {};
-            const itemsCarga = cargaActivaActual.datos_parseados || [];
+            preciosPendienteMap = {};
+            let itemsCarga = cargaActivaActual.datos_parseados;
+            if (!itemsCarga && cargaActivaActual.datos_json) {
+                try {
+                    itemsCarga = typeof cargaActivaActual.datos_json === 'string' ? JSON.parse(cargaActivaActual.datos_json) : cargaActivaActual.datos_json;
+                } catch(e) { itemsCarga = []; }
+            }
+            if (!Array.isArray(itemsCarga)) itemsCarga = [];
+
             itemsCarga.forEach(c => {
-                const clave = `${c.categoria} ${c.subtipo}`.trim();
-                inventarioOriginal[clave] = (inventarioOriginal[clave] || 0) + c.cantidad;
-                preciosCompraMap[clave] = c.p_compra || 0;
+                const cat = (c.categoria || '').trim().toUpperCase();
+                const sub = (c.subtipo || c.variacion || '').trim().toUpperCase();
+                const clave = `${cat} ${sub}`.trim();
+                const cant = parseFloat(c.cantidad) || 0;
+                const prec = parseFloat(c.p_compra !== undefined ? c.p_compra : (c.pCompra !== undefined ? c.pCompra : (c.precio_compra !== undefined ? c.precio_compra : (c.precio !== undefined ? c.precio : c.costo)))) || 0;
+                const esPendiente = c.precio_compra_pendiente === true || c.precio_compra_pendiente === 1;
+
+                if (clave) {
+                    inventarioOriginal[clave] = (inventarioOriginal[clave] || 0) + cant;
+                    preciosCompraMap[clave] = prec;
+                    preciosCompraMap[clave.toUpperCase()] = prec;
+                    if (esPendiente) {
+                        preciosPendienteMap[clave] = true;
+                        preciosPendienteMap[clave.toUpperCase()] = true;
+                    }
+                }
             });
             
             rendicionesGuardadas = await ipc.invoke('obtener-rendiciones-carga', cargaActivaActual.id_carga);
@@ -1065,6 +1159,26 @@
         // Diseño con tonos verdes/neutros para diferenciar la carga original de la restante
         contenedor.innerHTML = Object.entries(inventario).map(([nombre, total]) => {
             const partes = nombre.split(' ');
+            const esPendiente = preciosPendienteMap[nombre] || preciosPendienteMap[nombre.toUpperCase()];
+
+            if (esPendiente) {
+                return `
+                <div class="card-precio-pendiente" style="min-width:200px;">
+                    <div class="badge-top">⏳ Precio de Compra Pendiente</div>
+                    <div class="producto-nombre">${partes[0].toUpperCase()}<br><span style="font-size:0.75rem;color:#9a3412;">${partes.slice(1).join(' ').toUpperCase()}</span></div>
+                    <input
+                        type="number"
+                        class="input-precio-pendiente"
+                        id="input-pcompra-pendiente-${nombre.replace(/\s+/g,'-')}"
+                        placeholder="$ 0.00"
+                        min="0" step="0.01"
+                        oninput="actualizarPrecioPendiente('${nombre}', this.value)"
+                    />
+                    <div class="label-input-pendiente">Ingresa el precio de compra ($)</div>
+                    <div class="restante-label mt-2" style="color:#ea580c;">Total cargado: ${total} u.</div>
+                </div>`;
+            }
+
             return `
                 <div class="restante-card" style="background: #f0fdf4; border-color: #bbf7d0;">
                     <span class="restante-valor" style="color: #166534;">${total}</span>
@@ -1076,6 +1190,13 @@
             `;
         }).join('');
     }
+
+    window.actualizarPrecioPendiente = function(clave, valorStr) {
+        const val = parseFloat(valorStr) || 0;
+        preciosCompraMap[clave] = val;
+        preciosCompraMap[clave.toUpperCase()] = val;
+        actualizarSaldosUI();
+    };
 
     window.guardarNuevoCliente = function() {
         const inputCliente = document.getElementById('input-nuevo-cliente');
@@ -1172,8 +1293,24 @@
             banco: filaReal.querySelector('.cell-banco').value
         };
 
+        // 1. Guardar en SQLite local
         ipc.send('auto-guardar-venta-carga', data);
         actualizarSaldosUI();
+
+        // 2. DISPARO INMEDIATO AL VPS (Tiempo Real Instantáneo)
+        if (navigator.onLine && data.id_carga) {
+            const payloadDirecto = {
+                ...data,
+                id_empresa: idEmpresaLocal || '',
+                pago_divisa: (data.metodo_pago === 'CRÉDITO' || data.metodo_pago === 'CREDITO') ? 0 : ((parseFloat(data.cantidad) || 0) * (parseFloat(data.precio) || 0)),
+                pago_movil: 0
+            };
+            fetch(`${SERVER_URL}/api/maestro/ventas_cargas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify([payloadDirecto])
+            }).catch(err => console.warn("Sync directo al VPS en background falló:", err));
+        }
     };
 
     function actualizarSaldosUI() {
@@ -1205,8 +1342,30 @@
 
             // CALCULO DE GANANCIA POR FILA
             let gananciaFila = 0;
-            if (tipo) {
-                const pCompraUnitario = preciosCompraMap[tipo] || 0;
+            if (cant > 0 && precio > 0) {
+                let targetTipo = (tipo || '').trim().toUpperCase();
+                if (!targetTipo && Object.keys(inventarioOriginal).length === 1) {
+                    targetTipo = Object.keys(inventarioOriginal)[0].trim().toUpperCase();
+                }
+
+                let pCompraUnitario = 0;
+                if (targetTipo && preciosCompraMap[targetTipo] !== undefined) {
+                    pCompraUnitario = preciosCompraMap[targetTipo];
+                } else if (tipo && preciosCompraMap[tipo] !== undefined) {
+                    pCompraUnitario = preciosCompraMap[tipo];
+                } else {
+                    for (const [k, v] of Object.entries(preciosCompraMap)) {
+                        if (k.trim().toUpperCase() === targetTipo) {
+                            pCompraUnitario = v;
+                            break;
+                        }
+                    }
+                }
+
+                if (pCompraUnitario === 0 && Object.keys(preciosCompraMap).length > 0) {
+                    pCompraUnitario = Object.values(preciosCompraMap)[0] || 0;
+                }
+
                 gananciaFila = (precio - pCompraUnitario) * cant;
             }
             totalGananciaGlobal += gananciaFila;
@@ -1236,11 +1395,42 @@
         document.getElementById('resumen-total-credito').innerText = `${totalCredito.toFixed(2)} $`;
         document.getElementById('resumen-total-contado').innerText = `${totalContado.toFixed(2)} $`;
         
-        const gananciaTotalTabla = document.getElementById('resumen-total-ganancia-tabla');
-        if (gananciaTotalTabla) {
-            gananciaTotalTabla.innerText = `${totalGananciaGlobal.toFixed(2)} $`;
-            gananciaTotalTabla.style.color = totalGananciaGlobal > 0 ? '#0369a1' : (totalGananciaGlobal < 0 ? '#ef4444' : '#0369a1');
+        const resGananciaTabla = document.getElementById('resumen-total-ganancia-tabla');
+        if (resGananciaTabla) {
+            resGananciaTabla.innerText = `${totalGananciaGlobal.toFixed(2)} $`;
+            resGananciaTabla.style.color = totalGananciaGlobal > 0 ? '#10b981' : (totalGananciaGlobal < 0 ? '#ef4444' : '#0369a1');
         }
+
+        // CÁLCULO Y RENDERIZADO DE PRECIO PROMEDIO EN TIEMPO REAL
+        const statsPromediosEnVivo = {};
+        Object.keys(inventarioOriginal).forEach(p => {
+            statsPromediosEnVivo[p.trim().toUpperCase()] = { ingresos: 0, cantidad: 0 };
+        });
+
+        document.querySelectorAll('.cell-cant').forEach(input => {
+            const fila = input.closest('tr');
+            const cant = parseInt(input.value) || 0;
+            const precioRaw = fila.querySelector('.cell-precio').value.replace('$', '').trim();
+            const precio = parseFloat(precioRaw) || 0;
+            let tipo = fila.querySelector('.cell-tipo').value;
+
+            if (cant > 0 && precio > 0) {
+                let targetTipo = (tipo || '').trim().toUpperCase();
+                if (!targetTipo && Object.keys(inventarioOriginal).length === 1) {
+                    targetTipo = Object.keys(inventarioOriginal)[0].trim().toUpperCase();
+                }
+
+                if (targetTipo) {
+                    if (!statsPromediosEnVivo[targetTipo]) {
+                        statsPromediosEnVivo[targetTipo] = { ingresos: 0, cantidad: 0 };
+                    }
+                    statsPromediosEnVivo[targetTipo].ingresos += (cant * precio);
+                    statsPromediosEnVivo[targetTipo].cantidad += cant;
+                }
+            }
+        });
+
+        renderizarPromediosEnVivoUI(statsPromediosEnVivo);
 
         const contenedor = document.getElementById('contenedor-cards-restantes');
         if (Object.keys(saldosActuales).length === 0) {
@@ -1262,6 +1452,31 @@
         }).join('');
     }
 
+    function renderizarPromediosEnVivoUI(stats) {
+        const contenedor = document.getElementById('contenedor-cards-promedios-envivo');
+        if (!contenedor) return;
+
+        if (!stats || Object.keys(stats).length === 0) {
+            contenedor.innerHTML = '<div class="w-full text-center p-4 text-slate-400">Sin mercancía en la carga</div>';
+            return;
+        }
+
+        contenedor.innerHTML = Object.entries(stats).map(([nombre, info]) => {
+            const partes = nombre.split(' ');
+            const prom = info.cantidad > 0 ? (info.ingresos / info.cantidad) : 0;
+            const labelSub = info.cantidad > 0 ? `${info.cantidad} U. VENDIDAS` : 'SIN VENTAS AÚN ($0.00)';
+            return `
+                <div class="restante-card" style="border-color: #e9d5ff; background: #faf5ff;">
+                    <span class="restante-valor" style="color: #7e22ce;">$${prom.toFixed(2)}</span>
+                    <span class="restante-tipo" style="color: #581c87;">${partes[0].toUpperCase()} <br> 
+                        <span class="text-xs text-purple-600">${partes.slice(1).join(' ').toUpperCase()}</span>
+                    </span>
+                    <span class="restante-label mt-2" style="color: #7e22ce;">${labelSub}</span>
+                </div>
+            `;
+        }).join('');
+    }
+
     function generarFilasExcel(opcionesInventario, datosGuardados, inicio, fin) {
         const tbody = document.getElementById('tabla-excel-body');
         if (inicio === 1) tbody.innerHTML = '';
@@ -1271,18 +1486,28 @@
 
         const selectMetodosHTML = (seleccionado) => `
             <option value="">-- MÉTODO --</option>
-            ${metodosPago.map(m => `<option value="${m}" ${m === seleccionado ? 'selected' : ''}>${m}</option>`).join('')}
+            ${metodosPago.map(m => `<option value="${m}" ${m.toUpperCase() === (seleccionado || '').toUpperCase() ? 'selected' : ''}>${m}</option>`).join('')}
         `;
 
-        const selectBancosHTML = (seleccionado) => `
-            <option value="">-- BANCO --</option>
-            ${bancosList.map(b => `<option value="${b}" ${b === seleccionado ? 'selected' : ''}>${b}</option>`).join('')}
-        `;
+        const selectBancosHTML = (seleccionado) => {
+            const selUpper = (seleccionado || '').toUpperCase().trim();
+            let lista = [...bancosList];
+            if (selUpper && !lista.map(b => b.toUpperCase()).includes(selUpper)) {
+                lista.push(selUpper);
+            }
+            return `
+                <option value="">-- BANCO --</option>
+                ${lista.map(b => `<option value="${b}" ${b.toUpperCase() === selUpper ? 'selected' : ''}>${b}</option>`).join('')}
+            `;
+        };
 
-        const selectMercanciaHTML = (seleccionado) => `
-            <option value="">-- SELECCIONAR --</option>
-            ${opcionesInventario.map(opt => `<option value="${opt}" ${opt === seleccionado ? 'selected' : ''}>${opt.toUpperCase()}</option>`).join('')}
-        `;
+        const selectMercanciaHTML = (seleccionado) => {
+            const optValida = (!seleccionado && opcionesInventario.length === 1) ? opcionesInventario[0] : seleccionado;
+            return `
+                <option value="">-- SELECCIONAR --</option>
+                ${opcionesInventario.map(opt => `<option value="${opt}" ${opt.toUpperCase() === (optValida || '').toUpperCase() ? 'selected' : ''}>${opt.toUpperCase()}</option>`).join('')}
+            `;
+        };
 
         for (let i = inicio; i <= fin; i++) {
             const dataPrincipal = datosGuardados.find(d => d.fila_id == i.toString()) || {};
@@ -1369,7 +1594,92 @@
             return;
         }
 
-        // ================= ESCUDO DE SEGURIDAD: VALIDACIÓN DE MERCANCÍA RESTANTE =================
+        // ================= ESCUDO 0: PRECIOS DE COMPRA PENDIENTES =================
+        const pendientesConPrecio0 = [];
+        for (const [clave, esPend] of Object.entries(preciosPendienteMap)) {
+            if (esPend) {
+                const claveMay = clave.toUpperCase();
+                const prec = preciosCompraMap[claveMay] !== undefined ? preciosCompraMap[claveMay] : (preciosCompraMap[clave] || 0);
+                if (prec <= 0) {
+                    // Solo reportar una vez por clave
+                    if (!pendientesConPrecio0.some(p => p.toUpperCase() === claveMay)) {
+                        pendientesConPrecio0.push(clave);
+                    }
+                }
+            }
+        }
+
+        if (pendientesConPrecio0.length > 0) {
+            abrirModalConfirmacion(
+                "Precio de Compra Pendiente",
+                `¡No puedes cerrar la carga todavía!\n\nLos siguientes productos tienen el precio de compra sin ingresar:\n${pendientesConPrecio0.map(p => `  • ${p}`).join('\n')}\n\nIngresa el precio de compra en las tarjetas de color naranja en la sección "Carga del Vehículo" antes de cerrar.`,
+                "Entendido",
+                () => {},
+                false
+            );
+            return; // 🛑 BLOQUEA EL CIERRE
+        }
+
+        // ================= ESCUDO 1: VALIDACIÓN DE FILAS INCOMPLETAS =================
+        const filasIncompletas = [];
+        const todasFilas = document.querySelectorAll('#tabla-cobros tbody tr');
+        const numTiposDisponibles = Object.keys(inventarioOriginal).length;
+
+        todasFilas.forEach((tr, index) => {
+            const inputCant = tr.querySelector('.cell-cant');
+            const inputPrecio = tr.querySelector('.cell-precio');
+            const inputCliente = tr.querySelector('.cell-cliente');
+            const selectMetodo = tr.querySelector('.cell-metodo');
+            const selectBanco = tr.querySelector('.cell-banco');
+            const selectTipo = tr.querySelector('.cell-tipo');
+            
+            const cant = parseInt(inputCant?.value) || 0;
+            const precioRaw = (inputPrecio?.value || '').replace('$', '').trim();
+            const precio = parseFloat(precioRaw) || 0;
+            const cliente = (inputCliente?.value || '').trim();
+            const metodo = (selectMetodo?.value || '').trim().toUpperCase();
+            const banco = (selectBanco?.value || '').trim();
+            const tipo = (selectTipo?.value || '').trim();
+
+            const filaNumero = tr.dataset.fila || (index + 1);
+
+            // Una fila se considera en uso si tiene cualquier dato ingresado
+            const filaEnUso = cant > 0 || precio > 0 || cliente !== '' || metodo !== '' || tipo !== '';
+
+            if (filaEnUso) {
+                const erroresFila = [];
+
+                if (cant <= 0) erroresFila.push("Falta cantidad válida");
+                if (precio <= 0) erroresFila.push("Falta precio de venta");
+                if (!tipo && numTiposDisponibles > 1) erroresFila.push("Falta seleccionar producto");
+                if (!metodo) erroresFila.push("Falta método de pago");
+                if ((metodo === 'CRÉDITO' || metodo === 'CREDITO') && !cliente) {
+                    erroresFila.push("Falta cliente (obligatorio en Crédito)");
+                }
+                if ((metodo === 'PAGO MÓVIL' || metodo === 'PAGO MOVIL') && !banco && selectBanco && selectBanco.options && selectBanco.options.length > 1) {
+                    erroresFila.push("Falta seleccionar banco");
+                }
+
+                if (erroresFila.length > 0) {
+                    filasIncompletas.push(`• Fila ${filaNumero}: ${erroresFila.join(', ')}`);
+                }
+            }
+        });
+
+        if (filasIncompletas.length > 0) {
+            const mensajeError = `¡No puedes cerrar la carga todavía!\n\nTienes filas de venta con datos incompletos:\n${filasIncompletas.slice(0, 8).join('\n')}${filasIncompletas.length > 8 ? `\n... y ${filasIncompletas.length - 8} filas más.` : ''}\n\nPor favor, completa los campos requeridos (Producto, Cantidad, Precio, Método de Pago y Cliente si es Crédito) o vacía las filas antes de proceder al cierre.`;
+
+            abrirModalConfirmacion(
+                "Campos Obligatorios Incompletos",
+                mensajeError,
+                "Entendido",
+                () => {},
+                false
+            );
+            return; // 🛑 CORTA EL PROCESO, BLOQUEA EL CIERRE
+        }
+
+        // ================= ESCUDO 2: VALIDACIÓN DE MERCANCÍA RESTANTE =================
         const saldosValidacion = { ...inventarioOriginal };
         
         // 1. Restamos lo que se ha vendido en la tabla
@@ -1650,41 +1960,43 @@
         const inputNuevoPrecio = document.getElementById('input-rendicion-nuevo-precio');
         
         const valorOrigen = selectOrigen.value;
-        const cantRestada = parseInt(inputCantRestada.value);
+        const cantRestada = parseInt(inputCantRestada.value) || 0; // Opcional o 0
         const nuevoNombre = inputNuevoNombre.value.trim().toUpperCase();
         const cantGenerada = parseInt(inputCantGenerada.value);
         const nuevoPrecio = parseFloat(inputNuevoPrecio.value);
 
-        if (!valorOrigen || isNaN(cantRestada) || cantRestada <= 0 || !nuevoNombre || isNaN(cantGenerada) || cantGenerada <= 0 || isNaN(nuevoPrecio) || nuevoPrecio < 0) {
-            mostrarToast("Completa todos los campos de rendición correctamente.", "error");
+        if (!valorOrigen || isNaN(cantRestada) || cantRestada < 0 || !nuevoNombre || isNaN(cantGenerada) || cantGenerada <= 0 || isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+            mostrarToast("Completa los campos requeridos (Producto Origen, Nombre Nuevo, Cant. Genera y Precio Venta).", "error");
             return;
         }
 
-        const saldosValidacion = { ...inventarioOriginal };
-        
-        document.querySelectorAll('.cell-cant').forEach(input => {
-            const cantVendida = parseInt(input.value) || 0;
-            const fila = input.closest('tr');
-            const tipo = fila.querySelector('.cell-tipo').value;
-            if (tipo && saldosValidacion[tipo] !== undefined) saldosValidacion[tipo] -= cantVendida;
-        });
+        if (cantRestada > 0) {
+            const saldosValidacion = { ...inventarioOriginal };
+            
+            document.querySelectorAll('.cell-cant').forEach(input => {
+                const cantVendida = parseInt(input.value) || 0;
+                const fila = input.closest('tr');
+                const tipo = fila.querySelector('.cell-tipo').value;
+                if (tipo && saldosValidacion[tipo] !== undefined) saldosValidacion[tipo] -= cantVendida;
+            });
 
-        mermasGuardadas.forEach(m => {
-            const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
-            if (saldosValidacion[claveMerma] !== undefined) saldosValidacion[claveMerma] -= m.cantidad;
-        });
+            mermasGuardadas.forEach(m => {
+                const claveMerma = `${m.tipo_medida} ${m.sub_medida}`.trim();
+                if (saldosValidacion[claveMerma] !== undefined) saldosValidacion[claveMerma] -= m.cantidad;
+            });
 
-        const stockDisponible = saldosValidacion[valorOrigen] || 0;
+            const stockDisponible = saldosValidacion[valorOrigen] || 0;
 
-        if (cantRestada > stockDisponible) {
-            abrirModalConfirmacion(
-                "Stock Insuficiente",
-                `No puedes restar ${cantRestada} unidades de ${valorOrigen} porque solo te quedan ${stockDisponible}.`,
-                "Entendido",
-                () => {}, 
-                false 
-            );
-            return; 
+            if (cantRestada > stockDisponible) {
+                abrirModalConfirmacion(
+                    "Stock Insuficiente",
+                    `No puedes restar ${cantRestada} unidades de ${valorOrigen} porque solo te quedan ${stockDisponible}.`,
+                    "Entendido",
+                    () => {}, 
+                    false 
+                );
+                return; 
+            }
         }
 
         ipc.send('guardar-rendicion-carga', {
@@ -2042,6 +2354,95 @@
     };
 
     inicializarCuentasCobrar();
+
+    // ==========================================
+    // ACTUALIZACIÓN SILENCIOSA EN TIEMPO REAL
+    // ==========================================
+    window.actualizacionSilenciosa = async function() {
+        if (!ipc) return;
+
+        try {
+            // 1. Si está en la pantalla de selección de vehículos/cargas, refrescar lista (solo si no hay input activo)
+            if (typeof vistaSeleccion !== 'undefined' && !vistaSeleccion.classList.contains('hidden')) {
+                const active = document.activeElement;
+                if (!active || (active.tagName !== 'INPUT' && active.tagName !== 'SELECT')) {
+                    const vehiculosCrudos = await ipc.invoke('obtener-vehiculos');
+                    vehiculosCuentasCache = vehiculosCrudos || [];
+                    const busqueda = document.getElementById('buscador-vehiculos-cuentas')?.value.toLowerCase().trim() || '';
+                    if (busqueda) {
+                        window.filtrarVehiculosCuentas();
+                    } else {
+                        renderizarGaleriaCuentas(vehiculosCuentasCache);
+                    }
+                }
+            }
+
+            // 2. Si está dentro de una carga activa, actualizar celdas de ventas celda por celda (sin pisar la celda activa)
+            if (cargaActivaActual && typeof vistaDetalle !== 'undefined' && !vistaDetalle.classList.contains('hidden')) {
+                const activeEl = document.activeElement;
+
+                const datos = await ipc.invoke('obtener-ventas-carga', cargaActivaActual.id_carga);
+                datosGuardadosGlobales = datos || [];
+                
+                let huboCambios = false;
+                datos.forEach(data => {
+                    const filaId = data.fila_id;
+                    const tipoRemoto = data.tipo_medida ? `${data.tipo_medida} ${data.sub_medida || ''}`.trim() : '';
+
+                    const fields = [
+                        { class: '.cell-cant', value: data.cantidad !== null && data.cantidad !== undefined ? data.cantidad : '' },
+                        { class: '.cell-precio', value: data.precio !== null && data.precio !== undefined ? data.precio : '' },
+                        { class: '.cell-cliente', value: data.cliente || '' },
+                        { class: '.cell-metodo', value: data.metodo_pago || '' },
+                        { class: '.cell-banco', value: data.banco || '' },
+                        { class: '.cell-tipo', value: tipoRemoto }
+                    ];
+
+                    fields.forEach(f => {
+                        const input = document.querySelector(`[data-fila="${filaId}"]${f.class}`);
+                        // Solo actualizamos si NO es el input que el usuario tiene enfocado en este instante
+                        if (input && input !== activeEl) {
+                            if (input.tagName === 'SELECT') {
+                                const targetUpper = String(f.value || '').trim().toUpperCase();
+                                let matchedVal = '';
+                                for (let opt of input.options) {
+                                    if (opt.value.trim().toUpperCase() === targetUpper) {
+                                        matchedVal = opt.value;
+                                        break;
+                                    }
+                                }
+                                if (targetUpper && !matchedVal) {
+                                    const newOpt = document.createElement('option');
+                                    newOpt.value = targetUpper;
+                                    newOpt.innerText = targetUpper;
+                                    input.appendChild(newOpt);
+                                    matchedVal = targetUpper;
+                                }
+                                if (input.value !== matchedVal) {
+                                    input.value = matchedVal;
+                                    huboCambios = true;
+                                }
+                            } else {
+                                if (String(input.value) !== String(f.value)) {
+                                    input.value = f.value;
+                                    huboCambios = true;
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                if (huboCambios && typeof actualizarSaldosUI === 'function') {
+                    actualizarSaldosUI();
+                }
+            }
+        } catch(e) {
+            console.error("Error en refresco silencioso:", e);
+        }
+    };
+
+    // Refresco en vivo ultra rápido a 1 segundo
+    setInterval(actualizacionSilenciosa, 1000);
 }
 </script>
 </div>
