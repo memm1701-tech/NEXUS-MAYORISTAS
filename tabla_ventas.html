@@ -1502,10 +1502,10 @@
         };
 
         const selectMercanciaHTML = (seleccionado) => {
-            const optValida = (!seleccionado && opcionesInventario.length === 1) ? opcionesInventario[0] : seleccionado;
+            const selUpper = (seleccionado || '').toUpperCase().trim();
             return `
                 <option value="">-- SELECCIONAR --</option>
-                ${opcionesInventario.map(opt => `<option value="${opt}" ${opt.toUpperCase() === (optValida || '').toUpperCase() ? 'selected' : ''}>${opt.toUpperCase()}</option>`).join('')}
+                ${opcionesInventario.map(opt => `<option value="${opt}" ${opt.toUpperCase() === selUpper ? 'selected' : ''}>${opt.toUpperCase()}</option>`).join('')}
             `;
         };
 
@@ -1622,7 +1622,7 @@
 
         // ================= ESCUDO 1: VALIDACIÓN DE FILAS INCOMPLETAS =================
         const filasIncompletas = [];
-        const todasFilas = document.querySelectorAll('#tabla-cobros tbody tr');
+        const todasFilas = document.querySelectorAll('#tabla-excel-body tr');
         const numTiposDisponibles = Object.keys(inventarioOriginal).length;
 
         todasFilas.forEach((tr, index) => {
@@ -1633,30 +1633,31 @@
             const selectBanco = tr.querySelector('.cell-banco');
             const selectTipo = tr.querySelector('.cell-tipo');
             
-            const cant = parseInt(inputCant?.value) || 0;
+            const cant = parseFloat(inputCant?.value) || 0;
             const precioRaw = (inputPrecio?.value || '').replace('$', '').trim();
             const precio = parseFloat(precioRaw) || 0;
             const cliente = (inputCliente?.value || '').trim();
             const metodo = (selectMetodo?.value || '').trim().toUpperCase();
-            const banco = (selectBanco?.value || '').trim();
+            const banco = (selectBanco?.value || '').trim().toUpperCase();
             const tipo = (selectTipo?.value || '').trim();
 
-            const filaNumero = tr.dataset.fila || (index + 1);
+            const filaNumero = tr.querySelector('.col-idx')?.textContent?.trim() || tr.dataset.fila || (index + 1);
 
             // Una fila se considera en uso si tiene cualquier dato ingresado
-            const filaEnUso = cant > 0 || precio > 0 || cliente !== '' || metodo !== '' || tipo !== '';
+            const filaEnUso = cant > 0 || precio > 0 || cliente !== '' || metodo !== '' || banco !== '' || tipo !== '';
 
             if (filaEnUso) {
                 const erroresFila = [];
 
                 if (cant <= 0) erroresFila.push("Falta cantidad válida");
                 if (precio <= 0) erroresFila.push("Falta precio de venta");
-                if (!tipo && numTiposDisponibles > 1) erroresFila.push("Falta seleccionar producto");
+                if (!tipo) erroresFila.push("Falta seleccionar producto");
                 if (!metodo) erroresFila.push("Falta método de pago");
                 if ((metodo === 'CRÉDITO' || metodo === 'CREDITO') && !cliente) {
                     erroresFila.push("Falta cliente (obligatorio en Crédito)");
                 }
-                if ((metodo === 'PAGO MÓVIL' || metodo === 'PAGO MOVIL') && !banco && selectBanco && selectBanco.options && selectBanco.options.length > 1) {
+                const requiereBanco = ['PAGO MÓVIL', 'PAGO MOVIL', 'TRANSFERENCIA', 'PUNTO', 'DEBITO', 'TARJETA'].includes(metodo);
+                if (requiereBanco && !banco) {
                     erroresFila.push("Falta seleccionar banco");
                 }
 
