@@ -282,11 +282,12 @@
                                 </div>
                                 <div id="lib-opciones-pago" class="hidden" style="margin-top: 6px; display: flex; gap: 8px;">
                                     <input type="hidden" id="carga-seleccionada" value="AUTO">
-                                    <div style="display: flex; gap: 4px; width: 60%;">
-                                        <button id="btn-fifo" onclick="seleccionarCargaOpcion('AUTO')" title="El dinero se repartirá automáticamente pagando primero las deudas más antiguas." style="flex: 1; font-size: 0.75rem; padding: 6px 4px; border: 1px solid #10b981; background: #ecfdf5; color: #047857; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s;">✔️ FIFO</button>
-                                        <button id="btn-seleccionar-factura" onclick="abrirModalFacturas()" title="El dinero se abonará de forma exacta y exclusiva a la factura que selecciones." style="flex: 1; font-size: 0.75rem; padding: 6px 4px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📄 ELEGIR FACTURA</button>
+                                    <div style="display: flex; gap: 4px; width: 68%;">
+                                        <button id="btn-fifo" onclick="seleccionarCargaOpcion('AUTO')" title="El dinero se repartirá automáticamente pagando primero las deudas más antiguas." style="flex: 1; font-size: 0.72rem; padding: 6px 4px; border: 1px solid #10b981; background: #ecfdf5; color: #047857; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap;">FIFO</button>
+                                        <button id="btn-abono-total" onclick="seleccionarCargaOpcion('GLOBAL')" title="Registra el abono directamente a la deuda total en una sola línea del cuaderno." style="flex: 1.2; font-size: 0.72rem; padding: 6px 4px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap;">ABONO TOTAL</button>
+                                        <button id="btn-seleccionar-factura" onclick="abrirModalFacturas()" title="El dinero se abonará de forma exacta y exclusiva a la factura que selecciones." style="flex: 1.1; font-size: 0.72rem; padding: 6px 4px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 4px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">FACTURA</button>
                                     </div>
-                                    <select id="lib-banco" class="libreta-input" style="width: 40%; font-size: 0.7rem;">
+                                    <select id="lib-banco" class="libreta-input" style="width: 32%; font-size: 0.7rem;">
                                         <option value="">EFECTIVO</option>
                                     </select>
                                 </div>
@@ -691,10 +692,42 @@ window.renderizarCuaderno = function() {
 
             if (abonoTotal <= 0) { mostrarToast("Ingresa un monto de pago válido.", "error"); return; }
 
-            // ================== ALGORITMO FIFO / DIRECTO DE DISTRIBUCIÓN ==================
+            const cargaSeleccionada = document.getElementById('carga-seleccionada').value;
+
+            // ================== CASO 1: ABONO DIRECTO A LA DEUDA TOTAL (1 SOLA LÍNEA) ==================
+            if (cargaSeleccionada === 'GLOBAL') {
+                let movil = banco === "PAGO MÓVIL" ? abonoTotal : 0; 
+                let divisa = banco !== "PAGO MÓVIL" ? abonoTotal : 0;
+                
+                let bancoConConcepto = banco === "EFECTIVO" ? "" : banco;
+                if (conceptoInput) {
+                    bancoConConcepto = bancoConConcepto ? `${bancoConConcepto} - ${conceptoInput}` : conceptoInput;
+                }
+
+                ipc.send('guardar-abono-deuda', {
+                    id_carga: 0,
+                    vehiculo_id: 0,
+                    cliente: clienteSeleccionadoActual,
+                    monto_divisa: divisa,
+                    monto_movil: movil,
+                    banco: bancoConConcepto
+                });
+
+                ipc.once('guardar-abono-resultado', (event, res) => {
+                    if (res.success) {
+                        mostrarToast(`Abono de ${abonoTotal.toFixed(2)} $ registrado a la deuda total.`, "success");
+                        limpiarFilaLibreta();
+                        seleccionarClienteGlobal(clienteSeleccionadoActual);
+                    } else {
+                        mostrarToast("Error registrando abono: " + res.msg, "error");
+                    }
+                });
+                return;
+            }
+
+            // ================== CASO 2: ALGORITMO FIFO / FACTURA ESPECÍFICA ==================
             let abonoRestante = abonoTotal;
             let abonosAProcesar = [];
-            const cargaSeleccionada = document.getElementById('carga-seleccionada').value;
 
             if (cargaSeleccionada !== 'AUTO') {
                 // Pago directo a una factura específica
@@ -972,29 +1005,40 @@ window.renderizarCuaderno = function() {
     window.seleccionarCargaOpcion = function(valor, titulo = null) {
         const inputOculto = document.getElementById('carga-seleccionada');
         const btnFifo = document.getElementById('btn-fifo');
+        const btnAbonoTotal = document.getElementById('btn-abono-total');
         const btnFactura = document.getElementById('btn-seleccionar-factura');
         
         inputOculto.value = valor;
         
+        // Reset estilos de todos los botones
+        [btnFifo, btnAbonoTotal, btnFactura].forEach(btn => {
+            if (btn) {
+                btn.style.background = 'white';
+                btn.style.color = '#475569';
+                btn.style.borderColor = '#cbd5e1';
+            }
+        });
+        if (btnFactura) btnFactura.innerText = 'FACTURA';
+
         if (valor === 'AUTO') {
-            btnFifo.style.background = '#ecfdf5';
-            btnFifo.style.color = '#047857';
-            btnFifo.style.borderColor = '#10b981';
-            
-            btnFactura.style.background = 'white';
-            btnFactura.style.color = '#475569';
-            btnFactura.style.borderColor = '#cbd5e1';
-            btnFactura.innerText = '📄 ELEGIR FACTURA';
+            if (btnFifo) {
+                btnFifo.style.background = '#ecfdf5';
+                btnFifo.style.color = '#047857';
+                btnFifo.style.borderColor = '#10b981';
+            }
+        } else if (valor === 'GLOBAL') {
+            if (btnAbonoTotal) {
+                btnAbonoTotal.style.background = '#f5f3ff';
+                btnAbonoTotal.style.color = '#6d28d9';
+                btnAbonoTotal.style.borderColor = '#8b5cf6';
+            }
         } else {
-            btnFactura.style.background = '#eff6ff';
-            btnFactura.style.color = '#1d4ed8';
-            btnFactura.style.borderColor = '#3b82f6';
-            btnFactura.innerText = `✔️ Carga #${valor}`;
-            
-            btnFifo.style.background = 'white';
-            btnFifo.style.color = '#475569';
-            btnFifo.style.borderColor = '#cbd5e1';
-            
+            if (btnFactura) {
+                btnFactura.style.background = '#eff6ff';
+                btnFactura.style.color = '#1d4ed8';
+                btnFactura.style.borderColor = '#3b82f6';
+                btnFactura.innerText = `Carga #${valor}`;
+            }
             cerrarModalFacturas();
         }
     };

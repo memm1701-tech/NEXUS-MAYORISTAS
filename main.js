@@ -751,7 +751,10 @@ ipcMain.handle('obtener-estado-cuenta-cliente', async (event, clienteNombre) => 
                 id_carga,
                 fecha_abono AS fecha,
                 'PAGO' AS tipo,
-                'ABONO A LA CARGA #' || id_carga || CASE WHEN banco != '' THEN ' ('||banco||')' ELSE ' (EFECTIVO)' END AS concepto,
+                CASE 
+                    WHEN id_carga = 0 THEN 'ABONO A LA DEUDA TOTAL' || CASE WHEN banco != '' THEN ' ('||banco||')' ELSE ' (EFECTIVO)' END
+                    ELSE 'ABONO A LA CARGA #' || id_carga || CASE WHEN banco != '' THEN ' ('||banco||')' ELSE ' (EFECTIVO)' END 
+                END AS concepto,
                 0 AS cargo,
                 (monto_divisa + monto_movil) AS abono
             FROM abonos_deudas
