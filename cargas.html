@@ -725,6 +725,15 @@
 
     // ACTUALIZACIÓN SILENCIOSA EN TIEMPO REAL
     window.actualizacionSilenciosaCargas = async function() {
+        // Si el contenedor ya no existe en el DOM, limpiamos el intervalo
+        if (!document.getElementById('contenedor-principal-cargas')) {
+            if (window.intervaloCargas) {
+                clearInterval(window.intervaloCargas);
+                window.intervaloCargas = null;
+            }
+            return;
+        }
+
         const active = document.activeElement;
         if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) return;
 
@@ -739,6 +748,9 @@
         }
     };
 
-    setInterval(actualizacionSilenciosaCargas, 3000);
+    if (window.intervaloCargas) {
+        clearInterval(window.intervaloCargas);
+    }
+    window.intervaloCargas = setInterval(actualizacionSilenciosaCargas, 3000);
 }
 </script>

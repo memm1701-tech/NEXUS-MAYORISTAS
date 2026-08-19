@@ -287,7 +287,8 @@ async function recalcularPagosCliente(id_carga, cliente) {
                 // 3. Traer todas las líneas de crédito del cliente ordenadas por ID
                 db.all(`SELECT id_detalle, precio, cantidad 
                         FROM ventas_cargas 
-                        WHERE id_carga = ? AND cliente = ? AND metodo_pago = 'CRÉDITO' 
+                        WHERE id_carga = ? AND cliente COLLATE NOCASE = ? 
+                          AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
                         ORDER BY id_detalle ASC`, 
                 [id_carga, cliente], (errLineas, lineas) => {
                     if (errLineas || !lineas) return resolve();
@@ -296,7 +297,7 @@ async function recalcularPagosCliente(id_carga, cliente) {
 
                     // 4. Iteramos las líneas de venta y distribuimos el saldo neto disponible
                     for (let linea of lineas) {
-                        let total_linea = parseFloat(linea.precio.replace('$', '').trim()) * parseInt(linea.cantidad);
+                        let total_linea = parseFloat(linea.precio.replace('$', '').trim()) * parseFloat(linea.cantidad);
                         let pagado_en_linea = 0;
                         let estado_zinc = 0;
 
@@ -353,7 +354,7 @@ ipcMain.handle('obtener-resumen-deudas', async () => {
                 COALESCE(vc.fecha_entrada, v.fecha_entrada) AS fecha_entrada,
                 cc.fecha_cierre,
                 ROUND(
-                    SUM(CAST(REPLACE(v.precio, '$', '') AS REAL) * CAST(v.cantidad AS INTEGER)) 
+                    SUM(CAST(REPLACE(REPLACE(v.precio, '$', ''), ' ', '') AS REAL) * CAST(v.cantidad AS REAL)) 
                     - COALESCE(ab.total_abonos, 0) 
                     + COALESCE(rev.total_reversos, 0)
                 , 2) AS total_deuda,
@@ -372,8 +373,8 @@ ipcMain.handle('obtener-resumen-deudas', async () => {
                 FROM reversos_deudas
                 GROUP BY id_carga
             ) rev ON v.id_carga = rev.id_carga
-            WHERE v.metodo_pago = 'CRÉDITO'
-              AND (v.id_carga > 0 OR (v.id_carga = 0 AND v.tipo_medida = 'DEUDA ANTIGUA'))
+            WHERE (v.metodo_pago = 'CRÉDITO' OR v.metodo_pago = 'CREDITO' OR UPPER(v.metodo_pago) = 'CRÉDITO' OR UPPER(v.metodo_pago) = 'CREDITO')
+              AND (v.id_carga > 0 OR (v.id_carga = 0 AND (v.tipo_medida = 'DEUDA ANTIGUA' OR v.tipo_medida = 'DEUDA MANUAL' OR v.tipo_medida LIKE 'DEUDA%')))
             GROUP BY v.id_carga, v.vehiculo_id, vehiculo_nombre, COALESCE(vc.fecha_entrada, v.fecha_entrada), cc.fecha_cierre
             HAVING total_deuda > 0.01
             ORDER BY v.id_carga DESC
@@ -673,8 +674,8 @@ ipcMain.handle('obtener-cargas-deuda-cliente', async (event, clienteNombre) => {
                 GROUP BY id_carga, cliente COLLATE NOCASE
             ) rev ON v.id_carga = rev.id_carga AND v.cliente COLLATE NOCASE = rev.cliente COLLATE NOCASE
             WHERE v.cliente COLLATE NOCASE = ? 
-              AND v.metodo_pago = 'CRÉDITO'
-              AND (v.id_carga > 0 OR (v.id_carga = 0 AND v.tipo_medida = 'DEUDA ANTIGUA'))
+              AND (v.metodo_pago = 'CRÉDITO' OR v.metodo_pago = 'CREDITO' OR UPPER(v.metodo_pago) = 'CRÉDITO' OR UPPER(v.metodo_pago) = 'CREDITO')
+              AND (v.id_carga > 0 OR (v.id_carga = 0 AND (v.tipo_medida = 'DEUDA ANTIGUA' OR v.tipo_medida = 'DEUDA MANUAL' OR v.tipo_medida LIKE 'DEUDA%')))
             GROUP BY v.id_carga, v.vehiculo_id, vehiculo_nombre, COALESCE(vc.fecha_entrada, v.fecha_entrada), cc.fecha_cierre
             HAVING total_deuda_carga > 0.01
             ORDER BY v.id_carga DESC
@@ -694,10 +695,12 @@ ipcMain.handle('verificar-deuda-cliente', async (event, clienteNombre) => {
     return new Promise((resolve) => {
         const query = `
             SELECT 
-                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS cargo,
+                (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) AS cargo,
                 0 AS abono
             FROM ventas_cargas
-            WHERE cliente COLLATE NOCASE = ? AND metodo_pago = 'CRÉDITO' AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+            WHERE cliente COLLATE NOCASE = ? 
+              AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
+              AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
             
             UNION ALL
             
@@ -737,13 +740,20 @@ ipcMain.handle('obtener-estado-cuenta-cliente', async (event, clienteNombre) => 
                 fecha_entrada AS fecha,
                 'VENTA' AS tipo,
                 CASE 
-                    WHEN id_carga = 0 THEN 'CARGA #0 - ' || tipo_medida || ' (' || sub_medida || ')'
+                    WHEN id_carga = 0 THEN 
+                        CASE 
+                            WHEN tipo_medida = 'DEUDA ANTIGUA' THEN 'DEUDA ANTERIOR AL SISTEMA' || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' (' || sub_medida || ')' ELSE '' END
+                            WHEN tipo_medida = 'DEUDA MANUAL' THEN 'DEUDA MANUAL' || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' (' || sub_medida || ')' ELSE '' END
+                            ELSE 'DEUDA ' || tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' (' || sub_medida || ')' ELSE '' END
+                        END
                     ELSE 'CARGA #' || id_carga || ' - DEUDA ' || tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' ' || sub_medida ELSE '' END || ' x ' || cantidad || ' a precio de ' || precio 
                 END AS concepto,
-                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS cargo,
+                (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) AS cargo,
                 0 AS abono
             FROM ventas_cargas
-            WHERE cliente COLLATE NOCASE = ? AND metodo_pago = 'CRÉDITO' AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+            WHERE cliente COLLATE NOCASE = ? 
+              AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
+              AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
             
             UNION ALL
             
@@ -794,10 +804,12 @@ ipcMain.handle('obtener-deudores-globales', async () => {
             FROM (
                 SELECT 
                     cliente,
-                    (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS cargo,
+                    (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) AS cargo,
                     0 AS abono
                 FROM ventas_cargas
-                WHERE metodo_pago = 'CRÉDITO' AND cliente IS NOT NULL AND cliente != '' AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+                WHERE (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
+                  AND cliente IS NOT NULL AND cliente != '' 
+                  AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
                 
                 UNION ALL
                 
@@ -836,7 +848,7 @@ ipcMain.handle('obtener-detalles-factura-carga', async (event, clienteNombre, id
                 sub_medida, 
                 cantidad, 
                 precio, 
-                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS total,
+                (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) AS total,
                 fecha_entrada AS fecha,
                 CASE 
                     WHEN id_carga = 0 THEN 'CARGA #0 - ' || tipo_medida || ' (' || sub_medida || ')'
@@ -844,8 +856,8 @@ ipcMain.handle('obtener-detalles-factura-carga', async (event, clienteNombre, id
                 END AS concepto_final
             FROM ventas_cargas 
             WHERE cliente COLLATE NOCASE = ? AND id_carga = ? 
-            AND metodo_pago = 'CRÉDITO' 
-            AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+            AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
+            AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
             ORDER BY id_detalle ASC
         `;
         db.all(query, [clienteNombre.trim(), id_carga], (err, rows) => {
@@ -869,14 +881,16 @@ ipcMain.handle('obtener-factura-global-cliente', async (event, clienteNombre) =>
                 sub_medida, 
                 cantidad, 
                 precio,
-                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS total_original,
-                (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) AS total,
+                (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) AS total_original,
+                (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) AS total,
                 CASE 
                     WHEN id_carga = 0 THEN 'DEUDA ' || tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' (' || sub_medida || ')' ELSE '' END
                     ELSE tipo_medida || CASE WHEN sub_medida != '' AND sub_medida IS NOT NULL THEN ' ' || sub_medida ELSE '' END
                 END AS concepto_final
             FROM ventas_cargas
-            WHERE cliente COLLATE NOCASE = ? AND metodo_pago = 'CRÉDITO' AND (CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) > 0
+            WHERE cliente COLLATE NOCASE = ? 
+              AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
+              AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
             ORDER BY fecha_entrada ASC
         `;
 
@@ -1021,10 +1035,11 @@ ipcMain.handle('obtener-detalle-deuda-cliente-carga', async (event, clienteNombr
                 tipo_medida,
                 sub_medida,
                 MAX(fecha_entrada) AS fecha_venta, -- Aquí extraemos la fecha del registro
-                SUM(CAST(cantidad AS INTEGER)) AS cantidad_total,
-                SUM((CAST(REPLACE(precio, '$', '') AS REAL) * CAST(cantidad AS INTEGER)) - pagado) AS deuda_restante
+                SUM(CAST(cantidad AS REAL)) AS cantidad_total,
+                SUM((CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) - pagado) AS deuda_restante
             FROM ventas_cargas
-            WHERE cliente COLLATE NOCASE = ? AND id_carga = ? AND metodo_pago = 'CRÉDITO'
+            WHERE cliente COLLATE NOCASE = ? AND id_carga = ? 
+              AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
             GROUP BY tipo_medida, sub_medida
             HAVING deuda_restante > 0.01
             ORDER BY tipo_medida ASC
@@ -1226,7 +1241,7 @@ ipcMain.handle('migrar-adopcion-datos', async (event, { idEmpresa }) => {
                 if (pending === 0) return resolve({ success: true });
 
                 tablasDatos.forEach(t => {
-                    db.run(`UPDATE ${t} SET id_empresa = ? WHERE id_empresa IS NULL`, [idEmpresa], (err2) => {
+                    db.run(`UPDATE ${t} SET id_empresa = ?, sync_status = 0 WHERE id_empresa IS NULL OR id_empresa = ''`, [idEmpresa], (err2) => {
                         if (err2) hasError = true;
                         pending--;
                         if (pending === 0) {
@@ -1306,57 +1321,61 @@ ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos
         };
         const pk = pkMap[tabla];
 
-        db.serialize(() => {
-            db.run("BEGIN TRANSACTION");
+        db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConf, rowConf) => {
+            const idEmpresa = rowConf ? rowConf.valor : null;
 
-            if (!datos || datos.length === 0) {
-                if (pk) {
-                    db.run(`DELETE FROM ${tabla} WHERE sync_status = 1`, (err) => {
-                        db.run(err ? "ROLLBACK" : "COMMIT", () => resolve({ success: !err }));
-                    });
-                } else {
-                    db.run("COMMIT", () => resolve({ success: true }));
-                }
-                return;
-            }
+            db.serialize(() => {
+                db.run("BEGIN TRANSACTION");
 
-            // Eliminar registros locales que ya no existen en el VPS (solo si estaban marcados como sincronizados)
-            if (pk) {
-                const remoteIds = datos.map(r => r[pk]).filter(id => id !== undefined && id !== null);
-                if (remoteIds.length > 0) {
-                    const placeholdersDel = remoteIds.map(() => '?').join(',');
-                    db.run(`DELETE FROM ${tabla} WHERE sync_status = 1 AND ${pk} NOT IN (${placeholdersDel})`, remoteIds, (errDel) => {
-                        if (errDel) console.error(`Error borrando huerfanos en ${tabla}:`, errDel);
-                    });
-                }
-            }
-
-            let completed = 0;
-            let hasError = false;
-
-            datos.forEach(registro => {
-                // Forzar que el estado de sincronización sea 1 porque viene de la nube
-                registro.sync_status = 1;
-
-                const columnas = Object.keys(registro);
-                const valores = Object.values(registro);
-                const placeholders = columnas.map(() => '?').join(',');
-
-                const query = `INSERT OR REPLACE INTO ${tabla} (${columnas.join(',')}) VALUES (${placeholders})`;
-
-                db.run(query, valores, (err) => {
-                    if (err) {
-                        console.error(`Error Upsert en ${tabla}:`, err);
-                        hasError = true;
+                if (!datos || datos.length === 0) {
+                    if (pk && idEmpresa) {
+                        db.run(`DELETE FROM ${tabla} WHERE sync_status = 1 AND id_empresa = ?`, [idEmpresa], (err) => {
+                            db.run(err ? "ROLLBACK" : "COMMIT", () => resolve({ success: !err }));
+                        });
+                    } else {
+                        db.run("COMMIT", () => resolve({ success: true }));
                     }
-                    completed++;
-                    if (completed === datos.length) {
-                        if (hasError) {
-                            db.run("ROLLBACK", () => resolve({ success: false, message: 'Error en transaccion de bajada' }));
-                        } else {
-                            db.run("COMMIT", () => resolve({ success: true }));
+                    return;
+                }
+
+                // Eliminar registros locales sincronizados de esta empresa que ya no existan en el VPS
+                if (pk && idEmpresa) {
+                    const remoteIds = datos.map(r => r[pk]).filter(id => id !== undefined && id !== null);
+                    if (remoteIds.length > 0) {
+                        const placeholdersDel = remoteIds.map(() => '?').join(',');
+                        db.run(`DELETE FROM ${tabla} WHERE sync_status = 1 AND id_empresa = ? AND ${pk} NOT IN (${placeholdersDel})`, [idEmpresa, ...remoteIds], (errDel) => {
+                            if (errDel) console.error(`Error borrando huerfanos en ${tabla}:`, errDel);
+                        });
+                    }
+                }
+
+                let completed = 0;
+                let hasError = false;
+
+                datos.forEach(registro => {
+                    // Forzar que el estado de sincronización sea 1 porque viene de la nube
+                    registro.sync_status = 1;
+
+                    const columnas = Object.keys(registro);
+                    const valores = Object.values(registro);
+                    const placeholders = columnas.map(() => '?').join(',');
+
+                    const query = `INSERT OR REPLACE INTO ${tabla} (${columnas.join(',')}) VALUES (${placeholders})`;
+
+                    db.run(query, valores, (err) => {
+                        if (err) {
+                            console.error(`Error Upsert en ${tabla}:`, err);
+                            hasError = true;
                         }
-                    }
+                        completed++;
+                        if (completed === datos.length) {
+                            if (hasError) {
+                                db.run("ROLLBACK", () => resolve({ success: false, message: 'Error en transaccion de bajada' }));
+                            } else {
+                                db.run("COMMIT", () => resolve({ success: true }));
+                            }
+                        }
+                    });
                 });
             });
         });
@@ -1371,7 +1390,9 @@ ipcMain.handle('obtener-detalle-deudores-carga', async (event, id_carga) => {
         const query = `
             SELECT cliente, tipo_medida, sub_medida, cantidad, precio, pagado
             FROM ventas_cargas 
-            WHERE id_carga = ? AND metodo_pago = 'CRÉDITO' AND (id_carga > 0 OR tipo_medida = 'DEUDA ANTIGUA')
+            WHERE id_carga = ? 
+              AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
+              AND (id_carga > 0 OR tipo_medida = 'DEUDA ANTIGUA' OR tipo_medida = 'DEUDA MANUAL' OR tipo_medida LIKE 'DEUDA%')
             ORDER BY cliente ASC
         `;
         db.all(query, [id_carga], (err, rows) => {
@@ -1390,7 +1411,8 @@ ipcMain.handle('obtener-detalle-deudores-carga-lista', async (event, id_carga) =
         const query = `
             SELECT *
             FROM ventas_cargas 
-            WHERE id_carga = ? AND metodo_pago = 'CRÉDITO'
+            WHERE id_carga = ? 
+              AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
             ORDER BY cliente ASC
         `;
         db.all(query, [id_carga], (err, rows) => {
@@ -1542,7 +1564,7 @@ ipcMain.on('auto-guardar-venta-carga', (event, data) => {
 
 ipcMain.handle('obtener-ventas-carga', async (event, id_carga) => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM ventas_cargas WHERE id_carga = ? ORDER BY fila_id ASC`, [id_carga], (err, rows) => {
+        db.all(`SELECT * FROM ventas_cargas WHERE id_carga = ? ORDER BY CAST(fila_id AS INTEGER) ASC, id_detalle ASC`, [id_carga], (err, rows) => {
             resolve(rows || []);
         });
     });

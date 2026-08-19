@@ -435,7 +435,13 @@
         // ACTUALIZACIÓN SILENCIOSA EN TIEMPO REAL
         window.actualizacionSilenciosaConfig = async function() {
             // Si el usuario navegó fuera de la pantalla de configuración, detiene la ejecución
-            if (!document.getElementById('listaVehiculos')) return;
+            if (!document.getElementById('listaVehiculos')) {
+                if (window.intervaloConfig) {
+                    clearInterval(window.intervaloConfig);
+                    window.intervaloConfig = null;
+                }
+                return;
+            }
 
             // Evitamos actualizar si el usuario está tipeando un nuevo nombre
             const active = document.activeElement;
@@ -452,7 +458,10 @@
             }
         };
 
-        setInterval(actualizacionSilenciosaConfig, 3000);
+        if (window.intervaloConfig) {
+            clearInterval(window.intervaloConfig);
+        }
+        window.intervaloConfig = setInterval(actualizacionSilenciosaConfig, 3000);
     }
 }
 </script>

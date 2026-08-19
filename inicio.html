@@ -513,7 +513,23 @@
     </div>
 
     <script>
+        function limpiarIntervalosModulos() {
+            if (window.intervaloTablaVentas) {
+                clearInterval(window.intervaloTablaVentas);
+                window.intervaloTablaVentas = null;
+            }
+            if (window.intervaloCargas) {
+                clearInterval(window.intervaloCargas);
+                window.intervaloCargas = null;
+            }
+            if (window.intervaloConfig) {
+                clearInterval(window.intervaloConfig);
+                window.intervaloConfig = null;
+            }
+        }
+
         function loadPage(url) {
+            limpiarIntervalosModulos();
             const area = document.getElementById('dynamic-content-area');
             area.innerHTML = '<div class="p-6 md:p-10"><p class="text-blue-500 flex items-center gap-2 font-medium"><i class="material-icons animate-spin">refresh</i> Cargando módulo...</p></div>';
             

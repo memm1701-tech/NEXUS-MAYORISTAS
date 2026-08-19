@@ -1420,10 +1420,8 @@
                     targetTipo = Object.keys(inventarioOriginal)[0].trim().toUpperCase();
                 }
 
-                if (targetTipo) {
-                    if (!statsPromediosEnVivo[targetTipo]) {
-                        statsPromediosEnVivo[targetTipo] = { ingresos: 0, cantidad: 0 };
-                    }
+                // ESCUDO ANTI-PARPADEO: Solo registrar en estadísticas si pertenece al inventario de esta carga
+                if (targetTipo && statsPromediosEnVivo[targetTipo] !== undefined) {
                     statsPromediosEnVivo[targetTipo].ingresos += (cant * precio);
                     statsPromediosEnVivo[targetTipo].cantidad += cant;
                 }
@@ -2362,6 +2360,15 @@
     window.actualizacionSilenciosa = async function() {
         if (!ipc) return;
 
+        // Si el contenedor ya no está en el DOM, destruimos el intervalo
+        if (!document.getElementById('vista-cobros-detalle')) {
+            if (window.intervaloTablaVentas) {
+                clearInterval(window.intervaloTablaVentas);
+                window.intervaloTablaVentas = null;
+            }
+            return;
+        }
+
         try {
             // 1. Si está en la pantalla de selección de vehículos/cargas, refrescar lista (solo si no hay input activo)
             if (typeof vistaSeleccion !== 'undefined' && !vistaSeleccion.classList.contains('hidden')) {
@@ -2412,12 +2419,16 @@
                                         break;
                                     }
                                 }
-                                if (targetUpper && !matchedVal) {
-                                    const newOpt = document.createElement('option');
-                                    newOpt.value = targetUpper;
-                                    newOpt.innerText = targetUpper;
-                                    input.appendChild(newOpt);
-                                    matchedVal = targetUpper;
+                                // ESCUDO ANTI-BUCLE: Si es el selector de producto, solo permitir productos de esta carga
+                                if (targetUpper && !matchedVal && f.class === '.cell-tipo') {
+                                    const existeEnInventario = Object.keys(inventarioOriginal).some(k => k.trim().toUpperCase() === targetUpper);
+                                    if (existeEnInventario) {
+                                        const newOpt = document.createElement('option');
+                                        newOpt.value = targetUpper;
+                                        newOpt.innerText = targetUpper;
+                                        input.appendChild(newOpt);
+                                        matchedVal = targetUpper;
+                                    }
                                 }
                                 if (input.value !== matchedVal) {
                                     input.value = matchedVal;
@@ -2442,8 +2453,11 @@
         }
     };
 
-    // Refresco en vivo ultra rápido a 1 segundo
-    setInterval(actualizacionSilenciosa, 1000);
+    // Refresco en vivo controlado (singleton)
+    if (window.intervaloTablaVentas) {
+        clearInterval(window.intervaloTablaVentas);
+    }
+    window.intervaloTablaVentas = setInterval(actualizacionSilenciosa, 1000);
 }
 </script>
 </div>
