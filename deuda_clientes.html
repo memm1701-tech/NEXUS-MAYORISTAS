@@ -694,81 +694,74 @@ window.renderizarCuaderno = function() {
 
             const cargaSeleccionada = document.getElementById('carga-seleccionada').value;
 
-            // ================== CASO 1: ABONO DIRECTO A LA DEUDA TOTAL (1 SOLA LÍNEA) ==================
-            if (cargaSeleccionada === 'GLOBAL') {
-                let movil = banco === "PAGO MÓVIL" ? abonoTotal : 0; 
-                let divisa = banco !== "PAGO MÓVIL" ? abonoTotal : 0;
-                
-                let bancoConConcepto = banco === "EFECTIVO" ? "" : banco;
-                if (conceptoInput) {
-                    bancoConConcepto = bancoConConcepto ? `${bancoConConcepto} - ${conceptoInput}` : conceptoInput;
-                }
-
-                ipc.send('guardar-abono-deuda', {
-                    id_carga: 0,
-                    vehiculo_id: 0,
-                    cliente: clienteSeleccionadoActual,
-                    monto_divisa: divisa,
-                    monto_movil: movil,
-                    banco: bancoConConcepto
-                });
-
-                ipc.once('guardar-abono-resultado', (event, res) => {
-                    if (res.success) {
-                        mostrarToast(`Abono de ${abonoTotal.toFixed(2)} $ registrado a la deuda total.`, "success");
-                        limpiarFilaLibreta();
-                        seleccionarClienteGlobal(clienteSeleccionadoActual);
-                    } else {
-                        mostrarToast("Error registrando abono: " + res.msg, "error");
-                    }
-                });
-                return;
-            }
-
-            // ================== CASO 2: ALGORITMO FIFO / FACTURA ESPECÍFICA ==================
             let abonoRestante = abonoTotal;
             let abonosAProcesar = [];
 
-            if (cargaSeleccionada !== 'AUTO') {
-                // Pago directo a una factura específica
-                abonosAProcesar.push({ id_carga: parseInt(cargaSeleccionada), monto: abonoTotal });
-            } else {
-                // Si el cliente no debe nada en el sistema pero entrega dinero (Saldo a Favor puro)
+            if (cargaSeleccionada === 'GLOBAL') {
+                // ================== CASO 1: ABONO TOTAL CON GRUPO_PAGO ==================
+                const grupoPagoId = 'GLOBAL-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+                
                 if (!cargasDelClienteActual || cargasDelClienteActual.length === 0) {
-                    abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
+                    abonosAProcesar.push({ id_carga: 0, monto: abonoRestante, grupo_pago: grupoPagoId });
                 } else {
-                    // Ordenamos las facturas pendientes de la más vieja a la más nueva
                     const cargasPendientes = [...cargasDelClienteActual].sort((a, b) => {
                         return new Date(a.fecha_entrada || 0).getTime() - new Date(b.fecha_entrada || 0).getTime() || a.id_carga - b.id_carga;
                     });
 
-                    // Repartimos el dinero rellenando los huecos de cada factura
                     for (let carga of cargasPendientes) {
                         if (abonoRestante <= 0.01) break;
                         let deudaCarga = parseFloat(carga.total_deuda_carga) || 0;
                         if (deudaCarga <= 0) continue;
 
                         let montoAPagarAqui = Math.min(abonoRestante, deudaCarga);
-                        abonosAProcesar.push({ id_carga: carga.id_carga, monto: montoAPagarAqui });
-                        abonoRestante -= montoAPagarAqui; // Restamos lo que ya usamos
+                        abonosAProcesar.push({ id_carga: carga.id_carga, monto: montoAPagarAqui, grupo_pago: grupoPagoId });
+                        abonoRestante -= montoAPagarAqui;
                     }
 
-                    // Si pagó de más (ej. debía 8k y pagó 10k), le metemos el sobrante a la última factura
                     if (abonoRestante > 0.01) {
                         if (abonosAProcesar.length > 0) {
                             abonosAProcesar[abonosAProcesar.length - 1].monto += abonoRestante;
                         } else {
-                            abonosAProcesar.push({ id_carga: 0, monto: abonoRestante });
+                            abonosAProcesar.push({ id_carga: 0, monto: abonoRestante, grupo_pago: grupoPagoId });
+                        }
+                    }
+                }
+            } else if (cargaSeleccionada !== 'AUTO') {
+                // ================== CASO 2: FACTURA ESPECÍFICA ==================
+                abonosAProcesar.push({ id_carga: parseInt(cargaSeleccionada), monto: abonoTotal, grupo_pago: null });
+            } else {
+                // ================== CASO 3: AUTO (FIFO DESGLOSADO) ==================
+                if (!cargasDelClienteActual || cargasDelClienteActual.length === 0) {
+                    abonosAProcesar.push({ id_carga: 0, monto: abonoRestante, grupo_pago: null });
+                } else {
+                    const cargasPendientes = [...cargasDelClienteActual].sort((a, b) => {
+                        return new Date(a.fecha_entrada || 0).getTime() - new Date(b.fecha_entrada || 0).getTime() || a.id_carga - b.id_carga;
+                    });
+
+                    for (let carga of cargasPendientes) {
+                        if (abonoRestante <= 0.01) break;
+                        let deudaCarga = parseFloat(carga.total_deuda_carga) || 0;
+                        if (deudaCarga <= 0) continue;
+
+                        let montoAPagarAqui = Math.min(abonoRestante, deudaCarga);
+                        abonosAProcesar.push({ id_carga: carga.id_carga, monto: montoAPagarAqui, grupo_pago: null });
+                        abonoRestante -= montoAPagarAqui;
+                    }
+
+                    if (abonoRestante > 0.01) {
+                        if (abonosAProcesar.length > 0) {
+                            abonosAProcesar[abonosAProcesar.length - 1].monto += abonoRestante;
+                        } else {
+                            abonosAProcesar.push({ id_carga: 0, monto: abonoRestante, grupo_pago: null });
                         }
                     }
                 }
             }
 
             // ================== INYECCIÓN SECUENCIAL AL BACKEND ==================
-            // Enviamos los cortes de pago de uno en uno para evitar colisiones en la Base de Datos
             function procesarSiguienteAbono(index) {
                 if (index >= abonosAProcesar.length) {
-                    mostrarToast(`Pago de ${abonoTotal.toFixed(2)} $ distribuido inteligentemente.`, "success");
+                    mostrarToast(`Abono de ${abonoTotal.toFixed(2)} $ procesado exitosamente.`, "success");
                     limpiarFilaLibreta();
                     seleccionarClienteGlobal(clienteSeleccionadoActual);
                     return;
@@ -789,12 +782,14 @@ window.renderizarCuaderno = function() {
                     cliente: clienteSeleccionadoActual,
                     monto_divisa: divisa,
                     monto_movil: movil,
-                    banco: bancoConConcepto
+                    banco: bancoConConcepto,
+                    fecha: fechaParaBD,
+                    grupo_pago: abonoActual.grupo_pago || null
                 });
 
                 ipc.once('guardar-abono-resultado', (event, res) => {
                     if (res.success) {
-                        procesarSiguienteAbono(index + 1); // Llamada recursiva al siguiente pago
+                        procesarSiguienteAbono(index + 1);
                     } else {
                         mostrarToast("Error en la distribución: " + res.msg, "error");
                     }

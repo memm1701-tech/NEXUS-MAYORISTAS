@@ -2172,7 +2172,7 @@
         }
     };
 
-    window.buscarClienteEnFila = function(input, filaId) {
+    window.buscarClienteEnFila = async function(input, filaId) {
         // Guardamos el input para auto-guardado
         manejarCambioFila(filaId);
 
@@ -2186,7 +2186,15 @@
             return;
         }
 
-        const filtrados = clientesCache.filter(c => c.nombre.toLowerCase().includes(termino));
+        // Consulta directa a la base de datos local para tener siempre la lista fresca
+        if (ipc) {
+            const clientesFrescos = await ipc.invoke('obtener-clientes');
+            if (clientesFrescos && Array.isArray(clientesFrescos)) {
+                clientesCache = clientesFrescos;
+            }
+        }
+
+        const filtrados = clientesCache.filter(c => (c.nombre || '').toLowerCase().includes(termino));
 
         if (filtrados.length > 0) {
             contenedorResultados.classList.add('activo');

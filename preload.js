@@ -12,6 +12,15 @@ const api = {
     // CONTROL DE APARIENCIA (ZOOM)
     setZoomLevel: (level) => webFrame.setZoomLevel(level),
     getZoomLevel: () => webFrame.getZoomLevel(),
+    // AUTO-UPDATES
+    obtenerVersionApp: () => ipcRenderer.invoke('obtener-version-app'),
+    verificarActualizacion: (versionLocal, forzarBusqueda = false) => 
+        ipcRenderer.invoke('verificar-actualizacion-github', versionLocal, forzarBusqueda),
+    descargarEInstalar: (url) => ipcRenderer.invoke('descargar-update', url),
+    onDownloadProgress: (callback) => {
+        ipcRenderer.removeAllListeners('download-progress');
+        ipcRenderer.on('download-progress', (event, progress) => callback(progress));
+    },
     // MÉTODOS IPC GENÉRICOS (Para migración legacy)
     invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
     send: (channel, ...args) => ipcRenderer.send(channel, ...args),

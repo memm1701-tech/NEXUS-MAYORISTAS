@@ -1,5 +1,8 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const { spawn } = require('child_process');
 const sqlite3 = require('sqlite3').verbose();
 
 // Configuración de la Base de Datos
@@ -115,6 +118,7 @@ const QUERIES_TABLAS = [
         monto_movil REAL DEFAULT 0,
         banco TEXT,
         fecha_abono DATETIME DEFAULT CURRENT_TIMESTAMP,
+        grupo_pago TEXT,
         estado_logico INTEGER DEFAULT 1, -- 1 Activo, 0 Revertido/Eliminado
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
@@ -333,8 +337,18 @@ ipcMain.on('guardar-abono-deuda', async (event, data) => {
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
         
-        db.run(`INSERT INTO abonos_deudas (id_empresa, sync_status, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
-        [idEmpresa, data.id_carga, data.vehiculo_id, data.cliente, data.monto_divisa, data.monto_movil, data.banco], async function(err) {
+        let fechaAbono = data.fecha || data.fecha_abono;
+        if (!fechaAbono) {
+            fechaAbono = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        } else if (!fechaAbono.includes('T') && !fechaAbono.includes(' ')) {
+            const ahora = new Date();
+            fechaAbono = `${fechaAbono} ${ahora.toISOString().split('T')[1].substring(0, 8)}`;
+        }
+
+        let grupoPago = data.grupo_pago || null;
+        
+        db.run(`INSERT INTO abonos_deudas (id_empresa, sync_status, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco, fecha_abono, grupo_pago) VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [idEmpresa, data.id_carga, data.vehiculo_id, data.cliente, data.monto_divisa, data.monto_movil, data.banco, fechaAbono, grupoPago], async function(err) {
             if (!err) {
                 // Re-distribuimos los pagos tras añadir el abono
                 await recalcularPagosCliente(data.id_carga, data.cliente);
@@ -516,6 +530,11 @@ ipcMain.on('guardar-vehiculo', (event, nombre) => {
             else event.reply('guardar-resultado', { success: true, id: this.lastID });
         });
     });
+});
+
+ipcMain.on('eliminar-vehiculo', (event, id) => {
+    eliminarRemoto('vehiculos', id);
+    db.run(`DELETE FROM vehiculos WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 ipcMain.handle('obtener-vehiculos', async () => {
@@ -758,17 +777,24 @@ ipcMain.handle('obtener-estado-cuenta-cliente', async (event, clienteNombre) => 
             UNION ALL
             
             SELECT 
-                id_carga,
-                fecha_abono AS fecha,
+                MAX(id_carga) AS id_carga,
+                MAX(fecha_abono) AS fecha,
                 'PAGO' AS tipo,
                 CASE 
-                    WHEN id_carga = 0 THEN 'ABONO A LA DEUDA TOTAL' || CASE WHEN banco != '' THEN ' ('||banco||')' ELSE ' (EFECTIVO)' END
-                    ELSE 'ABONO A LA CARGA #' || id_carga || CASE WHEN banco != '' THEN ' ('||banco||')' ELSE ' (EFECTIVO)' END 
+                    WHEN (grupo_pago IS NOT NULL AND grupo_pago != '') OR id_carga = 0 THEN 
+                        'ABONO A LA DEUDA TOTAL' || CASE WHEN MAX(banco) != '' AND MAX(banco) IS NOT NULL THEN ' ('||MAX(banco)||')' ELSE ' (EFECTIVO)' END
+                    ELSE 
+                        'ABONO A LA CARGA #' || id_carga || CASE WHEN banco != '' AND banco IS NOT NULL THEN ' ('||banco||')' ELSE ' (EFECTIVO)' END 
                 END AS concepto,
                 0 AS cargo,
-                (monto_divisa + monto_movil) AS abono
+                SUM(monto_divisa + monto_movil) AS abono
             FROM abonos_deudas
-            WHERE cliente COLLATE NOCASE = ?
+            WHERE cliente COLLATE NOCASE = ? AND (estado_logico = 1 OR estado_logico IS NULL)
+            GROUP BY 
+                CASE 
+                    WHEN grupo_pago IS NOT NULL AND grupo_pago != '' THEN grupo_pago 
+                    ELSE CAST(id_abono AS TEXT) 
+                END
             
             UNION ALL
             
@@ -1328,8 +1354,12 @@ ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos
                 db.run("BEGIN TRANSACTION");
 
                 if (!datos || datos.length === 0) {
-                    if (pk && idEmpresa) {
-                        db.run(`DELETE FROM ${tabla} WHERE sync_status = 1 AND id_empresa = ?`, [idEmpresa], (err) => {
+                    if (pk) {
+                        const query = idEmpresa
+                            ? `DELETE FROM ${tabla} WHERE sync_status = 1 AND (id_empresa = ? OR id_empresa IS NULL OR id_empresa = '')`
+                            : `DELETE FROM ${tabla} WHERE sync_status = 1`;
+                        const params = idEmpresa ? [idEmpresa] : [];
+                        db.run(query, params, (err) => {
                             db.run(err ? "ROLLBACK" : "COMMIT", () => resolve({ success: !err }));
                         });
                     } else {
@@ -1339,11 +1369,15 @@ ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos
                 }
 
                 // Eliminar registros locales sincronizados de esta empresa que ya no existan en el VPS
-                if (pk && idEmpresa) {
+                if (pk) {
                     const remoteIds = datos.map(r => r[pk]).filter(id => id !== undefined && id !== null);
                     if (remoteIds.length > 0) {
                         const placeholdersDel = remoteIds.map(() => '?').join(',');
-                        db.run(`DELETE FROM ${tabla} WHERE sync_status = 1 AND id_empresa = ? AND ${pk} NOT IN (${placeholdersDel})`, [idEmpresa, ...remoteIds], (errDel) => {
+                        const query = idEmpresa
+                            ? `DELETE FROM ${tabla} WHERE sync_status = 1 AND (id_empresa = ? OR id_empresa IS NULL OR id_empresa = '') AND ${pk} NOT IN (${placeholdersDel})`
+                            : `DELETE FROM ${tabla} WHERE sync_status = 1 AND ${pk} NOT IN (${placeholdersDel})`;
+                        const params = idEmpresa ? [idEmpresa, ...remoteIds] : remoteIds;
+                        db.run(query, params, (errDel) => {
                             if (errDel) console.error(`Error borrando huerfanos en ${tabla}:`, errDel);
                         });
                     }
@@ -1874,4 +1908,143 @@ ipcMain.handle('eliminar-movimiento-cesta', async (event, id) => {
             resolve({ success: !err });
         });
     });
+});
+
+// ==========================================
+// AUTO-UPDATES & CONTROL DE VERSIONES
+// ==========================================
+function esVersionMayor(versionNube, versionLocal) {
+    const vNube = String(versionNube || '').replace(/[^0-9.]/g, '').split('.').map(Number);
+    const vLocal = String(versionLocal || '').replace(/[^0-9.]/g, '').split('.').map(Number);
+    const len = Math.max(vNube.length, vLocal.length);
+    for (let i = 0; i < len; i++) {
+        const nNube = vNube[i] || 0;
+        const nLocal = vLocal[i] || 0;
+        if (nNube > nLocal) return true;
+        if (nNube < nLocal) return false;
+    }
+    return false;
+}
+
+let cacheActualizacionApp = null;
+const CACHE_TTL_APP = 5 * 60 * 1000; // 5 minutos de caché
+const APP_SLUG = 'nexus-mayorista';
+const REPO_FALLBACK = 'memm1701-tech/NEXUS-MAYORISTAS';
+
+ipcMain.handle('verificar-actualizacion-github', async (event, versionActual, forzarBusqueda = false) => {
+    try {
+        const vLimpia = String(versionActual || '').replace(/^v/i, '').trim();
+        if (!forzarBusqueda && cacheActualizacionApp) {
+            const ahora = Date.now();
+            if (ahora - cacheActualizacionApp.timestamp < CACHE_TTL_APP && cacheActualizacionApp.versionActual === vLimpia) {
+                return cacheActualizacionApp.resultado;
+            }
+        }
+        // 1. Consulta al Microservicio en api.nexusposgobal.com (1 ms)
+        const updateApiUrl = `https://api.nexusposgobal.com/api/check-update/${APP_SLUG}?current_version=${encodeURIComponent(vLimpia || '1.0.0')}`;
+        
+        try {
+            const responseApi = await axios.get(updateApiUrl, {
+                timeout: 7000,
+                headers: { 'Accept': 'application/json', 'User-Agent': 'Nexus-Desktop-App' }
+            });
+            if (responseApi.data && responseApi.data.success) {
+                const info = responseApi.data;
+                const hayActualizacion = info.has_update === true;
+                const resultado = {
+                    success: true,
+                    hayActualizacion: hayActualizacion,
+                    nuevaVersion: info.latest_version ? (String(info.latest_version).startsWith('v') ? info.latest_version : `v${info.latest_version}`) : '',
+                    notas: info.release_notes || "Actualización oficial con mejoras de rendimiento y estabilidad.",
+                    urlDescarga: info.download_url || "",
+                    nombreArchivo: info.file_name || "",
+                    tamanioMb: info.file_size_mb || null
+                };
+                cacheActualizacionApp = { timestamp: Date.now(), versionActual: vLimpia, resultado: resultado };
+                return resultado;
+            }
+        } catch (apiErr) {
+            console.warn("⚠️ Microservicio no disponible, usando fallback GitHub directo:", apiErr.message);
+        }
+        // 2. Fallback de contingencia a GitHub API
+        const urlGithub = `https://api.github.com/repos/${REPO_FALLBACK}/releases`;
+        const responseGit = await axios.get(urlGithub, {
+            timeout: 10000,
+            headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'Nexus-Desktop-App' }
+        });
+        let actualizacionEncontrada = null;
+        for (const release of responseGit.data) {
+            if (esVersionMayor(release.tag_name, vLimpia)) {
+                actualizacionEncontrada = release;
+                break;
+            }
+        }
+        const resultado = actualizacionEncontrada ? {
+            success: true,
+            hayActualizacion: true,
+            nuevaVersion: actualizacionEncontrada.tag_name,
+            notas: actualizacionEncontrada.body || "Sin notas de actualización.",
+            urlDescarga: actualizacionEncontrada.assets?.[0]?.browser_download_url || ""
+        } : { success: true, hayActualizacion: false };
+        if (resultado.success) {
+            cacheActualizacionApp = { timestamp: Date.now(), versionActual: vLimpia, resultado: resultado };
+        }
+        return resultado;
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+// IPC: OBTENER LA VERSIÓN LOCAL DE LA APP
+ipcMain.handle('obtener-version-app', () => {
+    return app.getVersion();
+});
+
+// IPC: DESCARGA STREAM Y AUTOINSTALACIÓN SILENCIOSA
+ipcMain.handle('descargar-update', async (event, urlDescarga) => {
+    try {
+        const tempDir = app.getPath('temp');
+        const filePath = path.join(tempDir, 'Nexus-Mayorista-Update.exe');
+        const response = await axios({
+            method: 'GET',
+            url: urlDescarga,
+            responseType: 'stream'
+        });
+        const totalLength = parseInt(response.headers['content-length'], 10);
+        let downloaded = 0;
+        const writer = fs.createWriteStream(filePath);
+        response.data.on('data', (chunk) => {
+            downloaded += chunk.length;
+            if (totalLength) {
+                const progress = Math.round((downloaded / totalLength) * 100);
+                event.sender.send('download-progress', progress);
+            }
+        });
+        response.data.pipe(writer);
+        return new Promise((resolve, reject) => {
+            writer.on('close', () => {
+                // Pausa de 1.5s para que el SO libere el archivo
+                setTimeout(() => {
+                    try {
+                        // Parámetros de electron-builder / NSIS: /S (Silencioso), --force-run (Reinicia la app al terminar)
+                        const installer = spawn(filePath, ['/S', '--force-run'], {
+                            detached: true,
+                            stdio: 'ignore'
+                        });
+                        installer.unref();
+                        // Cerramos la app actual para permitir la sobreescritura de binarios
+                        setTimeout(() => { app.quit(); }, 1000);
+                        resolve({ success: true });
+                    } catch (spawnError) {
+                        reject({ success: false, error: spawnError.message });
+                    }
+                }, 1500);
+            });
+            writer.on('error', (err) => {
+                reject({ success: false, error: err.message });
+            });
+        });
+    } catch (err) {
+        return { success: false, error: err.message };
+    }
 });

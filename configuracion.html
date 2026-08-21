@@ -82,98 +82,193 @@
 <div class="config-container">
     
     <div id="vista-principal">
-        <h1>Configuración Global del Sistema</h1>
-
-        <h2 class="section-title"><i class="material-icons">local_shipping</i> 1. Gestión de Flota (Vehículos)</h2>
-        <div class="panel grid-2" style="align-items: end; padding-bottom: 15px;">
-            <div>
-                <label for="nombreVehiculo">Nombre o Placa del Vehículo / Sucursal:</label>
-                <input type="text" id="nombreVehiculo" placeholder="Ej: Camión 01 - Placa ABC-123" autocomplete="off" style="margin: 0;">
-            </div>
-            <div>
-                <button onclick="registrarVehiculo()" class="btn-main" style="width: 100%;">
-                    <i class="material-icons">add_box</i> Registrar Vehículo
-                </button>
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+            <h1 style="margin: 0;" id="titulo-config-header">Configuración Global del Sistema</h1>
+            <button id="btn-toggle-cuenta" onclick="toggleVistaConfigCuenta()" class="btn-main" style="background: #0284c7; padding: 10px 18px; font-size: 0.9em;">
+                <i class="material-icons" id="icon-toggle-cuenta">manage_accounts</i> 
+                <span id="texto-toggle-cuenta">Configuración / Cuenta</span>
+            </button>
         </div>
 
-        <div class="table-container mb-8">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Identificador del Vehículo</th>
-                        <th>Fecha de Creación</th>
-                        <th style="text-align: right">Gestión y Cargas</th>
-                    </tr>
-                </thead>
-                <tbody id="listaVehiculos">
-                    <tr><td colspan="3" class="empty-message">Cargando flota...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <h2 class="section-title"><i class="material-icons">payments</i> 2. Métodos de Pago</h2>
-        <div class="panel mb-8">
-            <div class="grid-2" style="align-items: end; margin-bottom: 15px;">
+        <div id="contenido-config-global">
+            <h2 class="section-title"><i class="material-icons">local_shipping</i> 1. Gestión de Flota (Vehículos)</h2>
+            <div class="panel grid-2" style="align-items: end; padding-bottom: 15px;">
                 <div>
-                    <label for="nombreMetodoPago">Nombre del Método (Ej. Zelle, Binance...):</label>
-                    <input type="text" id="nombreMetodoPago" placeholder="Ej: ZELLE" autocomplete="off" style="margin: 0; text-transform: uppercase;">
+                    <label for="nombreVehiculo">Nombre o Placa del Vehículo / Sucursal:</label>
+                    <input type="text" id="nombreVehiculo" placeholder="Ej: Camión 01 - Placa ABC-123" autocomplete="off" style="margin: 0;">
                 </div>
                 <div>
-                    <button onclick="registrarMetodoPago()" class="btn-main" style="width: 100%;">
-                        <i class="material-icons">add_box</i> Registrar Método
+                    <button onclick="registrarVehiculo()" class="btn-main" style="width: 100%;">
+                        <i class="material-icons">add_box</i> Registrar Vehículo
                     </button>
                 </div>
             </div>
 
-            <div class="table-container">
+            <div class="table-container mb-8">
                 <table>
                     <thead>
                         <tr>
-                            <th>Método de Pago</th>
-                            <th style="text-align: right">Acción</th>
+                            <th>Identificador del Vehículo</th>
+                            <th>Fecha de Creación</th>
+                            <th style="text-align: right">Gestión y Cargas</th>
                         </tr>
                     </thead>
-                    <tbody id="listaMetodosPago">
-                        <tr><td colspan="2" class="empty-message">Cargando métodos...</td></tr>
+                    <tbody id="listaVehiculos">
+                        <tr><td colspan="3" class="empty-message">Cargando flota...</td></tr>
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <h2 class="section-title"><i class="material-icons">architecture</i> 3. Maestros de Unidades de Medida</h2>
-        <div class="grid-2">
-            
-            <div class="panel">
-                <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Categorías Principales</h3>
-                <input type="text" id="nombreUnidadManual" placeholder="Ej: Cesta, Saco, Cabilla..." autocomplete="off">
-                <button onclick="guardarUnidadMaestra()" class="btn-main" style="width: 100%; margin-bottom: 20px;">
-                    <i class="material-icons">add_circle</i> Crear Categoría
-                </button>
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Categoría</th><th style="text-align: right">Borrar</th></tr></thead>
-                        <tbody id="tablaUnidadesRaiz"></tbody>
-                    </table>
+            <h2 class="section-title"><i class="material-icons">payments</i> 2. Métodos de Pago</h2>
+            <div class="panel mb-8">
+                <div class="grid-2" style="align-items: end; margin-bottom: 15px;">
+                    <div>
+                        <label for="nombreMetodoPago">Nombre del Método (Ej. Zelle, Binance...):</label>
+                        <input type="text" id="nombreMetodoPago" placeholder="Ej: ZELLE" autocomplete="off" style="margin: 0; text-transform: uppercase;">
+                    </div>
+                    <div>
+                        <button onclick="registrarMetodoPago()" class="btn-main" style="width: 100%;">
+                            <i class="material-icons">add_box</i> Registrar Método
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="panel">
-                <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Variaciones / Tamaños</h3>
-                <select id="selectUnidadPadre"><option value="">Seleccione categoría...</option></select>
-                <input type="text" id="nombreSubtipoManual" placeholder="Ej: Pequeña, Grande, 50kg..." autocomplete="off">
-                <button onclick="guardarSubtipoMaestro()" class="btn-main" style="background: #475569; width: 100%; margin-bottom: 20px;">
-                    <i class="material-icons">playlist_add</i> Añadir Variación
-                </button>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th>Variación / Tamaño</th><th style="text-align: right">Borrar</th></tr></thead>
-                        <tbody id="tablaSubtipos">
-                            <tr><td colspan="2" class="empty-message">Seleccione categoría</td></tr>
+                        <thead>
+                            <tr>
+                                <th>Método de Pago</th>
+                                <th style="text-align: right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaMetodosPago">
+                            <tr><td colspan="2" class="empty-message">Cargando métodos...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
+            <h2 class="section-title"><i class="material-icons">architecture</i> 3. Maestros de Unidades de Medida</h2>
+            <div class="grid-2">
+                
+                <div class="panel">
+                    <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Categorías Principales</h3>
+                    <input type="text" id="nombreUnidadManual" placeholder="Ej: Cesta, Saco, Cabilla..." autocomplete="off">
+                    <button onclick="guardarUnidadMaestra()" class="btn-main" style="width: 100%; margin-bottom: 20px;">
+                        <i class="material-icons">add_circle</i> Crear Categoría
+                    </button>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Categoría</th><th style="text-align: right">Borrar</th></tr></thead>
+                            <tbody id="tablaUnidadesRaiz"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <h3 style="margin-top: 0; color: #334155; font-size: 1.1em; margin-bottom: 15px;">Variaciones / Tamaños</h3>
+                    <select id="selectUnidadPadre"><option value="">Seleccione categoría...</option></select>
+                    <input type="text" id="nombreSubtipoManual" placeholder="Ej: Pequeña, Grande, 50kg..." autocomplete="off">
+                    <button onclick="guardarSubtipoMaestro()" class="btn-main" style="background: #475569; width: 100%; margin-bottom: 20px;">
+                        <i class="material-icons">playlist_add</i> Añadir Variación
+                    </button>
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Variación / Tamaño</th><th style="text-align: right">Borrar</th></tr></thead>
+                            <tbody id="tablaSubtipos">
+                                <tr><td colspan="2" class="empty-message">Seleccione categoría</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SECCIÓN CONFIGURACIÓN / CUENTA -->
+        <div id="vista-cuenta" class="hidden">
+
+            <!-- TARJETA: PLAN E INFO DE SUSCRIPCIÓN (SOLO LECTURA) - BORDES CUADRADOS Y FONDO BLANCO -->
+            <div id="plan-info-container" class="panel mb-8" style="background: #ffffff; color: #000000; border: 1px solid #cbd5e1; border-radius: 0px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding: 22px;">
+                <h2 style="margin-top: 0; font-size: 1.15em; color: #000000; font-weight: 800; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 16px; letter-spacing: 0.5px;">
+                    <i class="material-icons" style="vertical-align: middle; margin-right: 6px; color: #000000;">workspace_premium</i> Plan Activo
+                </h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px;">
+                        <div style="font-size: 0.7em; text-transform: uppercase; color: #000000; font-weight: 800; letter-spacing: 0.5px;">Plan</div>
+                        <div id="cuenta-plan-nombre" style="font-size: 1.05em; font-weight: 900; color: #000000; margin-top: 4px;">—</div>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px;">
+                        <div style="font-size: 0.7em; text-transform: uppercase; color: #000000; font-weight: 800; letter-spacing: 0.5px;">Precio</div>
+                        <div id="cuenta-plan-precio" style="font-size: 1.05em; font-weight: 900; color: #000000; margin-top: 4px;">—</div>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px;">
+                        <div style="font-size: 0.7em; text-transform: uppercase; color: #000000; font-weight: 800; letter-spacing: 0.5px;">Estado</div>
+                        <div id="cuenta-plan-estado" style="font-size: 1.05em; font-weight: 900; color: #000000; margin-top: 4px;">—</div>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px;">
+                        <div style="font-size: 0.7em; text-transform: uppercase; color: #000000; font-weight: 800; letter-spacing: 0.5px;">Vencimiento</div>
+                        <div id="cuenta-plan-vence" style="font-size: 1.05em; font-weight: 900; color: #000000; margin-top: 4px;">—</div>
+                    </div>
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px;">
+                        <div style="font-size: 0.7em; text-transform: uppercase; color: #000000; font-weight: 800; letter-spacing: 0.5px;">Crédito Disponible</div>
+                        <div id="cuenta-credito" style="font-size: 1.05em; font-weight: 900; color: #000000; margin-top: 4px;">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORMULARIO EDITABLE: DATOS DE LA EMPRESA -->
+            <h2 class="section-title"><i class="material-icons">business</i> Datos de la Empresa</h2>
+            <div class="panel mb-8">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
+                    <div>
+                        <label for="cuenta-nombre">Nombre de la Empresa:</label>
+                        <input type="text" id="cuenta-nombre" placeholder="Nombre comercial" autocomplete="off" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label for="cuenta-razon">Razón Social:</label>
+                        <input type="text" id="cuenta-razon" placeholder="Persona o razón social" autocomplete="off" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label for="cuenta-direccion">Dirección:</label>
+                        <input type="text" id="cuenta-direccion" placeholder="Dirección fiscal" autocomplete="off" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label for="cuenta-telefono">Teléfono:</label>
+                        <input type="text" id="cuenta-telefono" placeholder="Ej: 04244543572" autocomplete="off" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label for="cuenta-email">Email:</label>
+                        <input type="email" id="cuenta-email" placeholder="correo@empresa.com" autocomplete="off" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label for="cuenta-admin-email">Email del Administrador:</label>
+                        <input type="email" id="cuenta-admin-email" placeholder="admin@empresa.com" autocomplete="off" style="margin: 0;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- CAMBIO DE CONTRASEÑA -->
+            <h2 class="section-title"><i class="material-icons">lock</i> Cambiar Contraseña (Opcional)</h2>
+            <div class="panel mb-8">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px;">
+                    <div>
+                        <label for="cuenta-password">Nueva Contraseña:</label>
+                        <input type="password" id="cuenta-password" placeholder="Dejar vacío para no cambiar" autocomplete="new-password" style="margin: 0;">
+                    </div>
+                    <div>
+                        <label for="cuenta-password-confirm">Confirmar Contraseña:</label>
+                        <input type="password" id="cuenta-password-confirm" placeholder="Repetir nueva contraseña" autocomplete="new-password" style="margin: 0;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTÓN GUARDAR Y MENSAJES -->
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+                <button onclick="guardarDatosCuenta()" class="btn-main" style="background: #059669; padding: 12px 30px; font-size: 1em;">
+                    <i class="material-icons">save</i> Guardar Cambios
+                </button>
+                <span id="cuenta-mensaje" style="font-size: 0.85em; font-weight: 700;"></span>
+            </div>
         </div>
     </div>
 
@@ -231,6 +326,237 @@
     } else {
         let vehiculoActualId = null;
 
+        // TOGGLE VISTA CONFIGURACIÓN / CUENTA
+        window.toggleVistaConfigCuenta = function() {
+            const globalSection = document.getElementById('contenido-config-global');
+            const cuentaSection = document.getElementById('vista-cuenta');
+            const btnTexto = document.getElementById('texto-toggle-cuenta');
+            const btnIcon = document.getElementById('icon-toggle-cuenta');
+            const btn = document.getElementById('btn-toggle-cuenta');
+            const titulo = document.getElementById('titulo-config-header');
+
+            if (!globalSection || !cuentaSection) return;
+
+            if (cuentaSection.classList.contains('hidden')) {
+                // Entrar a sección Cuenta
+                globalSection.classList.add('hidden');
+                cuentaSection.classList.remove('hidden');
+                btnTexto.innerText = 'Volver a Configuración Inicial';
+                btnIcon.innerText = 'arrow_back';
+                btn.style.background = '#475569';
+                if (titulo) titulo.innerText = 'Configuración / Cuenta';
+                // Cargar datos de la cuenta al entrar
+                cargarDatosCuenta();
+            } else {
+                // Volver a Configuración Global
+                cuentaSection.classList.add('hidden');
+                globalSection.classList.remove('hidden');
+                btnTexto.innerText = 'Configuración / Cuenta';
+                btnIcon.innerText = 'manage_accounts';
+                btn.style.background = '#0284c7';
+                if (titulo) titulo.innerText = 'Configuración Global del Sistema';
+            }
+        };
+
+        const AUTH_URL = 'http://68.168.218.147:4030';
+        const STUART_URL = 'https://stuart.nexusposgobal.com';
+        let stuartRegistroId = null; // ID del registro en stuart-numeros para PUT
+
+        // Formatear teléfono: si empieza con "0", reemplazar por "58"
+        function formatearTelefono58(tel) {
+            if (!tel) return '';
+            tel = tel.trim();
+            if (tel.startsWith('0')) return '58' + tel.substring(1);
+            if (!tel.startsWith('58')) return '58' + tel;
+            return tel;
+        }
+
+        // CARGAR DATOS DE LA CUENTA DESDE LA API DE AUTENTICACIÓN
+        window.cargarDatosCuenta = async function() {
+            console.log('%c[CUENTA PC] 🚀 Iniciando cargarDatosCuenta...', 'background: #0284c7; color: white; font-weight: bold; padding: 2px 6px; border-radius: 4px;');
+            const msg = document.getElementById('cuenta-mensaje');
+            if (msg) { msg.innerText = 'Cargando datos...'; msg.style.color = '#0284c7'; }
+
+            try {
+                let idEmpresa = null;
+                try {
+                    const sesion = await ipc.invoke('obtener-sesion');
+                    console.log('[CUENTA PC] 🔍 Sesión obtenida de IPC:', sesion);
+                    if (sesion) {
+                        idEmpresa = sesion.idEmpresa || sesion.id_empresa || sesion.owner_id_empresa;
+                    }
+                } catch (eSes) {
+                    console.warn('[CUENTA PC] Error al invocar obtener-sesion:', eSes);
+                }
+
+                if (!idEmpresa) {
+                    idEmpresa = localStorage.getItem('owner_id_empresa') || localStorage.getItem('id_empresa') || localStorage.getItem('idEmpresa');
+                    console.log('[CUENTA PC] 🔍 idEmpresa rescatado de localStorage:', idEmpresa);
+                }
+
+                console.log('[CUENTA PC] 🆔 ID Empresa final:', idEmpresa);
+
+                if (!idEmpresa) {
+                    console.error('%c[CUENTA PC] ❌ No se encontró ID de empresa en la sesión activa.', 'color: red; font-weight: bold;');
+                    if (msg) { msg.innerText = 'Error: No se encontró ID de empresa en la sesión activa.'; msg.style.color = '#dc2626'; }
+                    return;
+                }
+
+                const urlAuth = `${AUTH_URL}/auth-api/empresa/${idEmpresa}`;
+                console.log(`%c[CUENTA PC] 📡 Consultando Auth API: ${urlAuth}`, 'color: #0284c7; font-weight: bold;');
+
+                const res = await fetch(urlAuth);
+                console.log('[CUENTA PC] 📥 Status respuesta Auth API:', res.status, res.ok ? '✅ OK' : '❌ Error');
+
+                if (!res.ok) {
+                    const errTxt = await res.text();
+                    console.error('[CUENTA PC] ❌ Error Auth API:', errTxt);
+                    throw new Error(`Error API auth: status ${res.status}`);
+                }
+
+                const data = await res.json();
+                console.log('%c[CUENTA PC] 📦 DATOS RECIBIDOS DE LA API DE AUTENTICACIÓN:', 'background: #059669; color: white; font-weight: bold; padding: 2px 6px; border-radius: 4px;', data);
+
+                const empresa = data.empresa || data;
+
+                // Campos editables
+                document.getElementById('cuenta-nombre').value = empresa.nombre || '';
+                document.getElementById('cuenta-razon').value = empresa.razon_social || '';
+                document.getElementById('cuenta-direccion').value = empresa.direccion || '';
+                document.getElementById('cuenta-telefono').value = empresa.telefono || '';
+                document.getElementById('cuenta-email').value = empresa.email || '';
+                document.getElementById('cuenta-admin-email').value = empresa.admin_email || '';
+                document.getElementById('cuenta-password').value = '';
+                document.getElementById('cuenta-password-confirm').value = '';
+
+                // Campos de solo lectura (plan)
+                if (empresa.plan) {
+                    console.log('[CUENTA PC] ⭐ Plan recibido:', empresa.plan);
+                    document.getElementById('cuenta-plan-nombre').innerText = empresa.plan.nombre_plan || '—';
+                    document.getElementById('cuenta-plan-precio').innerText = empresa.plan.precio ? `$${empresa.plan.precio}` : '—';
+                    document.getElementById('cuenta-plan-estado').innerText = empresa.plan.estado || '—';
+                    document.getElementById('cuenta-plan-vence').innerText = empresa.plan.fecha_vencimiento || '—';
+                } else {
+                    console.warn('[CUENTA PC] ⚠️ empresa.plan no vino en la respuesta.');
+                }
+
+                document.getElementById('cuenta-credito').innerText = empresa.credito_disponible ? `$${empresa.credito_disponible}` : '$0.00';
+
+                // Buscar registro stuart para obtener el ID
+                try {
+                    console.log(`[CUENTA PC] 📡 Consultando Stuart API: ${STUART_URL}/api/stuart-numeros?company_id=${idEmpresa}`);
+                    const resStuart = await fetch(`${STUART_URL}/api/stuart-numeros?company_id=${idEmpresa}`);
+                    if (resStuart.ok) {
+                        const stuartData = await resStuart.json();
+                        console.log('[CUENTA PC] 📦 Datos Stuart recibidos:', stuartData);
+                        if (stuartData.success && stuartData.data && stuartData.data.length > 0) {
+                            stuartRegistroId = stuartData.data[0].id;
+                            console.log('[CUENTA PC] 🆔 ID Stuart asignado:', stuartData.data[0].id);
+                        }
+                    }
+                } catch (e) {
+                    console.warn('[CUENTA PC] (Aviso) Stuart fetch no disponible o bloqueado:', e);
+                    stuartRegistroId = null;
+                }
+
+                if (msg) { msg.innerText = ''; }
+                console.log('%c[CUENTA PC] ✅ Formulario de cuenta rellenado exitosamente.', 'color: green; font-weight: bold;');
+            } catch (err) {
+                console.error('%c[CUENTA PC] ❌ Error capturado en cargarDatosCuenta:', 'color: red; font-weight: bold;', err);
+                if (msg) { msg.innerText = 'Error al cargar datos. Verifique la conexión.'; msg.style.color = '#dc2626'; }
+            }
+        };
+
+        // GUARDAR DATOS EN AMBAS APIS
+        window.guardarDatosCuenta = async function() {
+            const msg = document.getElementById('cuenta-mensaje');
+            const password = document.getElementById('cuenta-password').value.trim();
+            const passwordConfirm = document.getElementById('cuenta-password-confirm').value.trim();
+
+            if (password && password !== passwordConfirm) {
+                if (msg) { msg.innerText = 'Las contraseñas no coinciden.'; msg.style.color = '#dc2626'; }
+                return;
+            }
+
+            const nombre = document.getElementById('cuenta-nombre').value.trim();
+            const razon_social = document.getElementById('cuenta-razon').value.trim();
+            const direccion = document.getElementById('cuenta-direccion').value.trim();
+            const telefonoRaw = document.getElementById('cuenta-telefono').value.trim();
+            const email = document.getElementById('cuenta-email').value.trim();
+            const admin_email = document.getElementById('cuenta-admin-email').value.trim();
+
+            if (!nombre) {
+                if (msg) { msg.innerText = 'El nombre de la empresa es obligatorio.'; msg.style.color = '#dc2626'; }
+                return;
+            }
+
+            const telefono58 = formatearTelefono58(telefonoRaw);
+            if (msg) { msg.innerText = 'Guardando...'; msg.style.color = '#0284c7'; }
+
+            try {
+                const sesion = await ipc.invoke('obtener-sesion');
+                const idEmpresa = sesion ? sesion.idEmpresa : null;
+                if (!idEmpresa) throw new Error('No se encontró ID de empresa');
+
+                // 1. PUT a API de Autenticación
+                const authBody = {
+                    nombre,
+                    razon_social,
+                    direccion,
+                    telefono: telefono58,
+                    email,
+                    admin_email
+                };
+                if (password) authBody.contrasena = password;
+
+                const resAuth = await fetch(`${AUTH_URL}/auth-api/empresa/${idEmpresa}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(authBody)
+                });
+                if (!resAuth.ok) throw new Error('Error al actualizar en API de autenticación');
+
+                // 2. PUT o POST a Stuart API
+                const stuartBody = {
+                    numero_telefono: telefono58,
+                    company_id: idEmpresa,
+                    nombre_usuario: razon_social,
+                    activo: true,
+                    nombre_compania: nombre,
+                    email_contacto: email,
+                    direccion: direccion
+                };
+
+                if (stuartRegistroId) {
+                    // PUT al registro existente
+                    await fetch(`${STUART_URL}/api/stuart-numeros/${stuartRegistroId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(stuartBody)
+                    });
+                } else {
+                    // POST para crear nuevo
+                    const resPost = await fetch(`${STUART_URL}/api/stuart-numeros`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(stuartBody)
+                    });
+                    if (resPost.ok) {
+                        const postData = await resPost.json();
+                        if (postData.data && postData.data.id) stuartRegistroId = postData.data.id;
+                    }
+                }
+
+                if (msg) { msg.innerText = '✅ Datos guardados exitosamente.'; msg.style.color = '#059669'; }
+                // Limpiar campos de contraseña después de guardar
+                document.getElementById('cuenta-password').value = '';
+                document.getElementById('cuenta-password-confirm').value = '';
+            } catch (err) {
+                console.error('Error guardando datos de cuenta:', err);
+                if (msg) { msg.innerText = '❌ Error al guardar. Verifique la conexión.'; msg.style.color = '#dc2626'; }
+            }
+        };
+
         // VEHÍCULOS
         window.registrarVehiculo = function() {
             const input = document.getElementById('nombreVehiculo');
@@ -253,8 +579,9 @@
                 <tr>
                     <td class="font-bold text-gray-800"><i class="material-icons align-middle text-gray-400 mr-2">local_shipping</i>${v.nombre}</td>
                     <td class="text-gray-500 font-mono">${new Date(v.fecha_creacion).toLocaleDateString()}</td>
-                    <td style="text-align: right;">
+                    <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px; align-items: center;">
                         <button onclick="abrirConfiguracionVehiculo(${v.id}, '${v.nombre}')" class="btn-secondary">Configurar Cargas</button>
+                        <button onclick="eliminarVehiculo(${v.id})" class="btn-del" title="Eliminar"><i class="material-icons">delete</i></button>
                     </td>
                 </tr>`).join('');
         };
@@ -274,37 +601,43 @@
 
             const lista = await ipc.invoke('obtener-unidades-maestras');
             
-            // Guardar valores actuales para no perder el foco/selección
+            // Guardar valores actuales para no perder la selección activa
             const prevPadre = selectPadre.value;
             const prevCarga = selectCarga.value;
 
-            tbody.innerHTML = '';
-            selectPadre.innerHTML = '';
-            selectCarga.innerHTML = '<option value="">Seleccione...</option>';
-
             if (!lista || lista.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin categorías</td></tr>';
+                selectPadre.innerHTML = '<option value="">Sin categorías</option>';
+                selectCarga.innerHTML = '<option value="">Seleccione...</option>';
+                const tbodySub = document.getElementById('tablaSubtipos');
+                if (tbodySub) tbodySub.innerHTML = '<tr><td colspan="2" class="empty-message">Sin categorías</td></tr>';
                 return;
             }
 
-            lista.forEach(u => {
-                tbody.innerHTML += `<tr><td class="font-bold">${u.nombre}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarUnidad(${u.id})"><i class="material-icons">delete</i></button></td></tr>`;
-                selectPadre.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
-                selectCarga.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
-            });
+            tbody.innerHTML = lista.map(u => `<tr><td class="font-bold">${u.nombre}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarUnidad(${u.id})"><i class="material-icons">delete</i></button></td></tr>`).join('');
+            
+            const opcionesPadreHtml = lista.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+            const opcionesCargaHtml = '<option value="">Seleccione...</option>' + lista.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+            
+            if (selectPadre.innerHTML !== opcionesPadreHtml) {
+                selectPadre.innerHTML = opcionesPadreHtml;
+            }
+            if (selectCarga.innerHTML !== opcionesCargaHtml) {
+                selectCarga.innerHTML = opcionesCargaHtml;
+            }
 
             // AUTO-SELECCIÓN O RESTAURACIÓN
-            if (lista.length > 0) {
-                if (prevPadre && lista.some(u => u.id.toString() === prevPadre)) {
-                    selectPadre.value = prevPadre;
-                } else {
-                    selectPadre.value = lista[0].id;
-                }
-                
-                if (prevCarga && lista.some(u => u.id.toString() === prevCarga)) {
-                    selectCarga.value = prevCarga;
-                }
-                
+            if (prevPadre && lista.some(u => u.id.toString() === prevPadre.toString())) {
+                selectPadre.value = prevPadre;
+            } else {
+                selectPadre.value = lista[0].id;
+            }
+            
+            if (prevCarga && lista.some(u => u.id.toString() === prevCarga.toString())) {
+                selectCarga.value = prevCarga;
+            }
+            
+            if (selectPadre.value) {
                 cargarSubtiposTabla(selectPadre.value);
             }
         };
@@ -325,6 +658,12 @@
 
         window.cerrarModalConfirmacion = function() {
             document.getElementById('modalConfirmacionCustom').classList.add('hidden');
+        };
+
+        window.eliminarVehiculo = function(id) {
+            confirmarAccionCustom("¿Seguro que deseas eliminar este vehículo?", () => {
+                ipc.send('eliminar-vehiculo', id);
+            });
         };
 
         window.eliminarUnidad = function(id) {
@@ -363,13 +702,14 @@
         window.cargarSubtiposTabla = async function(unidad_id) {
             const tbody = document.getElementById('tablaSubtipos');
             const selectPadre = document.getElementById('selectUnidadPadre');
+            if (!tbody || !selectPadre) return;
             // Obtener el nombre de la categoría seleccionada para el subtítulo turquesa
             const nombreCategoria = selectPadre.options[selectPadre.selectedIndex]?.text || "";
 
             if(!unidad_id) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Seleccione categoría</td></tr>'; return; }
             
             const subtipos = await ipc.invoke('obtener-subtipos-maestros', unidad_id);
-            if (subtipos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin variaciones</td></tr>'; return; }
+            if (!subtipos || subtipos.length === 0) { tbody.innerHTML = '<tr><td colspan="2" class="empty-message">Sin variaciones</td></tr>'; return; }
 
             tbody.innerHTML = subtipos.map(s => `
                 <tr>
@@ -418,8 +758,8 @@
 
         window.cargarTablaCargasVehiculo = async function() {
             const tbody = document.getElementById('listaCargasVehiculo');
+            if (!tbody || !vehiculoActualId) return;
             const cargas = await ipc.invoke('obtener-cargas-vehiculo', vehiculoActualId);
-            if (!tbody) return;
             if (!cargas || cargas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin cargas.</td></tr>'; return; }
             tbody.innerHTML = cargas.map(c => `<tr><td class="font-bold">${c.tipo_medida}</td><td>${c.subtipo_medida}</td><td class="font-bold text-blue-600">${c.cantidad}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarCargaVehiculo(${c.id})"><i class="material-icons">delete</i></button></td></tr>`).join('');
         };
@@ -442,19 +782,18 @@
                 }
                 return;
             }
-
-            // Evitamos actualizar si el usuario está tipeando un nuevo nombre
-            const active = document.activeElement;
-            if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) {
-                return;
-            }
             
             await cargarVehiculos();
             await cargarUnidadesMaestras();
             await cargarMetodosPago();
             
-            if (vehiculoActualId && typeof cargarCargasVehiculo === 'function') {
-                await cargarCargasVehiculo(vehiculoActualId);
+            const selectPadre = document.getElementById('selectUnidadPadre');
+            if (selectPadre && selectPadre.value) {
+                await cargarSubtiposTabla(selectPadre.value);
+            }
+            
+            if (vehiculoActualId) {
+                await cargarTablaCargasVehiculo();
             }
         };
 
