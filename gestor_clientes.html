@@ -147,17 +147,42 @@
         let nombreOriginal = null;
         let clientesCache = [];
 
-        window.registrarClienteGlobal = function() {
+        window.registrarClienteGlobal = async function() {
             const input = document.getElementById('nombreCliente');
+            if (!input) return;
             const nombre = input.value.trim().toUpperCase();
-            if(!nombre) return;
-            ipc.send('guardar-cliente', nombre);
+            if (!nombre) return;
+
+            if (ipc) {
+                try {
+                    let res;
+                    if (typeof ipc.invoke === 'function') {
+                        res = await ipc.invoke('guardar-cliente', nombre);
+                    } else {
+                        res = await new Promise(resolve => {
+                            ipc.once('guardar-cliente-resultado', (event, r) => resolve(r));
+                            ipc.send('guardar-cliente', nombre);
+                        });
+                    }
+
+                    if (res && res.success) {
+                        if (input) input.value = '';
+                        cargarClientesConfig();
+                    } else {
+                        alert("Error al guardar cliente. Es posible que el nombre ya exista.");
+                    }
+                } catch (e) {
+                    alert("Error al guardar cliente: " + e.message);
+                }
+            }
         };
 
         ipc.removeAllListeners('guardar-cliente-resultado');
         ipc.on('guardar-cliente-resultado', (event, res) => {
-            if(res.success) { 
-                document.getElementById('nombreCliente').value = ''; 
+            const input = document.getElementById('nombreCliente');
+            if (!input) return; // Si no estamos en esta pantalla, no manipular el DOM
+            if(res && res.success) { 
+                input.value = ''; 
                 cargarClientesConfig(); 
             } else {
                 alert("Error al guardar cliente. Es posible que el nombre ya exista.");
@@ -165,21 +190,23 @@
         });
 
         window.cargarClientesConfig = async function() {
+            if (!ipc) return;
             clientesCache = await ipc.invoke('obtener-clientes');
             renderizarListaClientes(clientesCache);
         };
 
         window.renderizarListaClientes = function(lista) {
             const tbody = document.getElementById('listaClientes');
-            if (lista.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin clientes encontrados.</td></tr>'; return; }
+            if (!tbody) return;
+            if (!Array.isArray(lista) || lista.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin clientes encontrados.</td></tr>'; return; }
             tbody.innerHTML = lista.map(c => `
                 <tr>
                     <td class="text-gray-500 font-mono">${c.id}</td>
                     <td class="font-bold text-gray-800"><i class="material-icons align-middle text-gray-400 mr-2">person</i>${c.nombre}</td>
                     <td class="text-gray-500 font-mono">${new Date(c.fecha_creacion).toLocaleDateString()}</td>
                     <td style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
-                        <button class="btn-edit" onclick="abrirModalEditar(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')" title="Editar"><i class="material-icons">edit</i></button>
-                        <button class="btn-del" onclick="abrirModalEliminar(${c.id}, '${c.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="material-icons">delete</i></button>
+                        <button class="btn-edit" onclick="abrirModalEditar('${c.id}', '${c.nombre.replace(/'/g, "\\'")}')" title="Editar"><i class="material-icons">edit</i></button>
+                        <button class="btn-del" onclick="abrirModalEliminar('${c.id}', '${c.nombre.replace(/'/g, "\\'")}')" title="Eliminar"><i class="material-icons">delete</i></button>
                     </td>
                 </tr>`).join('');
         };
@@ -252,6 +279,8 @@
         // LISENERS GLOBALES
         ipc.removeAllListeners('resultado-operacion');
         ipc.on('resultado-operacion', (event, res) => {
+            const tbody = document.getElementById('listaClientes');
+            if (!tbody) return; // Solo actuar si estamos en la vista de gestor_clientes
             if(res.success) {
                 cargarClientesConfig();
             } else {

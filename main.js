@@ -4,6 +4,7 @@ const fs = require('fs');
 const axios = require('axios');
 const { spawn } = require('child_process');
 const sqlite3 = require('sqlite3').verbose();
+const crypto = require('crypto');
 
 // Configuración de la Base de Datos
 const dbPath = path.join(app.getPath('userData'), 'sistema_mayorista.db');
@@ -14,45 +15,63 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 const QUERIES_TABLAS = [
     `CREATE TABLE IF NOT EXISTS vehiculos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-        id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0
-    )`,
-    `CREATE TABLE IF NOT EXISTS maestro_unidades (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL UNIQUE,
-        id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0
-    )`,
-    `CREATE TABLE IF NOT EXISTS maestro_subtipos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, unidad_id INTEGER, nombre TEXT NOT NULL,
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        fecha_creacion DATETIME DEFAULT (datetime('now', 'localtime')),
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
+        created_at DATETIME
+    )`,
+    `CREATE TABLE IF NOT EXISTS maestro_unidades (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL UNIQUE,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS maestro_subtipos (
+        id TEXT PRIMARY KEY,
+        unidad_id TEXT,
+        nombre TEXT NOT NULL,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
         FOREIGN KEY(unidad_id) REFERENCES maestro_unidades(id) ON DELETE CASCADE
     )`,
     `CREATE TABLE IF NOT EXISTS clientes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-        id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0
-    )`,
-    `CREATE TABLE IF NOT EXISTS vehiculo_cargas (
-        id_carga INTEGER PRIMARY KEY AUTOINCREMENT,
-        vehiculo_id INTEGER,
-        fecha_entrada DATETIME DEFAULT CURRENT_TIMESTAMP,
-        datos_json TEXT NOT NULL, -- Aquí guardaremos TODO el array de la carga en formato JSON
-        estado TEXT DEFAULT 'ACTIVA', -- Para saber si la carga está abierta o fue cerrada
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL,
+        fecha_creacion DATETIME DEFAULT (datetime('now', 'localtime')),
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS vehiculo_cargas (
+        id_carga TEXT PRIMARY KEY,
+        vehiculo_id TEXT,
+        fecha_entrada DATETIME DEFAULT (datetime('now', 'localtime')),
+        datos_json TEXT NOT NULL,
+        estado TEXT DEFAULT 'ACTIVA',
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
         FOREIGN KEY(vehiculo_id) REFERENCES vehiculos(id) ON DELETE CASCADE
     )`,
     `CREATE TABLE IF NOT EXISTS ventas_cargas (
-        id_detalle INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_detalle TEXT PRIMARY KEY,
         fila_id TEXT NOT NULL,
-        id_carga INTEGER NOT NULL,
-        vehiculo_id INTEGER,
-        fecha_entrada DATETIME, 
+        id_carga TEXT NOT NULL,
+        vehiculo_id TEXT,
+        fecha_entrada DATETIME,
         cliente TEXT,
-        tipo_medida TEXT, 
-        sub_medida TEXT, 
+        tipo_medida TEXT,
+        sub_medida TEXT,
         precio TEXT,
         cantidad TEXT,
         metodo_pago TEXT,
@@ -64,102 +83,119 @@ const QUERIES_TABLAS = [
         pagado REAL DEFAULT 0,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
-        UNIQUE(id_carga, fila_id), 
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME,
+        UNIQUE(id_carga, fila_id),
         FOREIGN KEY(id_carga) REFERENCES vehiculo_cargas(id_carga) ON DELETE CASCADE
     )`,
     `CREATE TABLE IF NOT EXISTS cargas_cerradas (
-        id_cierre INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_carga INTEGER,
-        vehiculo_id INTEGER,
+        id_cierre TEXT PRIMARY KEY,
+        id_carga TEXT,
+        vehiculo_id TEXT,
         fecha_entrada DATETIME,
-        fecha_cierre DATETIME DEFAULT CURRENT_TIMESTAMP,
-        mercancia_json TEXT, -- Resumen final de mercancía
-        mermas_json TEXT, -- NUEVO: Resumen final de mermas
-        rendiciones_json TEXT, -- NUEVO: Rendiciones de producto
+        fecha_cierre DATETIME DEFAULT (datetime('now', 'localtime')),
+        mercancia_json TEXT,
+        mermas_json TEXT,
+        rendiciones_json TEXT,
         total_venta REAL,
         total_credito REAL,
         total_contado REAL,
         total_ganancia REAL,
         valor_promedio_producto REAL,
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0)`,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
     `CREATE TABLE IF NOT EXISTS mermas_cargas (
-        merma_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_carga INTEGER NOT NULL,
-        vehiculo_id INTEGER,
-        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        merma_id TEXT PRIMARY KEY,
+        id_carga TEXT NOT NULL,
+        vehiculo_id TEXT,
+        fecha_registro DATETIME DEFAULT (datetime('now', 'localtime')),
         tipo_medida TEXT,
         sub_medida TEXT,
         cantidad INTEGER,
-        estado_logico INTEGER DEFAULT 1 -- 1 Activo, 0 Eliminado lógicamente
-    ,
+        estado_logico INTEGER DEFAULT 1,
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0)`,
+        sync_status INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
     `CREATE TABLE IF NOT EXISTS rendiciones_cargas (
-        rendicion_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_carga INTEGER NOT NULL,
-        vehiculo_id INTEGER,
-        fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
+        rendicion_id TEXT PRIMARY KEY,
+        id_carga TEXT NOT NULL,
+        vehiculo_id TEXT,
+        fecha_registro DATETIME DEFAULT (datetime('now', 'localtime')),
         producto_origen TEXT,
         cantidad_restada INTEGER,
         nombre_nuevo_producto TEXT,
         precio_venta_nuevo_producto REAL,
+        precio_compra_nuevo_producto REAL DEFAULT 0,
         cantidad_generada INTEGER,
-        estado_logico INTEGER DEFAULT 1
-    ,
+        estado_logico INTEGER DEFAULT 1,
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0)`,
+        sync_status INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
     `CREATE TABLE IF NOT EXISTS abonos_deudas (
-        id_abono INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_carga INTEGER NOT NULL,
-        vehiculo_id INTEGER,
+        id_abono TEXT PRIMARY KEY,
+        id_carga TEXT NOT NULL,
+        vehiculo_id TEXT,
         cliente TEXT NOT NULL,
         monto_divisa REAL DEFAULT 0,
         monto_movil REAL DEFAULT 0,
         banco TEXT,
-        fecha_abono DATETIME DEFAULT CURRENT_TIMESTAMP,
+        fecha_abono DATETIME DEFAULT (datetime('now', 'localtime')),
         grupo_pago TEXT,
-        estado_logico INTEGER DEFAULT 1, -- 1 Activo, 0 Revertido/Eliminado
+        estado_logico INTEGER DEFAULT 1,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
         FOREIGN KEY(id_carga) REFERENCES vehiculo_cargas(id_carga) ON DELETE CASCADE
     )`,
     `CREATE TABLE IF NOT EXISTS reversos_deudas (
-        id_reverso INTEGER PRIMARY KEY AUTOINCREMENT,
-        id_carga INTEGER NOT NULL,
-        vehiculo_id INTEGER,
+        id_reverso TEXT PRIMARY KEY,
+        id_carga TEXT NOT NULL,
+        vehiculo_id TEXT,
         cliente TEXT NOT NULL,
         monto_divisa REAL DEFAULT 0,
         monto_movil REAL DEFAULT 0,
         banco TEXT,
-        fecha_reverso DATETIME DEFAULT CURRENT_TIMESTAMP
-    ,
+        fecha_reverso DATETIME DEFAULT (datetime('now', 'localtime')),
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0)`,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
     `CREATE TABLE IF NOT EXISTS configuracion_sistema (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         clave TEXT UNIQUE NOT NULL,
-        valor TEXT
+        valor TEXT,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )`,
     `CREATE TABLE IF NOT EXISTS metodos_pago (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         nombre TEXT UNIQUE NOT NULL,
-        estado INTEGER DEFAULT 1
-    ,
+        estado INTEGER DEFAULT 1,
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0)`,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
     `CREATE TABLE IF NOT EXISTS proveedores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         nombre TEXT UNIQUE NOT NULL,
         rubro TEXT,
         anden TEXT,
         telefono TEXT,
         direccion TEXT,
         id_empresa TEXT,
-        sync_status INTEGER DEFAULT 0
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )`,
     `CREATE TABLE IF NOT EXISTS deudas_proveedores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
         proveedor TEXT NOT NULL,
@@ -167,11 +203,12 @@ const QUERIES_TABLAS = [
         cantidad REAL DEFAULT 1,
         precio REAL DEFAULT 0,
         monto REAL NOT NULL,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-        estado_logico INTEGER DEFAULT 1
+        fecha DATETIME DEFAULT (datetime('now', 'localtime')),
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )`,
     `CREATE TABLE IF NOT EXISTS abonos_proveedores (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
         proveedor TEXT NOT NULL,
@@ -179,11 +216,12 @@ const QUERIES_TABLAS = [
         monto_movil REAL DEFAULT 0,
         metodo_pago TEXT,
         banco TEXT,
-        fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
-        estado_logico INTEGER DEFAULT 1
+        fecha DATETIME DEFAULT (datetime('now', 'localtime')),
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )`,
     `CREATE TABLE IF NOT EXISTS movimientos_cestas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         fecha TEXT NOT NULL,
         tipo_cesta TEXT NOT NULL,
         tipo_accion TEXT NOT NULL,
@@ -192,8 +230,44 @@ const QUERIES_TABLAS = [
         cantidad INTEGER NOT NULL DEFAULT 0,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+    )`,
+    `CREATE TABLE IF NOT EXISTS ajustes_cargas (
+        id_ajuste INTEGER PRIMARY KEY AUTOINCREMENT,
+        id_carga INTEGER NOT NULL,
+        id_detalle INTEGER NOT NULL,
+        campo TEXT NOT NULL,
+        valor_anterior TEXT,
+        valor_nuevo TEXT,
+        motivo TEXT,
+        fecha_ajuste DATETIME DEFAULT CURRENT_TIMESTAMP,
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0
+    )`,
+    `CREATE TABLE IF NOT EXISTS ajustes_cargas_cerradas (
+        id_ajuste TEXT PRIMARY KEY,
+        id_carga TEXT NOT NULL,
+        id_detalle TEXT,
+        campo TEXT NOT NULL,
+        valor_anterior TEXT,
+        valor_nuevo TEXT,
+        motivo TEXT,
+        fecha_ajuste DATETIME DEFAULT (datetime('now', 'localtime')),
+        id_empresa TEXT,
+        sync_status INTEGER DEFAULT 0,
+        estado_logico INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
     )`
+];
+
+const QUERIES_INDICES = [
+    `CREATE INDEX IF NOT EXISTS idx_cargas_cerradas_fecha_cierre ON cargas_cerradas(fecha_cierre)`,
+    `CREATE INDEX IF NOT EXISTS idx_vehiculo_cargas_fecha_entrada ON vehiculo_cargas(fecha_entrada)`,
+    `CREATE INDEX IF NOT EXISTS idx_ventas_cargas_cliente ON ventas_cargas(cliente COLLATE NOCASE)`,
+    `CREATE INDEX IF NOT EXISTS idx_ventas_cargas_fecha_entrada ON ventas_cargas(fecha_entrada)`,
+    `CREATE INDEX IF NOT EXISTS idx_ventas_cargas_tipo_medida ON ventas_cargas(tipo_medida COLLATE NOCASE)`
 ];
 
 function inicializarYActualizarBaseDeDatos() {
@@ -211,11 +285,25 @@ function inicializarYActualizarBaseDeDatos() {
 
             const bodyMatch = query.match(/\(([\s\S]*)\)/);
             if (!bodyMatch) return;
-            let body = bodyMatch[1];
+            let body = bodyMatch[1].replace(/--.*$/gm, '');
             
-            body = body.replace(/--.*$/gm, '');
-            
-            const parts = body.split(/,(?![^\(]*\))/);
+            // Parser que respeta niveles de paréntesis anidados
+            const parts = [];
+            let current = '';
+            let depth = 0;
+            for (let i = 0; i < body.length; i++) {
+                const char = body[i];
+                if (char === '(') depth++;
+                else if (char === ')') depth--;
+                
+                if (char === ',' && depth === 0) {
+                    parts.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            if (current.trim()) parts.push(current.trim());
             
             const expectedColumns = {};
             parts.forEach(part => {
@@ -232,7 +320,15 @@ function inicializarYActualizarBaseDeDatos() {
                 const firstSpace = def.indexOf(' ');
                 if (firstSpace > -1) {
                     const colName = def.substring(0, firstSpace).trim();
-                    const colType = def.substring(firstSpace + 1).trim();
+                    let colType = def.substring(firstSpace + 1).trim();
+
+                    // SQLite no permite agregar columnas PRIMARY KEY con ALTER TABLE ADD COLUMN
+                    if (colType.toUpperCase().includes('PRIMARY KEY')) {
+                        return;
+                    }
+                    // SQLite tampoco permite restricciones UNIQUE directas en ALTER TABLE ADD COLUMN
+                    colType = colType.replace(/\bUNIQUE\b/gi, '').trim();
+
                     expectedColumns[colName] = colType;
                 }
             });
@@ -242,7 +338,7 @@ function inicializarYActualizarBaseDeDatos() {
                     console.error(`Error verificando PRAGMA de ${tableName}:`, err);
                     return;
                 }
-                const existingCols = rows.map(r => r.name);
+                const existingCols = (rows || []).map(r => r.name);
                 
                 for (const [colName, colDef] of Object.entries(expectedColumns)) {
                     if (!existingCols.includes(colName)) {
@@ -256,10 +352,22 @@ function inicializarYActualizarBaseDeDatos() {
             });
         });
 
+        // Crear/Verificar Índices de Alto Rendimiento
+        QUERIES_INDICES.forEach(indexQuery => {
+            db.run(indexQuery, (err) => {
+                if (err) {
+                    console.error(`Error creando índice:`, err.message);
+                }
+            });
+        });
+
         // Tareas post-inicialización (ej. Semillas por defecto)
         db.get("SELECT COUNT(*) as count FROM metodos_pago", (err, row) => {
-            if (!err && row.count === 0) {
-                db.run("INSERT INTO metodos_pago (nombre) VALUES ('EFECTIVO'), ('PAGO MÓVIL'), ('TRANSFERENCIA'), ('DIVISA')");
+            if (!err && row && row.count === 0) {
+                const metodos = ['EFECTIVO', 'PAGO MÓVIL', 'TRANSFERENCIA', 'DIVISA'];
+                metodos.forEach(m => {
+                    db.run("INSERT INTO metodos_pago (id, nombre) VALUES (?, ?)", [crypto.randomUUID(), m]);
+                });
             }
         });
     });
@@ -272,7 +380,7 @@ async function recalcularPagosCliente(id_carga, cliente) {
         // 1. Obtener la suma histórica total de todos los abonos de este cliente
         db.get(`SELECT COALESCE(SUM(monto_divisa + monto_movil), 0) as total_abonos 
                 FROM abonos_deudas 
-                WHERE id_carga = ? AND cliente = ?`, 
+                WHERE id_carga = ? AND cliente = ? AND COALESCE(estado_logico, 1) != -1`, 
         [id_carga, cliente], (err, rowAbono) => {
             
             let totalAbonos = rowAbono ? rowAbono.total_abonos : 0;
@@ -280,7 +388,7 @@ async function recalcularPagosCliente(id_carga, cliente) {
             // 2. Obtener la suma histórica total de todos los reversos de este cliente
             db.get(`SELECT COALESCE(SUM(monto_divisa + monto_movil), 0) as total_reversos 
                     FROM reversos_deudas 
-                    WHERE id_carga = ? AND cliente = ?`,
+                    WHERE id_carga = ? AND cliente = ? AND COALESCE(estado_logico, 1) != -1`,
             [id_carga, cliente], (errRev, rowReverso) => {
                 
                 let totalReversos = rowReverso ? rowReverso.total_reversos : 0;
@@ -293,6 +401,7 @@ async function recalcularPagosCliente(id_carga, cliente) {
                         FROM ventas_cargas 
                         WHERE id_carga = ? AND cliente COLLATE NOCASE = ? 
                           AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
+                          AND COALESCE(estado_logico, 1) != -1
                         ORDER BY id_detalle ASC`, 
                 [id_carga, cliente], (errLineas, lineas) => {
                     if (errLineas || !lineas) return resolve();
@@ -347,8 +456,9 @@ ipcMain.on('guardar-abono-deuda', async (event, data) => {
 
         let grupoPago = data.grupo_pago || null;
         
-        db.run(`INSERT INTO abonos_deudas (id_empresa, sync_status, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco, fecha_abono, grupo_pago) VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [idEmpresa, data.id_carga, data.vehiculo_id, data.cliente, data.monto_divisa, data.monto_movil, data.banco, fechaAbono, grupoPago], async function(err) {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO abonos_deudas (id_abono, id_empresa, sync_status, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco, fecha_abono, grupo_pago) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [newId, idEmpresa, data.id_carga, data.vehiculo_id, data.cliente, data.monto_divisa, data.monto_movil, data.banco, fechaAbono, grupoPago], async function(err) {
             if (!err) {
                 // Re-distribuimos los pagos tras añadir el abono
                 await recalcularPagosCliente(data.id_carga, data.cliente);
@@ -380,15 +490,18 @@ ipcMain.handle('obtener-resumen-deudas', async () => {
             LEFT JOIN (
                 SELECT id_carga, SUM(monto_divisa + monto_movil) AS total_abonos
                 FROM abonos_deudas
+                WHERE COALESCE(estado_logico, 1) != -1
                 GROUP BY id_carga
             ) ab ON v.id_carga = ab.id_carga
             LEFT JOIN (
                 SELECT id_carga, SUM(monto_divisa + monto_movil) AS total_reversos
                 FROM reversos_deudas
+                WHERE COALESCE(estado_logico, 1) != -1
                 GROUP BY id_carga
             ) rev ON v.id_carga = rev.id_carga
             WHERE (v.metodo_pago = 'CRÉDITO' OR v.metodo_pago = 'CREDITO' OR UPPER(v.metodo_pago) = 'CRÉDITO' OR UPPER(v.metodo_pago) = 'CREDITO')
               AND (v.id_carga > 0 OR (v.id_carga = 0 AND (v.tipo_medida = 'DEUDA ANTIGUA' OR v.tipo_medida = 'DEUDA MANUAL' OR v.tipo_medida LIKE 'DEUDA%')))
+              AND COALESCE(v.estado_logico, 1) != -1
             GROUP BY v.id_carga, v.vehiculo_id, vehiculo_nombre, COALESCE(vc.fecha_entrada, v.fecha_entrada), cc.fecha_cierre
             HAVING total_deuda > 0.01
             ORDER BY v.id_carga DESC
@@ -425,7 +538,7 @@ async function eliminarRemoto(tabla, id) {
 
 ipcMain.on('eliminar-cliente', (event, id) => {
     eliminarRemoto('clientes', id);
-    db.run(`DELETE FROM clientes WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.run(`UPDATE clientes SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 ipcMain.on('editar-cliente', (event, data) => {
@@ -450,7 +563,8 @@ ipcMain.on('editar-cliente', (event, data) => {
 ipcMain.on('guardar-unidad-maestra', (event, nombre) => {
     db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (err, row) => {
         const idEmpresa = row ? row.valor : null;
-        db.run(`INSERT INTO maestro_unidades (id_empresa, sync_status, nombre) VALUES (?, 0, ?)`, [idEmpresa, nombre], (err) => {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO maestro_unidades (id, id_empresa, sync_status, nombre) VALUES (?, ?, 0, ?)`, [newId, idEmpresa, nombre], (err) => {
             event.reply('resultado-operacion', { success: !err, msg: err ? "Ya existe o error de DB" : "" });
         });
     });
@@ -458,14 +572,15 @@ ipcMain.on('guardar-unidad-maestra', (event, nombre) => {
 
 ipcMain.handle('obtener-unidades-maestras', async () => {
     return new Promise((res) => {
-        db.all(`SELECT * FROM maestro_unidades ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
+        db.all(`SELECT * FROM maestro_unidades WHERE COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
     });
 });
 
 ipcMain.on('guardar-subtipo-maestro', (event, data) => {
     db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (err, row) => {
         const idEmpresa = row ? row.valor : null;
-        db.run(`INSERT INTO maestro_subtipos (id_empresa, sync_status, unidad_id, nombre) VALUES (?, 0, ?, ?)`, [idEmpresa, data.unidad_id, data.nombre], (err) => {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO maestro_subtipos (id, id_empresa, sync_status, unidad_id, nombre) VALUES (?, ?, 0, ?, ?)`, [newId, idEmpresa, data.unidad_id, data.nombre], (err) => {
             event.reply('resultado-operacion', { success: !err });
         });
     });
@@ -473,37 +588,38 @@ ipcMain.on('guardar-subtipo-maestro', (event, data) => {
 
 ipcMain.handle('obtener-subtipos-maestros', async (event, unidad_id) => {
     return new Promise((res) => {
-        db.all(`SELECT * FROM maestro_subtipos WHERE unidad_id = ? ORDER BY nombre ASC`, [unidad_id], (err, rows) => res(rows || []));
+        db.all(`SELECT * FROM maestro_subtipos WHERE unidad_id = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [unidad_id], (err, rows) => res(rows || []));
     });
 });
 
 ipcMain.on('eliminar-unidad-maestra', (event, id) => {
     eliminarRemoto('maestro_unidades', id);
-    db.run(`DELETE FROM maestro_unidades WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.run(`UPDATE maestro_unidades SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 ipcMain.on('eliminar-subtipo-maestro', (event, id) => {
     eliminarRemoto('maestro_subtipos', id);
-    db.run(`DELETE FROM maestro_subtipos WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.run(`UPDATE maestro_subtipos SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 // --- IPC para Métodos de Pago ---
 ipcMain.handle('obtener-metodos-pago', async () => {
     return new Promise((res) => {
-        db.all(`SELECT * FROM metodos_pago WHERE estado = 1 ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
+        db.all(`SELECT * FROM metodos_pago WHERE estado = 1 AND COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
     });
 });
 
 ipcMain.handle('obtener-metodos-pago-config', async () => {
     return new Promise((res) => {
-        db.all(`SELECT * FROM metodos_pago ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
+        db.all(`SELECT * FROM metodos_pago WHERE COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
     });
 });
 
 ipcMain.on('guardar-metodo-pago', (event, nombre) => {
     db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (err, row) => {
         const idEmpresa = row ? row.valor : null;
-        db.run(`INSERT INTO metodos_pago (id_empresa, sync_status, nombre) VALUES (?, 0, ?)`, [idEmpresa, nombre], function(err) {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO metodos_pago (id, id_empresa, sync_status, nombre) VALUES (?, ?, 0, ?)`, [newId, idEmpresa, nombre], function(err) {
             if (err) event.reply('resultado-operacion', { success: false, msg: err.message });
             else event.reply('resultado-operacion', { success: true });
         });
@@ -518,31 +634,33 @@ ipcMain.on('cambiar-estado-metodo-pago', (event, { id, estado }) => {
 
 ipcMain.on('eliminar-metodo-pago', (event, id) => {
     eliminarRemoto('metodos_pago', id);
-    db.run(`DELETE FROM metodos_pago WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.run(`UPDATE metodos_pago SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 // --- IPC para Vehículos e Inventario ---
 ipcMain.on('guardar-vehiculo', (event, nombre) => {
     db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (err, row) => {
         const idEmpresa = row ? row.valor : null;
-        db.run(`INSERT INTO vehiculos (id_empresa, sync_status, nombre) VALUES (?, 0, ?)`, [idEmpresa, nombre], function(err) {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO vehiculos (id, id_empresa, sync_status, nombre) VALUES (?, ?, 0, ?)`, [newId, idEmpresa, nombre], function(err) {
             if (err) event.reply('guardar-resultado', { success: false, msg: err.message });
-            else event.reply('guardar-resultado', { success: true, id: this.lastID });
+            else event.reply('guardar-resultado', { success: true, id: newId });
         });
     });
 });
 
 ipcMain.on('eliminar-vehiculo', (event, id) => {
     eliminarRemoto('vehiculos', id);
-    db.run(`DELETE FROM vehiculos WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.run(`UPDATE vehiculos SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
 });
 
 ipcMain.handle('obtener-vehiculos', async () => {
     return new Promise((resolve, reject) => {
         const query = `
             SELECT v.*, 
-                   (SELECT COUNT(*) FROM vehiculo_cargas c WHERE c.vehiculo_id = v.id AND c.estado = 'ACTIVA') as tiene_activa
+                   (SELECT COUNT(*) FROM vehiculo_cargas c WHERE c.vehiculo_id = v.id AND c.estado = 'ACTIVA' AND COALESCE(c.estado_logico, 1) != -1) as tiene_activa
             FROM vehiculos v 
+            WHERE COALESCE(v.estado_logico, 1) != -1
             ORDER BY tiene_activa DESC, v.fecha_creacion DESC
         `;
         db.all(query, [], (err, rows) => resolve(err ? [] : rows));
@@ -554,10 +672,11 @@ ipcMain.on('guardar-carga-vehiculo', (event, data) => {
     db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (err, row) => {
         const idEmpresa = row ? row.valor : null;
         // Se inserta la carga como 'ACTIVA'
-        db.run(`INSERT INTO vehiculo_cargas (id_empresa, sync_status, vehiculo_id, datos_json, estado) VALUES (?, 0, ?, ?, 'ACTIVA')`, 
-        [idEmpresa, vehiculo_id, JSON.stringify(datos_json)], function(err) {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO vehiculo_cargas (id_carga, id_empresa, sync_status, vehiculo_id, datos_json, estado) VALUES (?, ?, 0, ?, ?, 'ACTIVA')`, 
+        [newId, idEmpresa, vehiculo_id, JSON.stringify(datos_json)], function(err) {
             if (err) event.reply('guardar-carga-resultado', { success: false, msg: err.message });
-            else event.reply('guardar-carga-resultado', { success: true, id_carga: this.lastID });
+            else event.reply('guardar-carga-resultado', { success: true, id_carga: newId });
         });
     });
 });
@@ -569,7 +688,7 @@ ipcMain.on('eliminar-fila-venta', (event, data) => {
         if (row && row.id_detalle) {
             eliminarRemoto('ventas_cargas', row.id_detalle);
         }
-        db.run(`DELETE FROM ventas_cargas WHERE id_carga = ? AND fila_id = ?`, [id_carga, fila_id], (err) => {
+        db.run(`UPDATE ventas_cargas SET estado_logico = -1, sync_status = 0 WHERE id_carga = ? AND fila_id = ?`, [id_carga, fila_id], (err) => {
             event.reply('eliminar-fila-venta-resultado', { success: !err });
         });
     });
@@ -577,7 +696,7 @@ ipcMain.on('eliminar-fila-venta', (event, data) => {
 
 ipcMain.on('eliminar-carga-vehiculo', (event, carga_id) => {
     eliminarRemoto('vehiculo_cargas', carga_id);
-    db.run(`DELETE FROM vehiculo_cargas WHERE id = ? OR id_carga = ?`, [carga_id, carga_id], function(err) {
+    db.run(`UPDATE vehiculo_cargas SET estado_logico = -1, sync_status = 0 WHERE id = ? OR id_carga = ?`, [carga_id, carga_id], function(err) {
         event.reply('eliminar-carga-resultado', { success: !err });
     });
 });
@@ -617,10 +736,11 @@ ipcMain.on('cerrar-carga-vehiculo', (event, data) => {
                 return;
             }
 
+            const newId = crypto.randomUUID();
             db.run(`INSERT INTO cargas_cerradas 
-                (id_empresa, sync_status, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto) 
-                VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [idEmpresa, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto], 
+                (id_cierre, id_empresa, sync_status, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto) 
+                VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [newId, idEmpresa, id_carga, vehiculo_id, fecha_entrada, mercancia_json, mermas_json, rendiciones_json, total_venta, total_credito, total_contado, total_ganancia, valor_promedio_producto], 
                 function(err) {
                     if (err) {
                         event.reply('cerrar-carga-resultado', { success: false, msg: err.message });
@@ -644,15 +764,16 @@ ipcMain.on('guardar-deuda-antigua-sistema', (event, data) => {
         
         const query = `
             INSERT INTO ventas_cargas (
-                id_empresa, sync_status, fila_id, id_carga, vehiculo_id, fecha_entrada, 
+                id_detalle, id_empresa, sync_status, fila_id, id_carga, vehiculo_id, fecha_entrada, 
                 cliente, tipo_medida, sub_medida, precio, cantidad, metodo_pago, banco, pagado, estado_zinc
-            ) VALUES (?, 0, ?, 0, 0, ?, ?, ?, ?, ?, 1, 'CRÉDITO', '', 0.0, 0)
+            ) VALUES (?, ?, 0, ?, 0, 0, ?, ?, ?, ?, ?, 1, 'CRÉDITO', '', 0.0, 0)
         `;
         
         const fila_id = (tipoMedida === 'DEUDA ANTIGUA' ? "ANT_" : "MAN_") + Date.now(); 
         const precioStr = `${data.monto} $`;
+        const newId = crypto.randomUUID();
 
-        db.run(query, [idEmpresa, fila_id, data.fecha, data.cliente, tipoMedida, data.descripcion, precioStr], function(err) {
+        db.run(query, [newId, idEmpresa, fila_id, data.fecha, data.cliente, tipoMedida, data.descripcion, precioStr], function(err) {
             if (err) {
                 event.reply('guardar-deuda-antigua-resultado', { success: false, msg: err.message });
             } else {
@@ -661,6 +782,139 @@ ipcMain.on('guardar-deuda-antigua-sistema', (event, data) => {
         });
     });
 });
+
+// --- ESTADÍSTICAS ---
+ipcMain.handle('obtener-estadisticas-dashboard', async (event, params) => {
+    return new Promise(async (resolve) => {
+        try {
+            const fechaFiltroVentas = (params && params.fechaInicio && params.fechaFin) 
+                ? `WHERE date(COALESCE(vc.fecha_entrada, v.fecha_entrada)) BETWEEN '${params.fechaInicio}' AND '${params.fechaFin}'` 
+                : '';
+                
+            const getAll = (query) => new Promise((res, rej) => db.all(query, (err, rows) => err ? rej(err) : res(rows)));
+
+            // 1. Calcular Totales Neta Exactos (excluyendo deudas impagas y estado_logico = -1)
+            const queryVentas = `
+                SELECT 
+                    v.id_carga, v.cliente, v.tipo_medida, v.sub_medida, v.cantidad, v.precio, v.metodo_pago,
+                    vc.datos_json as camion_json,
+                    cc.rendiciones_json
+                FROM ventas_cargas v
+                JOIN vehiculo_cargas vc ON v.id_carga = vc.id_carga
+                JOIN cargas_cerradas cc ON v.id_carga = cc.id_carga
+                ${fechaFiltroVentas ? fechaFiltroVentas + " AND COALESCE(v.estado_logico, 1) != -1 AND COALESCE(vc.estado_logico, 1) != -1 AND COALESCE(cc.estado_logico, 1) != -1" : "WHERE COALESCE(v.estado_logico, 1) != -1 AND COALESCE(vc.estado_logico, 1) != -1 AND COALESCE(cc.estado_logico, 1) != -1"}
+            `;
+            const ventas = await getAll(queryVentas);
+            
+            const queryAbonos = `
+                SELECT id_carga, cliente, SUM(monto_divisa + monto_movil) as total_abonado
+                FROM abonos_deudas
+                WHERE COALESCE(estado_logico, 1) != -1
+                GROUP BY id_carga, cliente COLLATE NOCASE
+            `;
+            const abonosRaw = await getAll(queryAbonos);
+            const abonosMap = {};
+            abonosRaw.forEach(a => {
+                const key = `${a.id_carga}_${(a.cliente || '').trim().toUpperCase()}`;
+                abonosMap[key] = (abonosMap[key] || 0) + a.total_abonado;
+            });
+
+            const deudaMap = {};
+            ventas.forEach(v => {
+                const mp = (v.metodo_pago || '').trim().toUpperCase();
+                if (mp.includes('CREDITO') || mp.includes('CRÉDITO')) {
+                    const key = `${v.id_carga}_${(v.cliente || '').trim().toUpperCase()}`;
+                    const totalFila = parseFloat(v.cantidad) * parseFloat((v.precio||'').replace('$', '').trim());
+                    deudaMap[key] = (deudaMap[key] || 0) + totalFila;
+                }
+            });
+
+            let ganancia_neta_real = 0;
+            let venta_neta_real = 0;
+
+            ventas.forEach(v => {
+                let pCompra = 0;
+                try {
+                    const inventario = JSON.parse(v.camion_json || '[]');
+                    const subtipoVenta = (v.sub_medida || v.tipo_medida || '').trim().toUpperCase();
+                    
+                    let item = inventario.find(i => {
+                        const sub = (i.subtipo || i.categoria || '').trim().toUpperCase();
+                        return sub === subtipoVenta;
+                    });
+
+                    if (item) {
+                        pCompra = parseFloat(item.p_compra || item.pCompra || 0);
+                    } else {
+                        const rendiciones = JSON.parse(v.rendiciones_json || '[]');
+                        let rItem = rendiciones.find(r => (r.nuevo_producto_nombre || '').trim().toUpperCase() === subtipoVenta);
+                        if (rItem) pCompra = parseFloat(rItem.precio_compra_nuevo_producto || 0);
+                    }
+                } catch(e) {}
+
+                const qty = parseFloat(v.cantidad || 0);
+                const pVenta = parseFloat((v.precio||'').replace('$', '').trim() || 0);
+                const gananciaFila = (pVenta - pCompra) * qty;
+                const totalVentaFila = pVenta * qty;
+
+                const mp = (v.metodo_pago || '').trim().toUpperCase();
+                const isCredito = mp.includes('CREDITO') || mp.includes('CRÉDITO');
+
+                if (isCredito) {
+                    const key = `${v.id_carga}_${(v.cliente || '').trim().toUpperCase()}`;
+                    const deudaTotal = deudaMap[key] || 0;
+                    const pagadoTotal = abonosMap[key] || 0;
+                    
+                    if ((deudaTotal - pagadoTotal) <= 0.01) {
+                        ganancia_neta_real += gananciaFila;
+                        venta_neta_real += totalVentaFila;
+                    }
+                } else {
+                    ganancia_neta_real += gananciaFila;
+                    venta_neta_real += totalVentaFila;
+                }
+            });
+            
+            // 2. Tops
+            const queryTopClientes = `
+                SELECT v.cliente, SUM(CAST(v.cantidad AS INTEGER) * CAST(REPLACE(v.precio, '$', '') AS REAL)) as total_comprado 
+                FROM ventas_cargas v
+                LEFT JOIN vehiculo_cargas vc ON v.id_carga = vc.id_carga
+                ${fechaFiltroVentas ? fechaFiltroVentas + " AND COALESCE(v.estado_logico, 1) != -1" : "WHERE COALESCE(v.estado_logico, 1) != -1"}
+                GROUP BY v.cliente COLLATE NOCASE
+                HAVING total_comprado > 0
+                ORDER BY total_comprado DESC 
+                LIMIT 5
+            `;
+            
+            const queryTopProductos = `
+                SELECT v.tipo_medida, SUM(CAST(v.cantidad AS INTEGER)) as total_vendido 
+                FROM ventas_cargas v
+                LEFT JOIN vehiculo_cargas vc ON v.id_carga = vc.id_carga
+                ${fechaFiltroVentas ? fechaFiltroVentas + " AND COALESCE(v.estado_logico, 1) != -1" : "WHERE COALESCE(v.estado_logico, 1) != -1"}
+                GROUP BY v.tipo_medida COLLATE NOCASE
+                HAVING total_vendido > 0
+                ORDER BY total_vendido DESC 
+                LIMIT 5
+            `;
+
+            const topClientes = await getAll(queryTopClientes);
+            const topProductos = await getAll(queryTopProductos);
+
+            resolve({
+                success: true,
+                totales: { ganancia_total: ganancia_neta_real, venta_total: venta_neta_real },
+                topClientes: topClientes || [],
+                topProductos: topProductos || []
+            });
+            
+        } catch (error) {
+            console.error("Error obteniendo estadísticas:", error);
+            resolve({ success: false, error: error.message });
+        }
+    });
+});
+// --------------------
 
 ipcMain.handle('obtener-cargas-deuda-cliente', async (event, clienteNombre) => {
     return new Promise((resolve) => {
@@ -685,16 +939,19 @@ ipcMain.handle('obtener-cargas-deuda-cliente', async (event, clienteNombre) => {
             LEFT JOIN (
                 SELECT id_carga, cliente, SUM(monto_divisa + monto_movil) AS total_abonos
                 FROM abonos_deudas
+                WHERE COALESCE(estado_logico, 1) != -1
                 GROUP BY id_carga, cliente COLLATE NOCASE
             ) ab ON v.id_carga = ab.id_carga AND v.cliente COLLATE NOCASE = ab.cliente COLLATE NOCASE
             LEFT JOIN (
                 SELECT id_carga, cliente, SUM(monto_divisa + monto_movil) AS total_reversos
                 FROM reversos_deudas
+                WHERE COALESCE(estado_logico, 1) != -1
                 GROUP BY id_carga, cliente COLLATE NOCASE
             ) rev ON v.id_carga = rev.id_carga AND v.cliente COLLATE NOCASE = rev.cliente COLLATE NOCASE
             WHERE v.cliente COLLATE NOCASE = ? 
               AND (v.metodo_pago = 'CRÉDITO' OR v.metodo_pago = 'CREDITO' OR UPPER(v.metodo_pago) = 'CRÉDITO' OR UPPER(v.metodo_pago) = 'CREDITO')
               AND (v.id_carga > 0 OR (v.id_carga = 0 AND (v.tipo_medida = 'DEUDA ANTIGUA' OR v.tipo_medida = 'DEUDA MANUAL' OR v.tipo_medida LIKE 'DEUDA%')))
+              AND COALESCE(v.estado_logico, 1) != -1
             GROUP BY v.id_carga, v.vehiculo_id, vehiculo_nombre, COALESCE(vc.fecha_entrada, v.fecha_entrada), cc.fecha_cierre
             HAVING total_deuda_carga > 0.01
             ORDER BY v.id_carga DESC
@@ -720,6 +977,7 @@ ipcMain.handle('verificar-deuda-cliente', async (event, clienteNombre) => {
             WHERE cliente COLLATE NOCASE = ? 
               AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
               AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
+              AND COALESCE(estado_logico, 1) != -1
             
             UNION ALL
             
@@ -728,6 +986,7 @@ ipcMain.handle('verificar-deuda-cliente', async (event, clienteNombre) => {
                 (monto_divisa + monto_movil) AS abono
             FROM abonos_deudas
             WHERE cliente COLLATE NOCASE = ?
+              AND COALESCE(estado_logico, 1) != -1
             
             UNION ALL
             
@@ -736,6 +995,7 @@ ipcMain.handle('verificar-deuda-cliente', async (event, clienteNombre) => {
                 0 AS abono
             FROM reversos_deudas
             WHERE cliente COLLATE NOCASE = ?
+              AND COALESCE(estado_logico, 1) != -1
         `;
         db.all(query, [clienteNombre.trim(), clienteNombre.trim(), clienteNombre.trim()], (err, rows) => {
             if (err) {
@@ -773,6 +1033,7 @@ ipcMain.handle('obtener-estado-cuenta-cliente', async (event, clienteNombre) => 
             WHERE cliente COLLATE NOCASE = ? 
               AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
               AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
+              AND COALESCE(estado_logico, 1) != -1
             
             UNION ALL
             
@@ -789,7 +1050,7 @@ ipcMain.handle('obtener-estado-cuenta-cliente', async (event, clienteNombre) => 
                 0 AS cargo,
                 SUM(monto_divisa + monto_movil) AS abono
             FROM abonos_deudas
-            WHERE cliente COLLATE NOCASE = ? AND (estado_logico = 1 OR estado_logico IS NULL)
+            WHERE cliente COLLATE NOCASE = ? AND COALESCE(estado_logico, 1) != -1
             GROUP BY 
                 CASE 
                     WHEN grupo_pago IS NOT NULL AND grupo_pago != '' THEN grupo_pago 
@@ -807,6 +1068,7 @@ ipcMain.handle('obtener-estado-cuenta-cliente', async (event, clienteNombre) => 
                 0 AS abono
             FROM reversos_deudas
             WHERE cliente COLLATE NOCASE = ?
+              AND COALESCE(estado_logico, 1) != -1
             
             ORDER BY fecha ASC
         `;
@@ -836,6 +1098,7 @@ ipcMain.handle('obtener-deudores-globales', async () => {
                 WHERE (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
                   AND cliente IS NOT NULL AND cliente != '' 
                   AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
+                  AND COALESCE(estado_logico, 1) != -1
                 
                 UNION ALL
                 
@@ -845,6 +1108,7 @@ ipcMain.handle('obtener-deudores-globales', async () => {
                     (monto_divisa + monto_movil) AS abono
                 FROM abonos_deudas
                 WHERE cliente IS NOT NULL AND cliente != ''
+                  AND COALESCE(estado_logico, 1) != -1
                 
                 UNION ALL
                 
@@ -854,6 +1118,7 @@ ipcMain.handle('obtener-deudores-globales', async () => {
                     0 AS abono
                 FROM reversos_deudas
                 WHERE cliente IS NOT NULL AND cliente != ''
+                  AND COALESCE(estado_logico, 1) != -1
             ) sub
             GROUP BY sub.cliente COLLATE NOCASE
             HAVING total_deuda > 0.01
@@ -884,6 +1149,7 @@ ipcMain.handle('obtener-detalles-factura-carga', async (event, clienteNombre, id
             WHERE cliente COLLATE NOCASE = ? AND id_carga = ? 
             AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
             AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
+            AND COALESCE(estado_logico, 1) != -1
             ORDER BY id_detalle ASC
         `;
         db.all(query, [clienteNombre.trim(), id_carga], (err, rows) => {
@@ -917,14 +1183,15 @@ ipcMain.handle('obtener-factura-global-cliente', async (event, clienteNombre) =>
             WHERE cliente COLLATE NOCASE = ? 
               AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO') 
               AND (CAST(REPLACE(REPLACE(precio, '$', ''), ' ', '') AS REAL) * CAST(cantidad AS REAL)) > 0
+              AND COALESCE(estado_logico, 1) != -1
             ORDER BY fecha_entrada ASC
         `;
 
         const queryPagos = `
             SELECT 
-                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM abonos_deudas WHERE cliente COLLATE NOCASE = ?), 0) 
+                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM abonos_deudas WHERE cliente COLLATE NOCASE = ? AND COALESCE(estado_logico, 1) != -1), 0) 
                 - 
-                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM reversos_deudas WHERE cliente COLLATE NOCASE = ?), 0) AS total_pagado
+                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM reversos_deudas WHERE cliente COLLATE NOCASE = ? AND COALESCE(estado_logico, 1) != -1), 0) AS total_pagado
         `;
 
         db.get(queryPagos, [clienteNombre.trim(), clienteNombre.trim()], (errPagos, rowPagos) => {
@@ -1066,6 +1333,7 @@ ipcMain.handle('obtener-detalle-deuda-cliente-carga', async (event, clienteNombr
             FROM ventas_cargas
             WHERE cliente COLLATE NOCASE = ? AND id_carga = ? 
               AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
+              AND COALESCE(estado_logico, 1) != -1
             GROUP BY tipo_medida, sub_medida
             HAVING deuda_restante > 0.01
             ORDER BY tipo_medida ASC
@@ -1085,7 +1353,44 @@ ipcMain.handle('obtener-detalle-deuda-cliente-carga', async (event, clienteNombr
 
 // IPC Listeners para ventana sin marco
 
+
+let consolaWindow = null;
+ipcMain.on('log-from-renderer', (event, level, ...args) => {
+    if (consolaWindow && !consolaWindow.isDestroyed()) {
+        consolaWindow.webContents.send('log-message', level, ...args);
+    }
+});
+
+function initConsola() {
+    db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'activar_consola'", [], (err, row) => {
+        if (row && row.valor === 'true') {
+            consolaWindow = new BrowserWindow({
+                width: 800, height: 600,
+                backgroundColor: '#0c0c0c',
+                title: 'Consola de Depuración',
+                webPreferences: { nodeIntegration: true, contextIsolation: false },
+                autoHideMenuBar: true
+            });
+            consolaWindow.loadFile('consola.html');
+            
+            const originalLog = console.log;
+            const originalError = console.error;
+            
+            console.log = function(...args) {
+                originalLog.apply(console, args);
+                if (consolaWindow && !consolaWindow.isDestroyed()) consolaWindow.webContents.send('log-message', 'log', ...args);
+            };
+            console.error = function(...args) {
+                originalError.apply(console, args);
+                if (consolaWindow && !consolaWindow.isDestroyed()) consolaWindow.webContents.send('log-message', 'error', ...args);
+            };
+        }
+    });
+}
+
 app.whenReady().then(() => {
+    initConsola();
+
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'sesion_usuario'`, [], (err, row) => {
         let loggedIn = false;
         let rol = 'admin';
@@ -1268,7 +1573,10 @@ ipcMain.handle('migrar-adopcion-datos', async (event, { idEmpresa }) => {
 
                 tablasDatos.forEach(t => {
                     db.run(`UPDATE ${t} SET id_empresa = ?, sync_status = 0 WHERE id_empresa IS NULL OR id_empresa = ''`, [idEmpresa], (err2) => {
-                        if (err2) hasError = true;
+                        if (err2) {
+                            console.error(`[MIGRAR-ADOPCION] Error actualizando empresa en ${t}:`, err2.message);
+                            hasError = true;
+                        }
                         pending--;
                         if (pending === 0) {
                             if (hasError) return resolve({ success: false, message: 'ERROR_UPDATE' });
@@ -1427,6 +1735,7 @@ ipcMain.handle('obtener-detalle-deudores-carga', async (event, id_carga) => {
             WHERE id_carga = ? 
               AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
               AND (id_carga > 0 OR tipo_medida = 'DEUDA ANTIGUA' OR tipo_medida = 'DEUDA MANUAL' OR tipo_medida LIKE 'DEUDA%')
+              AND COALESCE(estado_logico, 1) != -1
             ORDER BY cliente ASC
         `;
         db.all(query, [id_carga], (err, rows) => {
@@ -1447,6 +1756,7 @@ ipcMain.handle('obtener-detalle-deudores-carga-lista', async (event, id_carga) =
             FROM ventas_cargas 
             WHERE id_carga = ? 
               AND (metodo_pago = 'CRÉDITO' OR metodo_pago = 'CREDITO' OR UPPER(metodo_pago) = 'CRÉDITO' OR UPPER(metodo_pago) = 'CREDITO')
+              AND COALESCE(estado_logico, 1) != -1
             ORDER BY cliente ASC
         `;
         db.all(query, [id_carga], (err, rows) => {
@@ -1461,6 +1771,7 @@ ipcMain.handle('obtener-historial-cerradas', async () => {
             SELECT c.*, v.nombre AS vehiculo_nombre 
             FROM cargas_cerradas c
             LEFT JOIN vehiculos v ON c.vehiculo_id = v.id
+            WHERE COALESCE(c.estado_logico, 1) != -1
             ORDER BY c.id_cierre DESC
         `;
         db.all(query, [], (err, rows) => {
@@ -1472,8 +1783,9 @@ ipcMain.handle('obtener-historial-cerradas', async () => {
 ipcMain.on('guardar-merma-carga', (event, data) => {
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
-        db.run(`INSERT INTO mermas_cargas (id_empresa, sync_status, id_carga, vehiculo_id, tipo_medida, sub_medida, cantidad) VALUES (?, 0, ?, ?, ?, ?, ?)`,
-        [idEmpresa, data.id_carga, data.vehiculo_id, data.tipo_medida, data.sub_medida, data.cantidad], function(err) {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO mermas_cargas (merma_id, id_empresa, sync_status, id_carga, vehiculo_id, tipo_medida, sub_medida, cantidad) VALUES (?, ?, 0, ?, ?, ?, ?, ?)`,
+        [newId, idEmpresa, data.id_carga, data.vehiculo_id, data.tipo_medida, data.sub_medida, data.cantidad], function(err) {
             event.reply('guardar-merma-resultado', { success: !err, msg: err ? err.message : '' });
         });
     });
@@ -1481,23 +1793,49 @@ ipcMain.on('guardar-merma-carga', (event, data) => {
 
 ipcMain.handle('obtener-mermas-carga', async (event, id_carga) => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM mermas_cargas WHERE id_carga = ? AND estado_logico = 1 ORDER BY merma_id DESC`, [id_carga], (err, rows) => {
+        db.all(`SELECT * FROM mermas_cargas WHERE id_carga = ? AND COALESCE(estado_logico, 1) NOT IN (-1, 0) ORDER BY merma_id DESC`, [id_carga], (err, rows) => {
             resolve(rows || []);
         });
     });
 });
 
+ipcMain.handle('eliminar-merma-carga', async (event, merma_id) => {
+    return new Promise((resolve) => {
+        db.run(`UPDATE mermas_cargas SET estado_logico = -1, sync_status = 0 WHERE merma_id = ?`, [merma_id], (err) => {
+            resolve({ success: !err });
+        });
+    });
+});
+
 ipcMain.on('eliminar-merma-carga', (event, merma_id) => {
-    db.run(`UPDATE mermas_cargas SET estado_logico = 0 WHERE merma_id = ?`, [merma_id], (err) => {
+    db.run(`UPDATE mermas_cargas SET estado_logico = -1, sync_status = 0 WHERE merma_id = ?`, [merma_id], (err) => {
         event.reply('eliminar-merma-resultado', { success: !err });
+    });
+});
+
+ipcMain.handle('guardar-rendicion-carga', async (event, data) => {
+    return new Promise((resolve) => {
+        db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
+            let idEmpresa = rowConfig ? rowConfig.valor : null;
+            const newId = crypto.randomUUID();
+            const pCompra = parseFloat(data.precio_compra_nuevo_producto !== undefined ? data.precio_compra_nuevo_producto : data.precio_venta_nuevo_producto) || 0;
+            const pVenta = parseFloat(data.precio_venta_nuevo_producto !== undefined ? data.precio_venta_nuevo_producto : pCompra) || 0;
+            db.run(`INSERT INTO rendiciones_cargas (rendicion_id, id_empresa, sync_status, id_carga, vehiculo_id, producto_origen, cantidad_restada, nombre_nuevo_producto, precio_venta_nuevo_producto, precio_compra_nuevo_producto, cantidad_generada) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [newId, idEmpresa, data.id_carga, data.vehiculo_id, data.producto_origen, data.cantidad_restada, data.nombre_nuevo_producto, pVenta, pCompra, data.cantidad_generada], function(err) {
+                resolve({ success: !err, msg: err ? err.message : '' });
+            });
+        });
     });
 });
 
 ipcMain.on('guardar-rendicion-carga', (event, data) => {
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
-        db.run(`INSERT INTO rendiciones_cargas (id_empresa, sync_status, id_carga, vehiculo_id, producto_origen, cantidad_restada, nombre_nuevo_producto, precio_venta_nuevo_producto, cantidad_generada) VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-        [idEmpresa, data.id_carga, data.vehiculo_id, data.producto_origen, data.cantidad_restada, data.nombre_nuevo_producto, data.precio_venta_nuevo_producto, data.cantidad_generada], function(err) {
+        const newId = crypto.randomUUID();
+        const pCompra = parseFloat(data.precio_compra_nuevo_producto !== undefined ? data.precio_compra_nuevo_producto : data.precio_venta_nuevo_producto) || 0;
+        const pVenta = parseFloat(data.precio_venta_nuevo_producto !== undefined ? data.precio_venta_nuevo_producto : pCompra) || 0;
+        db.run(`INSERT INTO rendiciones_cargas (rendicion_id, id_empresa, sync_status, id_carga, vehiculo_id, producto_origen, cantidad_restada, nombre_nuevo_producto, precio_venta_nuevo_producto, precio_compra_nuevo_producto, cantidad_generada) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [newId, idEmpresa, data.id_carga, data.vehiculo_id, data.producto_origen, data.cantidad_restada, data.nombre_nuevo_producto, pVenta, pCompra, data.cantidad_generada], function(err) {
             event.reply('guardar-rendicion-resultado', { success: !err, msg: err ? err.message : '' });
         });
     });
@@ -1505,26 +1843,51 @@ ipcMain.on('guardar-rendicion-carga', (event, data) => {
 
 ipcMain.handle('obtener-rendiciones-carga', async (event, id_carga) => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM rendiciones_cargas WHERE id_carga = ? AND estado_logico = 1 ORDER BY rendicion_id DESC`, [id_carga], (err, rows) => {
+        db.all(`SELECT * FROM rendiciones_cargas WHERE id_carga = ? AND COALESCE(estado_logico, 1) NOT IN (-1, 0) ORDER BY rendicion_id DESC`, [id_carga], (err, rows) => {
             resolve(rows || []);
         });
     });
 });
 
+ipcMain.handle('eliminar-rendicion-carga', async (event, rendicion_id) => {
+    return new Promise((resolve) => {
+        db.run(`UPDATE rendiciones_cargas SET estado_logico = -1, sync_status = 0 WHERE rendicion_id = ?`, [rendicion_id], (err) => {
+            resolve({ success: !err });
+        });
+    });
+});
+
 ipcMain.on('eliminar-rendicion-carga', (event, rendicion_id) => {
-    db.run(`UPDATE rendiciones_cargas SET estado_logico = 0 WHERE rendicion_id = ?`, [rendicion_id], (err) => {
+    db.run(`UPDATE rendiciones_cargas SET estado_logico = -1, sync_status = 0 WHERE rendicion_id = ?`, [rendicion_id], (err) => {
         event.reply('eliminar-rendicion-resultado', { success: !err });
+    });
+});
+
+ipcMain.handle('guardar-cliente', async (event, nombre) => {
+    return new Promise((resolve) => {
+        db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
+            let idEmpresa = rowConfig ? rowConfig.valor : null;
+            const newId = crypto.randomUUID();
+            db.run(`INSERT INTO clientes (id, id_empresa, sync_status, nombre) VALUES (?, ?, 0, ?)`, [newId, idEmpresa, nombre], function(err) {
+                if (err) {
+                    resolve({ success: false, msg: err.message });
+                } else {
+                    resolve({ success: true, id: newId });
+                }
+            });
+        });
     });
 });
 
 ipcMain.on('guardar-cliente', (event, nombre) => {
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
-        db.run(`INSERT INTO clientes (id_empresa, sync_status, nombre) VALUES (?, 0, ?)`, [idEmpresa, nombre], function(err) {
+        const newId = crypto.randomUUID();
+        db.run(`INSERT INTO clientes (id, id_empresa, sync_status, nombre) VALUES (?, ?, 0, ?)`, [newId, idEmpresa, nombre], function(err) {
             if (err) {
                 event.reply('guardar-cliente-resultado', { success: false, msg: err.message });
             } else {
-                event.reply('guardar-cliente-resultado', { success: true, id: this.lastID });
+                event.reply('guardar-cliente-resultado', { success: true, id: newId });
             }
         });
     });
@@ -1532,7 +1895,7 @@ ipcMain.on('guardar-cliente', (event, nombre) => {
 
 ipcMain.handle('obtener-clientes', async () => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM clientes ORDER BY nombre ASC`, [], (err, rows) => {
+        db.all(`SELECT * FROM clientes WHERE COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => {
             resolve(rows || []);
         });
     });
@@ -1540,7 +1903,7 @@ ipcMain.handle('obtener-clientes', async () => {
 
 ipcMain.handle('obtener-abonos-carga', async (event, id_carga) => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM abonos_deudas WHERE id_carga = ? ORDER BY id_abono DESC`, [id_carga], (err, rows) => {
+        db.all(`SELECT * FROM abonos_deudas WHERE id_carga = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY id_abono DESC`, [id_carga], (err, rows) => {
             resolve(rows || []);
         });
     });
@@ -1548,7 +1911,7 @@ ipcMain.handle('obtener-abonos-carga', async (event, id_carga) => {
 
 ipcMain.handle('obtener-cargas-vehiculo', async (event, vehiculo_id) => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM vehiculo_cargas WHERE vehiculo_id = ? ORDER BY id_carga DESC`, [vehiculo_id], (err, rows) => {
+        db.all(`SELECT * FROM vehiculo_cargas WHERE vehiculo_id = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY id_carga DESC`, [vehiculo_id], (err, rows) => {
             resolve(rows || []);
         });
     });
@@ -1561,7 +1924,7 @@ ipcMain.handle('obtener-cargas-vehiculo', async (event, vehiculo_id) => {
 // Obtener la carga ACTIVA actual de un vehículo
 ipcMain.handle('obtener-carga-activa', async (event, vehiculo_id) => {
     return new Promise((resolve) => {
-        db.get(`SELECT * FROM vehiculo_cargas WHERE vehiculo_id = ? AND estado = 'ACTIVA' ORDER BY id_carga DESC LIMIT 1`, 
+        db.get(`SELECT * FROM vehiculo_cargas WHERE vehiculo_id = ? AND estado = 'ACTIVA' AND COALESCE(estado_logico, 1) != -1 ORDER BY id_carga DESC LIMIT 1`, 
         [vehiculo_id], (err, row) => {
             if (row && row.datos_json) row.datos_parseados = JSON.parse(row.datos_json);
             resolve(row || null);
@@ -1598,7 +1961,7 @@ ipcMain.on('auto-guardar-venta-carga', (event, data) => {
 
 ipcMain.handle('obtener-ventas-carga', async (event, id_carga) => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM ventas_cargas WHERE id_carga = ? ORDER BY CAST(fila_id AS INTEGER) ASC, id_detalle ASC`, [id_carga], (err, rows) => {
+        db.all(`SELECT * FROM ventas_cargas WHERE id_carga = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY CAST(fila_id AS INTEGER) ASC, id_detalle ASC`, [id_carga], (err, rows) => {
             resolve(rows || []);
         });
     });
@@ -1620,15 +1983,16 @@ ipcMain.on('eliminar-abono', (event, data) => {
         db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
             let idEmpresa = rowConfig ? rowConfig.valor : null;
             
-            db.run(`INSERT INTO reversos_deudas (id_empresa, sync_status, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
-                [idEmpresa, rowAbono.id_carga, rowAbono.vehiculo_id, rowAbono.cliente, rowAbono.monto_divisa, rowAbono.monto_movil, rowAbono.banco], function(errInsert) {
+            const newId = crypto.randomUUID();
+            db.run(`INSERT INTO reversos_deudas (id_reverso, id_empresa, sync_status, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+                [newId, idEmpresa, rowAbono.id_carga, rowAbono.vehiculo_id, rowAbono.cliente, rowAbono.monto_divisa, rowAbono.monto_movil, rowAbono.banco], function(errInsert) {
                     if (errInsert) {
                         event.reply('eliminar-abono-resultado', { success: false, msg: "Error al registrar reverso." });
                         return;
                     }
                     
                     // 2. Eliminamos (físicamente) el registro de abonos_deudas para la contabilidad actual
-                    db.run(`DELETE FROM abonos_deudas WHERE id_abono = ?`, [id_abono], async function(errDel) {
+                    db.run(`UPDATE abonos_deudas SET estado_logico = -1, sync_status = 0 WHERE id_abono = ?`, [id_abono], async function(errDel) {
                         if (!errDel) {
                             await recalcularPagosCliente(rowAbono.id_carga, rowAbono.cliente);
                         }
@@ -1644,11 +2008,11 @@ ipcMain.handle('obtener-auditoria-unificada', async (event, id_carga) => {
         const query = `
             SELECT id_abono AS id_registro, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco, fecha_abono AS fecha_registro, 'ABONO' AS tipo 
             FROM abonos_deudas 
-            WHERE id_carga = ?
+            WHERE id_carga = ? AND COALESCE(estado_logico, 1) != -1
             UNION ALL
             SELECT id_reverso AS id_registro, id_carga, vehiculo_id, cliente, monto_divisa, monto_movil, banco, fecha_reverso AS fecha_registro, 'REVERSO' AS tipo 
             FROM reversos_deudas 
-            WHERE id_carga = ?
+            WHERE id_carga = ? AND COALESCE(estado_logico, 1) != -1
             ORDER BY fecha_registro DESC
         `;
         db.all(query, [id_carga, id_carga], (err, rows) => {
@@ -1664,7 +2028,7 @@ ipcMain.handle('obtener-auditoria-unificada', async (event, id_carga) => {
 
 ipcMain.handle('obtener-proveedores', async () => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM proveedores ORDER BY nombre ASC`, [], (err, rows) => {
+        db.all(`SELECT * FROM proveedores WHERE COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => {
             if (err) resolve([]);
             else resolve(rows || []);
         });
@@ -1679,13 +2043,14 @@ ipcMain.handle('agregar-proveedor-detallado', async (event, data) => {
 
         db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
             let idEmpresa = rowConfig ? rowConfig.valor : null;
+            const newId = crypto.randomUUID();
             db.run(
-                `INSERT INTO proveedores (id_empresa, sync_status, nombre, rubro, anden, telefono) VALUES (?, 0, ?, ?, ?, ?)
-                 ON CONFLICT(nombre) DO UPDATE SET rubro=excluded.rubro, anden=excluded.anden, telefono=excluded.telefono`,
-                [idEmpresa, nom, rubro ? rubro.trim() : '', anden ? anden.trim() : '', telefono ? telefono.trim() : ''],
+                `INSERT INTO proveedores (id, id_empresa, sync_status, nombre, rubro, anden, telefono) VALUES (?, ?, 0, ?, ?, ?, ?)
+                 ON CONFLICT(nombre) DO UPDATE SET rubro=excluded.rubro, anden=excluded.anden, telefono=excluded.telefono, sync_status=0`,
+                [newId, idEmpresa, nom, rubro ? rubro.trim() : '', anden ? anden.trim() : '', telefono ? telefono.trim() : ''],
                 function(err) {
                     if (err) resolve({ success: false, msg: err.message });
-                    else resolve({ success: true, id: this.lastID, nombre: nom });
+                    else resolve({ success: true, id: newId, nombre: nom });
                 }
             );
         });
@@ -1709,13 +2074,14 @@ ipcMain.handle('agregar-deuda-proveedor', async (event, data) => {
                 const prec = parseFloat(precio) || 0;
                 const total = parseFloat(monto) || (cant * prec);
 
-                db.run(`INSERT INTO deudas_proveedores (id_empresa, sync_status, proveedor, concepto, cantidad, precio, monto, fecha) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
-                    [idEmpresa, provNombre, concepto.trim(), cant, prec, total, fechaFinal],
+                const newId = crypto.randomUUID();
+                db.run(`INSERT INTO deudas_proveedores (id, id_empresa, sync_status, proveedor, concepto, cantidad, precio, monto, fecha) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+                    [newId, idEmpresa, provNombre, concepto.trim(), cant, prec, total, fechaFinal],
                     function(errIns) {
                         if (errIns) {
                             resolve({ success: false, msg: errIns.message });
                         } else {
-                            resolve({ success: true, id: this.lastID });
+                            resolve({ success: true, id: newId });
                         }
                     }
                 );
@@ -1737,13 +2103,14 @@ ipcMain.handle('registrar-abono-proveedor', async (event, data) => {
 
         db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
             let idEmpresa = rowConfig ? rowConfig.valor : null;
-            db.run(`INSERT INTO abonos_proveedores (id_empresa, sync_status, proveedor, monto_divisa, monto_movil, metodo_pago, banco, fecha) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
-                [idEmpresa, provNombre, parseFloat(monto_divisa) || 0, parseFloat(monto_movil) || 0, metodo_pago || 'EFECTIVO', banco || '', fechaFinal],
+            const newId = crypto.randomUUID();
+            db.run(`INSERT INTO abonos_proveedores (id, id_empresa, sync_status, proveedor, monto_divisa, monto_movil, metodo_pago, banco, fecha) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+                [newId, idEmpresa, provNombre, parseFloat(monto_divisa) || 0, parseFloat(monto_movil) || 0, metodo_pago || 'EFECTIVO', banco || '', fechaFinal],
                 function(err) {
                     if (err) {
                         resolve({ success: false, msg: err.message });
                     } else {
-                        resolve({ success: true, id: this.lastID });
+                        resolve({ success: true, id: newId });
                     }
                 }
             );
@@ -1756,9 +2123,10 @@ ipcMain.handle('obtener-resumen-cuentas-pagar', async () => {
         const query = `
             SELECT 
                 p.nombre AS proveedor,
-                COALESCE((SELECT SUM(monto) FROM deudas_proveedores WHERE proveedor = p.nombre AND estado_logico = 1), 0) AS total_deuda,
-                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM abonos_proveedores WHERE proveedor = p.nombre AND estado_logico = 1), 0) AS total_abonado
+                COALESCE((SELECT SUM(monto) FROM deudas_proveedores WHERE proveedor = p.nombre AND COALESCE(estado_logico, 1) != -1), 0) AS total_deuda,
+                COALESCE((SELECT SUM(monto_divisa + monto_movil) FROM abonos_proveedores WHERE proveedor = p.nombre AND COALESCE(estado_logico, 1) != -1), 0) AS total_abonado
             FROM proveedores p
+            WHERE COALESCE(p.estado_logico, 1) != -1
             ORDER BY p.nombre ASC
         `;
         db.all(query, [], (err, rows) => {
@@ -1785,8 +2153,8 @@ ipcMain.handle('obtener-detalle-proveedor', async (event, nombreProveedor) => {
 
         const prov = nombreProveedor.trim().toUpperCase();
 
-        db.all(`SELECT * FROM deudas_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errD, deudas) => {
-            db.all(`SELECT * FROM abonos_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errA, abonos) => {
+        db.all(`SELECT * FROM deudas_proveedores WHERE proveedor = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY fecha ASC`, [prov], (errD, deudas) => {
+            db.all(`SELECT * FROM abonos_proveedores WHERE proveedor = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY fecha ASC`, [prov], (errA, abonos) => {
                 const listDeudas = deudas || [];
                 const listAbonos = abonos || [];
 
@@ -1811,8 +2179,8 @@ ipcMain.handle('obtener-factura-global-proveedor', async (event, nombreProveedor
         if (!nombreProveedor) return resolve([]);
         const prov = nombreProveedor.trim().toUpperCase();
 
-        db.all(`SELECT * FROM deudas_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errD, deudas) => {
-            db.all(`SELECT * FROM abonos_proveedores WHERE proveedor = ? AND estado_logico = 1 ORDER BY fecha ASC`, [prov], (errA, abonos) => {
+        db.all(`SELECT * FROM deudas_proveedores WHERE proveedor = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY fecha ASC`, [prov], (errD, deudas) => {
+            db.all(`SELECT * FROM abonos_proveedores WHERE proveedor = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY fecha ASC`, [prov], (errA, abonos) => {
                 const listDeudas = deudas || [];
                 const listAbonos = abonos || [];
                 
@@ -1879,14 +2247,15 @@ ipcMain.handle('guardar-movimiento-cesta', async (event, datos) => {
         const { fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad } = datos;
         db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
             let idEmpresa = rowConfig ? rowConfig.valor : null;
+            const newId = crypto.randomUUID();
             db.run(
-                `INSERT INTO movimientos_cestas (id_empresa, sync_status, fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad) VALUES (?, 0, ?, ?, ?, ?, ?, ?)`,
-                [idEmpresa, fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad],
+                `INSERT INTO movimientos_cestas (id, id_empresa, sync_status, fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?)`,
+                [newId, idEmpresa, fecha, tipo_cesta, tipo_accion, sub_accion, concepto, cantidad],
                 function(err) {
                     if (err) {
                         resolve({ success: false, msg: err.message });
                     } else {
-                        resolve({ success: true, id: this.lastID });
+                        resolve({ success: true, id: newId });
                     }
                 }
             );
@@ -1896,7 +2265,7 @@ ipcMain.handle('guardar-movimiento-cesta', async (event, datos) => {
 
 ipcMain.handle('obtener-movimientos-cestas', async () => {
     return new Promise((resolve) => {
-        db.all(`SELECT * FROM movimientos_cestas ORDER BY fecha ASC, id ASC`, [], (err, rows) => {
+        db.all(`SELECT * FROM movimientos_cestas WHERE COALESCE(estado_logico, 1) != -1 ORDER BY fecha ASC, id ASC`, [], (err, rows) => {
             resolve(rows || []);
         });
     });
@@ -1904,7 +2273,7 @@ ipcMain.handle('obtener-movimientos-cestas', async () => {
 
 ipcMain.handle('eliminar-movimiento-cesta', async (event, id) => {
     return new Promise((resolve) => {
-        db.run(`DELETE FROM movimientos_cestas WHERE id = ?`, [id], (err) => {
+        db.run(`UPDATE movimientos_cestas SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], (err) => {
             resolve({ success: !err });
         });
     });

@@ -511,7 +511,7 @@
         panelTabla.classList.remove('hidden');
         panelEstadisticas.classList.add('hidden');
 
-        document.getElementById('lib-fecha').value = new Date().toISOString().split('T')[0];
+        document.getElementById('lib-fecha').value =(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
         if (ipc) {
             cargasDelClienteActual = await ipc.invoke('obtener-cargas-deuda-cliente', nombre);
@@ -596,7 +596,7 @@ window.renderizarCuaderno = function() {
             if (asiento.tipo === 'VENTA') {
                 actionHtml = `
                 <td style="text-align: center;">
-                    <button onclick="abrirFacturaDeuda(${asiento.id_carga})" title="Ver Factura" style="background: transparent; color: #0284c7; cursor: pointer; border: none; padding: 4px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#e0f2fe'" onmouseout="this.style.backgroundColor='transparent'">
+                    <button onclick="abrirFacturaDeuda('${asiento.id_carga}')" title="Ver Factura" style="background: transparent; color: #0284c7; cursor: pointer; border: none; padding: 4px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.backgroundColor='#e0f2fe'" onmouseout="this.style.backgroundColor='transparent'">
                         <i class="material-icons" style="font-size:18px;">visibility</i>
                     </button>
                 </td>`;
@@ -663,10 +663,10 @@ window.renderizarCuaderno = function() {
         }
 
         const ahora = new Date();
-        const fechaHoy = ahora.toISOString().split('T')[0];
+        const fechaHoy =(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         let fechaParaBD = fechaSeleccionada === fechaHoy 
-            ? ahora.toISOString().replace('T', ' ').substring(0, 19) 
-            : `${fechaSeleccionada} ${ahora.toISOString().split('T')[1].substring(0, 8)}`;
+            ?(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)).toISOString().replace('T', ' ').substring(0, 19) 
+            : `${fechaSeleccionada} ${(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)).toISOString().split('T')[1].substring(0, 8)}`;
 
         if (tipoOp === 'VENTA') {
             const monto = parseFloat(document.getElementById('lib-cargo').value) || 0;
@@ -777,7 +777,7 @@ window.renderizarCuaderno = function() {
                 }
 
                 ipc.send('guardar-abono-deuda', {
-                    id_carga: parseInt(abonoActual.id_carga),
+                    id_carga: abonoActual.id_carga,
                     vehiculo_id: 0,
                     cliente: clienteSeleccionadoActual,
                     monto_divisa: divisa,
@@ -830,7 +830,7 @@ window.renderizarCuaderno = function() {
             panelManual.classList.remove('hidden');
             btnCambiar.style.backgroundColor = '#64748b';
             btnCambiar.innerHTML = `<i class="material-icons" style="font-size: 20px;">arrow_back</i> <span>Volver a Reportes</span>`;
-            document.getElementById('manual-fecha').value = new Date().toISOString().split('T')[0];
+            document.getElementById('manual-fecha').value =(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         } else {
             if(barraBusquedaGlobal) barraBusquedaGlobal.classList.remove('hidden');
             
@@ -905,12 +905,12 @@ window.renderizarCuaderno = function() {
         }
 
         const ahora = new Date();
-        const fechaHoy = ahora.toISOString().split('T')[0];
+        const fechaHoy =(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         let fechaParaBD = fechaSeleccionada;
         if (fechaSeleccionada === fechaHoy) {
-            fechaParaBD = ahora.toISOString().replace('T', ' ').substring(0, 19);
+            fechaParaBD =(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)).toISOString().replace('T', ' ').substring(0, 19);
         } else {
-            fechaParaBD = `${fechaSeleccionada} ${ahora.toISOString().split('T')[1].substring(0, 8)}`;
+            fechaParaBD = `${fechaSeleccionada} ${(new Date(ahora.getTime() - ahora.getTimezoneOffset() * 60000)).toISOString().split('T')[1].substring(0, 8)}`;
         }
 
         if (ipc) {
@@ -922,14 +922,16 @@ window.renderizarCuaderno = function() {
                 tipo_medida: 'DEUDA ANTIGUA' // <-- Al enviarlo desde el botón oscuro de arriba siempre es antigua
             });
             
-            ipc.once('guardar-deuda-antigua-resultado', (event, res) => {
+            ipc.once('guardar-deuda-antigua-resultado', async (event, res) => {
                 if (res.success) {
                     mostrarToast(`¡Éxito! Se adjudicó la deuda a ${clienteManualSeleccionado}.`, "success");
+                    const clienteAdjudicado = clienteManualSeleccionado;
                     limpiarFormularioManual();
                     toggleVistaAdjudicacion(); 
-                    if (clienteSeleccionadoActual === clienteManualSeleccionado) {
-                        seleccionarClienteGlobal(clienteSeleccionadoActual);
+                    if (typeof cargarDeudoresGlobales === 'function') {
+                        await cargarDeudoresGlobales();
                     }
+                    seleccionarClienteGlobal(clienteAdjudicado);
                 } else {
                     mostrarToast("Error en el proceso de almacenamiento: " + res.msg, "error");
                 }
@@ -975,7 +977,7 @@ window.renderizarCuaderno = function() {
             }
             
             contenedor.innerHTML += `
-                <div onclick="seleccionarCargaOpcion(${carga.id_carga}, '${titulo}')" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='${color}'; this.style.backgroundColor='${fondo}'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.backgroundColor='white'">
+                <div onclick="seleccionarCargaOpcion('${carga.id_carga}', '${titulo}')" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.borderColor='${color}'; this.style.backgroundColor='${fondo}'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.backgroundColor='white'">
                     <div style="display: flex; align-items: center; gap: 10px;">
                         <i class="material-icons" style="color: ${color};">${icon}</i>
                         <div style="display: flex; flex-direction: column;">

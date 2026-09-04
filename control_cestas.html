@@ -183,7 +183,7 @@
     }
 
     async function inicializarCestas() {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy =(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         const fechaEl = document.getElementById('lib-fecha');
         if (fechaEl) fechaEl.value = hoy;
         cambiarAccionCestas();
@@ -298,7 +298,7 @@
                     <td style="text-align: right; color: ${cantColor}; font-weight: 900; font-size: 1.05rem;">${cantStr}</td>
                     <td style="text-align: right; color: #0f172a; font-weight: 900; font-size: 1.1rem;">
                         ${m.saldoActual}
-                        <button onclick="eliminarMovimientoCesta(${m.id})" title="Eliminar" style="background:transparent; color:#cbd5e1; border:none; cursor:pointer; padding:2px; margin-left:8px; vertical-align:middle;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'"><i class="material-icons" style="font-size:16px;">delete</i></button>
+                        <button onclick="eliminarMovimientoCesta('${m.id}')" title="Eliminar" style="background:transparent; color:#cbd5e1; border:none; cursor:pointer; padding:2px; margin-left:8px; vertical-align:middle;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#cbd5e1'"><i class="material-icons" style="font-size:16px;">delete</i></button>
                     </td>
                 </tr>
                 `;

@@ -158,6 +158,12 @@
     .historial-step .manual-step-header { background-color: #f0fdf4; border-bottom: 1px solid #bbf7d0; }
     .historial-step .manual-step-header i, .historial-step .manual-step-title { color: #15803d; }
 
+    .cuentas-step .manual-step-header { background-color: #faf5ff; border-bottom: 1px solid #e9d5ff; }
+    .cuentas-step .manual-step-header i, .cuentas-step .manual-step-title { color: #7e22ce; }
+
+    .estadisticas-step .manual-step-header { background-color: #ecfdf5; border-bottom: 1px solid #a7f3d0; }
+    .estadisticas-step .manual-step-header i, .estadisticas-step .manual-step-title { color: #047857; }
+
     /* FOOTER MANUAL */
     .manual-footer {
         margin-top: 25px;
@@ -537,16 +543,48 @@
             </div>
 
             <!-- Paso 5 -->
-            <div class="manual-step-card historial-step">
+            <div class="manual-step-card cuentas-step">
                 <div class="manual-step-header">
-                    <i class="material-icons" style="font-size: 20px;">account_box</i>
-                    <h2 class="manual-step-title">5. Reportes Finales</h2>
+                    <i class="material-icons" style="font-size: 20px;">account_balance_wallet</i>
+                    <h2 class="manual-step-title">5. Cuentas (Pagar & Cestas)</h2>
                 </div>
                 <div class="manual-step-content">
-                    <p>Para la administración general, cuentas con dos módulos de auditoría globales:</p>
+                    <p>Gestión integral de compromisos con proveedores y control de envases retornables:</p>
                     <ul>
-                        <li><strong>Deuda / Clientes:</strong> Busca a un cliente por su nombre y mira su deuda total consolidada (sumando todas las cargas de todos los camiones).</li>
-                        <li><strong>Cargas Cerradas:</strong> El archivo histórico. Aquí consultarás los ingresos generados por cada viaje, mermas declaradas, y el promedio de ganancia exacto por producto de cargas ya finalizadas.</li>
+                        <li><strong>Cuentas por Pagar:</strong> Registra deudas comerciales con proveedores, amortizaciones en Divisas o Pago Móvil y audita los comprobantes de egreso.</li>
+                        <li><strong>Control de Cestas:</strong> Controla el inventario de huacales/cestas plásticas. Registra entradas desde proveedores, salidas a clientes y monitorea el saldo deudor de envases.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Paso 6 -->
+            <div class="manual-step-card estadisticas-step">
+                <div class="manual-step-header">
+                    <i class="material-icons" style="font-size: 20px;">insert_chart</i>
+                    <h2 class="manual-step-title">6. Estadísticas Gerenciales</h2>
+                </div>
+                <div class="manual-step-content">
+                    <p>Panel ejecutivo de inteligencia de negocios para supervisar el rendimiento:</p>
+                    <ul>
+                        <li><strong>Ganancia Neta Real:</strong> Beneficios exactos descontando compras y mermas. <em>Regla contable:</em> las ventas a crédito solo se suman cuando el cliente liquida el 100% de la carga.</li>
+                        <li><strong>Top 5 Clientes & Productos:</strong> Visualiza en podio quiénes son tus mejores compradores y cuáles son los productos más vendidos en volumen.</li>
+                        <li><strong>Filtros por Fecha:</strong> Consulta métricas por día, mes o rangos personalizados al instante.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Paso 7 -->
+            <div class="manual-step-card historial-step">
+                <div class="manual-step-header">
+                    <i class="material-icons" style="font-size: 20px;">history</i>
+                    <h2 class="manual-step-title">7. Reportes & Historial</h2>
+                </div>
+                <div class="manual-step-content">
+                    <p>Para la administración y auditoría global de la empresa:</p>
+                    <ul>
+                        <li><strong>Deuda / Clientes:</strong> Consulta la libreta consolidada de cualquier cliente sumando todas sus compras a crédito en todos los camiones.</li>
+                        <li><strong>Cargas Cerradas:</strong> Archivo histórico inmutable de viajes concluidos, mermas auditadas y promedios finales de rendimiento.</li>
+                        <li><strong>Gestor de Clientes:</strong> Directorio centralizado para registrar clientes con RIF, teléfono y dirección antes o durante la preventa.</li>
                     </ul>
                 </div>
             </div>
@@ -559,14 +597,13 @@
                 NEXUS MAYORISTAS — Plataforma de Gestión Administrativa, Rutas y Distribución Mayorista.
             </p>
             <div class="manual-footer-links">
-                <a href="#">Facebook</a>
-                <a href="#">Instagram</a>
-                <a href="#">TikTok</a>
-                <a href="#">X (Twitter)</a>
+                <a href="https://www.facebook.com/profile.php?id=61564782043805" target="_blank" onclick="abrirRedSocial(event, 'https://www.facebook.com/profile.php?id=61564782043805')">Facebook</a>
+                <a href="https://www.instagram.com/nexus.pos.global/" target="_blank" onclick="abrirRedSocial(event, 'https://www.instagram.com/nexus.pos.global/')">Instagram</a>
+                <a href="https://www.tiktok.com/@nexus.pos.global" target="_blank" onclick="abrirRedSocial(event, 'https://www.tiktok.com/@nexus.pos.global')">TikTok</a>
             </div>
             <p style="font-size: 11px; color: #94a3b8; margin: 0;">
                 © 2026 NEXUS MAYORISTAS. Todos los derechos reservados.<br>
-                Soporte y Contacto: <a href="mailto:nexusposgobal@gmail.com" style="color: #2563eb; text-decoration: none;">nexusposgobal@gmail.com</a>
+                Soporte y Contacto: <a href="mailto:nexusposgobal@gmail.com" style="color: #2563eb; text-decoration: none;" onclick="abrirRedSocial(event, 'mailto:nexusposgobal@gmail.com')">nexusposgobal@gmail.com</a>
             </p>
         </div>
         
@@ -627,6 +664,22 @@
 
 <script>
     window.urlDescargaReal = window.urlDescargaReal || "";
+
+    window.abrirRedSocial = function(e, url) {
+        if (e) e.preventDefault();
+        if (window.nexusAPI && window.nexusAPI.invoke) {
+            window.nexusAPI.invoke('abrir-link-externo', url);
+        } else if (window.ipc && window.ipc.invoke) {
+            window.ipc.invoke('abrir-link-externo', url);
+        } else {
+            try {
+                const { shell } = require('electron');
+                shell.openExternal(url);
+            } catch (err) {
+                window.open(url, '_blank');
+            }
+        }
+    };
 
     // Cargar la versión real de la app desde package.json vía IPC
     window.cargarVersionReal = async function() {

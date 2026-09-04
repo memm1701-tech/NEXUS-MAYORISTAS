@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Consola de Depuración (NEXUS-MAYORISTA)</title>
+    <style>
+        body { background-color: #0c0c0c; color: #cccccc; font-family: Consolas, 'Courier New', monospace; font-size: 14px; margin: 0; padding: 10px; overflow-y: auto; }
+        #logs { white-space: pre-wrap; word-wrap: break-word; }
+        .error { color: #ff5555; }
+        .warn { color: #f1fa8c; }
+        .info { color: #8be9fd; }
+        .success { color: #50fa7b; }
+    </style>
+</head>
+<body>
+    <div id="logs">Nexus Mayorista - Consola de Depuración (Logs en tiempo real)
+===========================================================
+</div>
+    <script>
+        const { ipcRenderer } = require('electron');
+        const logsDiv = document.getElementById('logs');
+        ipcRenderer.on('log-message', (event, level, ...args) => {
+            const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ');
+            const span = document.createElement('span');
+            if (level === 'error') span.className = 'error';
+            else if (level === 'warn') span.className = 'warn';
+            else if (msg.includes('éxito') || msg.includes('Éxito') || msg.includes('SUCCESS') || msg.includes('exitosamente')) span.className = 'success';
+            else if (msg.includes('SYNC PULL') || msg.includes('SYNC PUSH') || msg.includes('Iniciando')) span.className = 'info';
+            span.innerText = msg + '\n';
+            logsDiv.appendChild(span);
+            window.scrollTo(0, document.body.scrollHeight);
+        });
+    </script>
+</body>
+</html>

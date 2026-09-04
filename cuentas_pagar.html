@@ -392,7 +392,7 @@
         }
 
         // Establecer fecha de hoy en campos
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy =(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         document.getElementById('nd-fecha').value = hoy;
         document.getElementById('na-fecha').value = hoy;
         if (document.getElementById('lib-fecha')) document.getElementById('lib-fecha').value = hoy;

@@ -923,7 +923,7 @@
                     <input type="number" id="input-rendicion-cant-generada" class="rendicion-input" placeholder="CANT. GENERA">
                 </div>
                 <div class="rendicion-cant-wrapper">
-                    <input type="number" id="input-rendicion-nuevo-precio" class="rendicion-input" placeholder="PRECIO VENTA" step="0.01">
+                    <input type="number" id="input-rendicion-precio-compra" class="rendicion-input" placeholder="PRECIO COMPRA" step="0.01">
                 </div>
                 <button onclick="procesarRendicion()" class="rendicion-btn">
                     <i class="material-icons" style="font-size: 18px;">add_task</i> Crear
@@ -937,8 +937,8 @@
                             <th style="width: 20%;">Fecha</th>
                             <th style="width: 25%;">Se restó</th>
                             <th style="width: 25%;">Se generó</th>
-                            <th style="width: 15%; text-align: center;">Precio U. ($)</th>
-                            <th style="width: 15%; text-align: center;">Acción</th>
+                            <th style="width: 18%; text-align: center;">P. Compra ($)</th>
+                            <th style="width: 12%; text-align: center;">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-rendiciones-body">
@@ -1038,7 +1038,7 @@
             const statusLabel = tieneActiva ? `<div class="status-activa">Carga en curso,<br>sin cerrar</div>` : '';
             
             return `
-            <div class="vehiculo-card-mini ${extraClass}" onclick="seleccionarVehiculoParaCobros(${v.id}, '${v.nombre}')">
+            <div class="vehiculo-card-mini ${extraClass}" onclick="seleccionarVehiculoParaCobros('${v.id}', '${v.nombre}')">
                 <i class="material-icons text-3xl mb-2">payments</i>
                 <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
                 ${statusLabel}
@@ -1121,10 +1121,7 @@
                 const nuevoProd = r.nombre_nuevo_producto;
                 inventarioOriginal[nuevoProd] = (inventarioOriginal[nuevoProd] || 0) + r.cantidad_generada;
                 
-                const pCompraOriginal = preciosCompraMap[r.producto_origen] || 0;
-                const costoTotal = r.cantidad_restada * pCompraOriginal;
-                const pCompraNuevo = r.cantidad_generada > 0 ? (costoTotal / r.cantidad_generada) : 0;
-                preciosCompraMap[nuevoProd] = pCompraNuevo;
+                preciosCompraMap[nuevoProd] = r.precio_compra_nuevo_producto || 0;
             });
 
             const cobrosGuardados = await ipc.invoke('obtener-ventas-carga', cargaActivaActual.id_carga);
@@ -1198,8 +1195,9 @@
         actualizarSaldosUI();
     };
 
-    window.guardarNuevoCliente = function() {
+    window.guardarNuevoCliente = async function() {
         const inputCliente = document.getElementById('input-nuevo-cliente');
+        if (!inputCliente) return;
         const nombreCliente = inputCliente.value.trim().toUpperCase();
 
         if (!nombreCliente) {
@@ -1208,16 +1206,27 @@
         }
 
         if (ipc) {
-            ipc.send('guardar-cliente', nombreCliente);
-            ipc.once('guardar-cliente-resultado', async (event, response) => {
-                if (response.success) {
+            try {
+                let response;
+                if (typeof ipc.invoke === 'function') {
+                    response = await ipc.invoke('guardar-cliente', nombreCliente);
+                } else {
+                    response = await new Promise((resolve) => {
+                        ipc.once('guardar-cliente-resultado', (event, res) => resolve(res));
+                        ipc.send('guardar-cliente', nombreCliente);
+                    });
+                }
+
+                if (response && response.success) {
                     mostrarToast(`Cliente "${nombreCliente}" guardado exitosamente.`, "success");
-                    inputCliente.value = ''; 
+                    if (inputCliente) inputCliente.value = ''; 
                     await cargarClientesBaseDatos(); // Recargar la caché
                 } else {
-                    mostrarToast("Error al guardar: " + response.msg, "error");
+                    mostrarToast("Error al guardar: " + (response ? response.msg : 'Error al procesar'), "error");
                 }
-            });
+            } catch (err) {
+                mostrarToast("Error al guardar: " + err.message, "error");
+            }
         }
     };
 
@@ -1912,7 +1921,7 @@
                 <td style="text-align: center; color: #1e293b; font-weight: 800;">${m.cantidad}</td>
                 <td style="text-align: center; color: #1e293b; font-weight: 800;">${dineroPerdido.toFixed(2)} $</td>
                 <td style="text-align: center;">
-                    <button onclick="eliminarMerma(${m.merma_id})" class="btn-delete-merma" title="Eliminar Registro">
+                    <button onclick="eliminarMerma('${m.merma_id}')" class="btn-delete-merma" title="Eliminar Registro">
                         <i class="material-icons" style="font-size: 20px;">delete</i>
                     </button>
                 </td>
@@ -1931,12 +1940,20 @@
             "¿Revertir Merma?",
             "¿Deseas revertir esta merma y devolver la mercancía al inventario restante?",
             "Sí, Revertir",
-            () => {
-                // ESTO SE EJECUTA AL CONFIRMAR
-                ipc.send('eliminar-merma-carga', merma_id);
-                
-                ipc.once('eliminar-merma-resultado', async (event, response) => {
-                    if (response.success) {
+            async () => {
+                if (!ipc) return;
+                try {
+                    let response;
+                    if (typeof ipc.invoke === 'function') {
+                        response = await ipc.invoke('eliminar-merma-carga', merma_id);
+                    } else {
+                        response = await new Promise(resolve => {
+                            ipc.once('eliminar-merma-resultado', (event, r) => resolve(r));
+                            ipc.send('eliminar-merma-carga', merma_id);
+                        });
+                    }
+
+                    if (response && response.success) {
                         mostrarToast("Registro de merma revertido.", "success");
                         mermasGuardadas = await ipc.invoke('obtener-mermas-carga', cargaActivaActual.id_carga);
                         renderizarTablaMermas();
@@ -1944,28 +1961,30 @@
                     } else {
                         mostrarToast("Error al revertir merma.", "error");
                     }
-                });
+                } catch (err) {
+                    mostrarToast("Error al revertir merma: " + err.message, "error");
+                }
             }
         );
     };
 
-    window.procesarRendicion = function() {
+    window.procesarRendicion = async function() {
         if (!cargaActivaActual || !ipc) return;
 
         const selectOrigen = document.getElementById('select-rendicion-origen');
         const inputCantRestada = document.getElementById('input-rendicion-cant-restada');
         const inputNuevoNombre = document.getElementById('input-rendicion-nuevo-nombre');
         const inputCantGenerada = document.getElementById('input-rendicion-cant-generada');
-        const inputNuevoPrecio = document.getElementById('input-rendicion-nuevo-precio');
+        const inputPrecioCompra = document.getElementById('input-rendicion-precio-compra');
         
         const valorOrigen = selectOrigen.value;
         const cantRestada = parseInt(inputCantRestada.value) || 0; // Opcional o 0
         const nuevoNombre = inputNuevoNombre.value.trim().toUpperCase();
         const cantGenerada = parseInt(inputCantGenerada.value);
-        const nuevoPrecio = parseFloat(inputNuevoPrecio.value);
+        const precioCompra = parseFloat(inputPrecioCompra.value);
 
-        if (!valorOrigen || isNaN(cantRestada) || cantRestada < 0 || !nuevoNombre || isNaN(cantGenerada) || cantGenerada <= 0 || isNaN(nuevoPrecio) || nuevoPrecio < 0) {
-            mostrarToast("Completa los campos requeridos (Producto Origen, Nombre Nuevo, Cant. Genera y Precio Venta).", "error");
+        if (!valorOrigen || isNaN(cantRestada) || cantRestada < 0 || !nuevoNombre || isNaN(cantGenerada) || cantGenerada <= 0 || isNaN(precioCompra) || precioCompra < 0) {
+            mostrarToast("Completa los campos requeridos (Producto Origen, Nombre Nuevo, Cant. Genera y Precio Compra).", "error");
             return;
         }
 
@@ -1998,30 +2017,43 @@
             }
         }
 
-        ipc.send('guardar-rendicion-carga', {
+        const payload = {
             id_carga: cargaActivaActual.id_carga,
             vehiculo_id: vehiculoActualId,
             producto_origen: valorOrigen,
             cantidad_restada: cantRestada,
             nombre_nuevo_producto: nuevoNombre,
-            precio_venta_nuevo_producto: nuevoPrecio,
+            precio_venta_nuevo_producto: precioCompra,
+            precio_compra_nuevo_producto: precioCompra,
             cantidad_generada: cantGenerada
-        });
+        };
 
-        ipc.once('guardar-rendicion-resultado', async (event, response) => {
-            if (response.success) {
+        try {
+            let response;
+            if (typeof ipc.invoke === 'function') {
+                response = await ipc.invoke('guardar-rendicion-carga', payload);
+            } else {
+                response = await new Promise(resolve => {
+                    ipc.once('guardar-rendicion-resultado', (event, res) => resolve(res));
+                    ipc.send('guardar-rendicion-carga', payload);
+                });
+            }
+
+            if (response && response.success) {
                 mostrarToast("Rendición procesada con éxito.", "success");
                 selectOrigen.value = "";
                 inputCantRestada.value = "";
                 inputNuevoNombre.value = "";
                 inputCantGenerada.value = "";
-                inputNuevoPrecio.value = "";
+                inputPrecioCompra.value = "";
                 
                 seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
             } else {
-                mostrarToast("Error al procesar rendición: " + response.msg, "error");
+                mostrarToast("Error al procesar rendición: " + (response?.msg || 'Error'), "error");
             }
-        });
+        } catch (err) {
+            mostrarToast("Error al procesar rendición: " + err.message, "error");
+        }
     };
 
     window.renderizarTablaRendiciones = function() {
@@ -2036,14 +2068,15 @@
         contenedor.classList.remove('hidden');
 
         tbody.innerHTML = rendicionesGuardadas.map(r => {
+            const pCompra = parseFloat(r.precio_compra_nuevo_producto !== undefined ? r.precio_compra_nuevo_producto : (r.precio_venta_nuevo_producto || 0));
             return `
             <tr>
                 <td>${new Date(r.fecha_registro).toLocaleString()}</td>
                 <td style="color: #1e293b; font-weight: 800;">-${r.cantidad_restada} ${r.producto_origen}</td>
                 <td style="color: #1e293b; font-weight: 800;">+${r.cantidad_generada} ${r.nombre_nuevo_producto}</td>
-                <td style="text-align: center; color: #1e293b; font-weight: 800;">${r.precio_venta_nuevo_producto.toFixed(2)} $</td>
+                <td style="text-align: center; color: #1e293b; font-weight: 800;">${pCompra.toFixed(2)} $</td>
                 <td style="text-align: center;">
-                    <button onclick="eliminarRendicion(${r.rendicion_id})" class="btn-delete-rendicion" title="Eliminar Rendición">
+                    <button onclick="eliminarRendicion('${r.rendicion_id}')" class="btn-delete-rendicion" title="Eliminar Rendición">
                         <i class="material-icons" style="font-size: 20px;">delete</i>
                     </button>
                 </td>
@@ -2057,16 +2090,28 @@
             "¿Revertir Rendición?",
             "¿Deseas revertir esta rendición y devolver la mercancía al producto original?",
             "Sí, Revertir",
-            () => {
-                ipc.send('eliminar-rendicion-carga', rendicion_id);
-                ipc.once('eliminar-rendicion-resultado', async (event, response) => {
-                    if (response.success) {
+            async () => {
+                if (!ipc) return;
+                try {
+                    let response;
+                    if (typeof ipc.invoke === 'function') {
+                        response = await ipc.invoke('eliminar-rendicion-carga', rendicion_id);
+                    } else {
+                        response = await new Promise(resolve => {
+                            ipc.once('eliminar-rendicion-resultado', (event, res) => resolve(res));
+                            ipc.send('eliminar-rendicion-carga', rendicion_id);
+                        });
+                    }
+
+                    if (response && response.success) {
                         mostrarToast("Rendición revertida.", "success");
                         seleccionarVehiculoParaCobros(vehiculoActualId, document.getElementById('titulo-vehiculo-cobro').innerText);
                     } else {
                         mostrarToast("Error al revertir rendición.", "error");
                     }
-                });
+                } catch (err) {
+                    mostrarToast("Error al revertir rendición: " + err.message, "error");
+                }
             }
         );
     };

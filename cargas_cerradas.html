@@ -331,6 +331,82 @@
         .badge-merma { background: #fee2e2; color: #b91c1c; font-weight: 900; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; }
         .panel-json-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
         .panel-json-item:last-child { border-bottom: none; }
+
+        /* --- MODO EDICIÓN --- */
+        .btn-editar-fila {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #15803d;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-editar-fila:hover { background: #dcfce7; border-color: #86efac; }
+
+        .btn-guardar-fila {
+            background: #2563eb;
+            border: none;
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .btn-guardar-fila:hover { background: #1d4ed8; }
+
+        .btn-cancelar-fila {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            color: #64748b;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .btn-cancelar-fila:hover { background: #e2e8f0; }
+
+        .input-edicion {
+            width: 100%;
+            padding: 5px 8px;
+            border: 1.5px solid #3b82f6;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #1e293b;
+            background: #eff6ff;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .input-edicion:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(59,130,246,0.12); }
+        .fila-en-edicion td { background: #f0f9ff !important; }
+
+        /* --- PANEL HISTORIAL DE AJUSTES --- */
+        .ajuste-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.82rem;
+        }
+        .ajuste-item:last-child { border-bottom: none; }
+        .ajuste-campo { background: #e0f2fe; color: #0369a1; font-weight: 900; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; text-transform: uppercase; white-space: nowrap; }
+        .ajuste-flecha { color: #94a3b8; font-weight: 900; font-size: 1rem; }
+        .ajuste-anterior { color: #ef4444; font-weight: 700; text-decoration: line-through; }
+        .ajuste-nuevo { color: #16a34a; font-weight: 800; }
+        .ajuste-motivo { color: #7c3aed; font-style: italic; font-size: 0.78rem; margin-top: 2px; }
+        .ajuste-fecha { color: #94a3b8; font-size: 0.72rem; white-space: nowrap; margin-left: auto; }
     </style>
 
     <!-- VISTA PRINCIPAL: LISTADO DE CARGAS CERRADAS -->
@@ -469,24 +545,25 @@
             </div>
         </div>
 
-        <!-- TABLA DE LÍNEAS DE VENTA EN MODO LECTURA -->
+        <!-- TABLA DE LÍNEAS DE VENTA (EDITABLE POST-CIERRE) -->
         <div class="panel-principal">
             <h3 class="titulo-panel">
-                <i class="material-icons" style="color: #4f46e5;">table_chart</i> Detalle de Líneas de Venta (Modo Lectura)
+                <i class="material-icons" style="color: #4f46e5;">table_chart</i> Detalle de Líneas de Venta
+                <span style="font-size: 0.72rem; font-weight: 600; color: #6366f1; background: #ede9fe; padding: 3px 10px; border-radius: 9999px; margin-left: 8px; text-transform: none;">✏️ Edición habilitada</span>
             </h3>
 
             <div class="tabla-scroll-container custom-scrollbar" style="max-height: 500px;">
                 <table class="excel-table-ro">
                     <thead>
                         <tr>
-                            <th style="width: 75px; text-align: center;"># Fila</th>
-                            <th style="width: 85px; text-align: center;">Cant.</th>
+                            <th style="width: 70px; text-align: center;"># Fila</th>
+                            <th style="width: 80px; text-align: center;">Cant.</th>
                             <th style="width: 110px; text-align: center;">Precio U.</th>
-                            <th style="width: 120px; text-align: right;">Ganancia</th>
                             <th>Tipo Cesta / Producto</th>
                             <th style="width: 25%;">Cliente</th>
-                            <th style="width: 140px;">Método</th>
-                            <th style="width: 140px;">Banco Receptor</th>
+                            <th style="width: 130px;">Método</th>
+                            <th style="width: 130px;">Banco Receptor</th>
+                            <th style="width: 90px; text-align: center;">Acción</th>
                         </tr>
                     </thead>
                     <tbody id="tabla-planilla-ro-body">
@@ -495,8 +572,19 @@
                 </table>
             </div>
         </div>
+
+        <!-- PANEL: HISTORIAL DE AJUSTES POST-CIERRE -->
+        <div class="panel-principal">
+            <h3 class="titulo-panel">
+                <i class="material-icons" style="color: #7c3aed;">history</i> Historial de Ajustes Post-Cierre
+            </h3>
+            <div id="panel-ajustes-historial" style="min-height: 40px; color: #94a3b8; font-size: 0.85rem; font-style: italic;">
+                Sin ajustes registrados.
+            </div>
+        </div>
     </div>
 </div>
+
 
 <script>
 {
@@ -504,6 +592,7 @@
     try { ipc = require('electron').ipcRenderer; } catch (e) { console.warn("IPC offline"); }
 
     let historialCargas = [];
+    let datosCierreActual = {};
 
     async function cargarHistorial() {
         if (!ipc) return;
@@ -532,13 +621,13 @@
             const fCierre = new Date(c.fecha_cierre).toLocaleString();
 
             return `
-                <tr id="fila-${c.id_cierre}" class="fila-historial" onclick="seleccionarFila(${c.id_cierre})">
+                <tr id="fila-${c.id_cierre}" class="fila-historial" onclick="seleccionarFila('${c.id_cierre}')">
                     <td class="font-bold text-slate-600 text-center">#${c.id_cierre}</td>
                     <td class="font-extrabold uppercase text-slate-800">${c.vehiculo_nombre || 'Desconocido'}</td>
                     <td class="text-xs text-slate-500">${fEntrada}</td>
                     <td class="text-xs font-bold text-slate-600">${fCierre}</td>
                     <td style="text-align: center; padding-top: 10px; padding-bottom: 10px;">
-                        <button class="btn-detalle" onclick="verPlanillaCompleta(${c.id_cierre}, ${c.id_carga}, event)" title="Ver Planilla de Ventas">
+                        <button class="btn-detalle" onclick="verPlanillaCompleta('${c.id_cierre}', '${c.id_carga}', event)" title="Ver Planilla de Ventas">
                             <i class="material-icons" style="font-size:16px;">table_chart</i> Planilla Completa
                         </button>
                     </td>
@@ -569,6 +658,8 @@
         if(event) event.stopPropagation();
         const datosCierre = historialCargas.find(c => c.id_cierre === id_cierre);
         if(!datosCierre) return;
+
+        datosCierreActual = { ...datosCierre, id_carga };
 
         // Ocultar principal y mostrar detalle
         document.getElementById('vista-principal-historial').classList.add('hidden');
@@ -677,7 +768,10 @@
                             <div style="display: flex; justify-content: center; margin: 4px 0;"><i class="material-icons" style="color: #d8b4fe; font-size: 16px;">arrow_downward</i></div>
                             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 800; color: #059669; text-transform: uppercase;">
                                 <span>+${r.cantidad_generada} ${r.nombre_nuevo_producto}</span>
-                                <span style="color: #7e22ce; font-weight: 900;">${parseFloat(r.precio_venta_nuevo_producto || 0).toFixed(2)} $</span>
+                                <span style="display: flex; gap: 10px;">
+                                    <span style="color: #7e22ce; font-weight: 900;">Vta: ${parseFloat(r.precio_venta_nuevo_producto || 0).toFixed(2)} $</span>
+                                    <span style="color: #0369a1; font-weight: 900;">Cmp: ${parseFloat(r.precio_compra_nuevo_producto || 0).toFixed(2)} $</span>
+                                </span>
                             </div>
                         </div>`;
                     });
@@ -686,7 +780,7 @@
             } catch(e) { panelRend.innerHTML = '<span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Sin rendiciones procesadas.</span>'; }
         }
 
-        // Llenar tabla de modo lectura
+        // Llenar tabla de ventas EDITABLE
         const tbody = document.getElementById('tabla-planilla-ro-body');
         tbody.innerHTML = '<tr><td colspan="8" class="text-center p-6 text-slate-400">Consultando líneas de venta en la base de datos...</td></tr>';
 
@@ -697,35 +791,213 @@
 
             if (lineasValidas.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 24px; color: #94a3b8; font-weight: 700;">No se registraron transacciones manuales en la planilla de esta carga.</td></tr>';
-                return;
+            } else {
+                lineasValidas.sort((a, b) => a.fila_id.localeCompare(b.fila_id, undefined, {numeric: true}));
+                renderLineasEditables(tbody, lineasValidas, id_carga);
             }
 
-            lineasValidas.sort((a, b) => a.fila_id.localeCompare(b.fila_id, undefined, {numeric: true}));
-
-            tbody.innerHTML = lineasValidas.map(l => {
-                const esSubfila = l.fila_id.includes('_');
-                const badgeSub = esSubfila ? `<span style="background: #e2e8f0; color: #64748b; font-size: 0.6rem; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">SUB</span>` : '';
-                const mercancia = `${l.tipo_medida || ''} ${l.sub_medida || ''}`.trim();
-                const cantNum = parseFloat(l.cantidad) || 0;
-                const precNum = parseFloat(String(l.precio || '0').replace('$', '').trim()) || 0;
-                const pCompra = parseFloat(l.p_compra || l.pCompra || 0);
-                const gananciaRow = pCompra > 0 ? (precNum - pCompra) * cantNum : 0;
-                
-                return `
-                    <tr style="background: ${esSubfila ? '#f8fafc' : '#ffffff'};">
-                        <td style="color: #64748b; font-weight: 800; text-align: center; background: ${esSubfila ? 'transparent' : '#f8fafc'};">${l.fila_id} ${badgeSub}</td>
-                        <td style="color: #2563eb; font-weight: 900; font-size: 0.95rem; text-align: center;">${l.cantidad || '-'}</td>
-                        <td style="color: #059669; font-weight: 800; text-align: center;">${l.precio ? `$${precNum.toFixed(2)}` : '-'}</td>
-                        <td style="color: ${gananciaRow > 0 ? '#10b981' : '#64748b'}; font-weight: 900; text-align: right; padding-right: 15px;">${gananciaRow > 0 ? `$${gananciaRow.toFixed(2)}` : '-'}</td>
-                        <td style="font-weight: 800; color: #334155; text-align: left; padding-left: 15px;">${mercancia || '-'}</td>
-                        <td style="font-weight: 900; color: #1e293b; text-align: left; padding-left: 15px;">${l.cliente || '<span style="color:#94a3b8">---</span>'}</td>
-                        <td style="color: #d97706; font-weight: 800; text-align: center;">${l.metodo_pago || '-'}</td>
-                        <td style="color: #475569; font-weight: 700; text-align: center;">${l.banco || '-'}</td>
-                    </tr>
-                `;
-            }).join('');
+            // Cargar historial de ajustes
+            await cargarHistorialAjustes(id_carga);
         }
     };
+
+    function renderLineasEditables(tbody, lineasValidas, id_carga) {
+        tbody.innerHTML = lineasValidas.map(l => {
+            const esSubfila = l.fila_id.includes('_');
+            const badgeSub = esSubfila ? `<span style="background:#e2e8f0;color:#64748b;font-size:0.6rem;padding:2px 6px;border-radius:4px;margin-left:5px;">SUB</span>` : '';
+            const mercancia = `${l.tipo_medida || ''} ${l.sub_medida || ''}`.trim();
+            const precNum = parseFloat(String(l.precio || '0').replace('$', '').trim()) || 0;
+
+            return `
+                <tr id="tr-${l.id_detalle}" style="background: ${esSubfila ? '#f8fafc' : '#ffffff'};">
+                    <td style="color:#64748b;font-weight:800;text-align:center;background:${esSubfila ? 'transparent' : '#f8fafc'};">${l.fila_id} ${badgeSub}</td>
+                    <td id="td-cant-${l.id_detalle}" style="color:#2563eb;font-weight:900;font-size:0.95rem;text-align:center;">${l.cantidad || '-'}</td>
+                    <td id="td-precio-${l.id_detalle}" style="color:#059669;font-weight:800;text-align:center;">${l.precio ? `$${precNum.toFixed(2)}` : '-'}</td>
+                    <td id="td-tipo-${l.id_detalle}" style="font-weight:800;color:#334155;text-align:left;padding-left:15px;">${mercancia || '-'}</td>
+                    <td id="td-cliente-${l.id_detalle}" style="font-weight:900;color:#1e293b;text-align:left;padding-left:15px;">${l.cliente || '<span style="color:#94a3b8">---</span>'}</td>
+                    <td id="td-metodo-${l.id_detalle}" style="color:#d97706;font-weight:800;text-align:center;">${l.metodo_pago || '-'}</td>
+                    <td id="td-banco-${l.id_detalle}" style="color:#475569;font-weight:700;text-align:center;">${l.banco || '-'}</td>
+                    <td style="text-align:center;">
+                        <button class="btn-editar-fila" onclick="activarEdicionFila('${l.id_detalle}', '${id_carga}')">
+                            <i class="material-icons" style="font-size:14px;">edit</i> Editar
+                        </button>
+                    </td>
+                </tr>`;
+        }).join('');
+    }
+
+    // Almacena datos originales para poder cancelar la edición
+    const datosOriginalesFila = {};
+
+    window.activarEdicionFila = function(id_detalle, id_carga) {
+        // Cancelar cualquier edición activa
+        document.querySelectorAll('.fila-en-edicion').forEach(tr => {
+            const det = parseInt(tr.id.replace('tr-', ''));
+            if (datosOriginalesFila[det]) cancelarEdicionFila(det);
+        });
+
+        const tr = document.getElementById(`tr-${id_detalle}`);
+        if (!tr) return;
+        tr.classList.add('fila-en-edicion');
+
+        // Capturar valores actuales de las celdas
+        const cantActual = tr.querySelector(`#td-cant-${id_detalle}`).innerText.trim();
+        const precioActual = tr.querySelector(`#td-precio-${id_detalle}`).innerText.replace('$', '').trim();
+        const tipoActual = tr.querySelector(`#td-tipo-${id_detalle}`).innerText.trim();
+        const clienteActual = tr.querySelector(`#td-cliente-${id_detalle}`).innerText.trim();
+        const metodoActual = tr.querySelector(`#td-metodo-${id_detalle}`).innerText.trim();
+        const bancoActual = tr.querySelector(`#td-banco-${id_detalle}`).innerText.trim();
+
+        datosOriginalesFila[id_detalle] = { cantActual, precioActual, tipoActual, clienteActual, metodoActual, bancoActual };
+
+        // Sustituir celdas por inputs
+        tr.querySelector(`#td-cant-${id_detalle}`).innerHTML = `<input class="input-edicion" id="inp-cant-${id_detalle}" type="number" min="0" step="0.01" value="${cantActual === '-' ? '' : cantActual}" style="width:70px;">`;
+        tr.querySelector(`#td-precio-${id_detalle}`).innerHTML = `<input class="input-edicion" id="inp-precio-${id_detalle}" type="number" min="0" step="0.01" value="${precioActual === '-' ? '' : precioActual}" style="width:90px;">`;
+        tr.querySelector(`#td-tipo-${id_detalle}`).innerHTML = `<input class="input-edicion" id="inp-tipo-${id_detalle}" type="text" value="${tipoActual === '-' ? '' : tipoActual}">`;
+        tr.querySelector(`#td-cliente-${id_detalle}`).innerHTML = `<input class="input-edicion" id="inp-cliente-${id_detalle}" type="text" value="${clienteActual === '-' ? '' : clienteActual}">`;
+        tr.querySelector(`#td-metodo-${id_detalle}`).innerHTML = `
+            <select class="input-edicion" id="inp-metodo-${id_detalle}">
+                <option value="EFECTIVO" ${metodoActual === 'EFECTIVO' ? 'selected' : ''}>EFECTIVO</option>
+                <option value="PAGO MÓVIL" ${metodoActual === 'PAGO MÓVIL' ? 'selected' : ''}>PAGO MÓVIL</option>
+                <option value="TRANSFERENCIA" ${metodoActual === 'TRANSFERENCIA' ? 'selected' : ''}>TRANSFERENCIA</option>
+                <option value="DIVISA" ${metodoActual === 'DIVISA' ? 'selected' : ''}>DIVISA</option>
+                <option value="CRÉDITO" ${metodoActual === 'CRÉDITO' || metodoActual === 'CREDITO' ? 'selected' : ''}>CRÉDITO</option>
+            </select>`;
+        tr.querySelector(`#td-banco-${id_detalle}`).innerHTML = `<input class="input-edicion" id="inp-banco-${id_detalle}" type="text" value="${bancoActual === '-' ? '' : bancoActual}">`;
+
+        // Reemplazar botón Editar con Guardar y Cancelar + campo motivo
+        const lastTd = tr.querySelectorAll('td')[7];
+        lastTd.innerHTML = `
+            <div style="display:flex;flex-direction:column;gap:4px;align-items:center;">
+                <input class="input-edicion" id="inp-motivo-${id_detalle}" type="text" placeholder="Motivo (opcional)" style="font-size:0.72rem;width:100%;">
+                <div style="display:flex;gap:4px;">
+                    <button class="btn-guardar-fila" onclick="guardarEdicionFila('${id_detalle}', '${id_carga}')">
+                        <i class="material-icons" style="font-size:13px;">save</i> Guardar
+                    </button>
+                    <button class="btn-cancelar-fila" onclick="cancelarEdicionFila(${id_detalle})">Cancelar</button>
+                </div>
+            </div>`;
+    };
+
+    window.cancelarEdicionFila = function(id_detalle) {
+        const orig = datosOriginalesFila[id_detalle];
+        if (!orig) return;
+        const tr = document.getElementById(`tr-${id_detalle}`);
+        if (!tr) return;
+        tr.classList.remove('fila-en-edicion');
+        const precNum = parseFloat(orig.precioActual) || 0;
+        tr.querySelector(`#td-cant-${id_detalle}`).innerHTML = orig.cantActual;
+        tr.querySelector(`#td-precio-${id_detalle}`).innerHTML = orig.precioActual !== '-' ? `$${precNum.toFixed(2)}` : '-';
+        tr.querySelector(`#td-tipo-${id_detalle}`).innerHTML = orig.tipoActual !== '-' ? orig.tipoActual : '-';
+        tr.querySelector(`#td-cliente-${id_detalle}`).innerHTML = orig.clienteActual !== '-' ? orig.clienteActual : '<span style="color:#94a3b8">---</span>';
+        tr.querySelector(`#td-metodo-${id_detalle}`).innerHTML = orig.metodoActual !== '-' ? orig.metodoActual : '-';
+        tr.querySelector(`#td-banco-${id_detalle}`).innerHTML = orig.bancoActual !== '-' ? orig.bancoActual : '-';
+        tr.querySelectorAll('td')[7].innerHTML = `<button class="btn-editar-fila" onclick="activarEdicionFila(${id_detalle}, '${datosCierreActual.id_carga}')"><i class="material-icons" style="font-size:14px;">edit</i> Editar</button>`;
+        delete datosOriginalesFila[id_detalle];
+    };
+
+    window.guardarEdicionFila = async function(id_detalle, id_carga) {
+        if (!ipc) return;
+        const cantVal = document.getElementById(`inp-cant-${id_detalle}`)?.value.trim();
+        const precioVal = document.getElementById(`inp-precio-${id_detalle}`)?.value.trim();
+        const tipoVal = document.getElementById(`inp-tipo-${id_detalle}`)?.value.trim();
+        const clienteVal = document.getElementById(`inp-cliente-${id_detalle}`)?.value.trim();
+        const metodoVal = document.getElementById(`inp-metodo-${id_detalle}`)?.value;
+        const bancoVal = document.getElementById(`inp-banco-${id_detalle}`)?.value.trim();
+        const motivoVal = document.getElementById(`inp-motivo-${id_detalle}`)?.value.trim();
+
+        // Parsear tipo_medida y sub_medida del campo unificado
+        const partesT = (tipoVal || '').split(' ');
+        const tipo_medida = partesT[0] || '';
+        const sub_medida = partesT.slice(1).join(' ');
+
+        const cambios = {};
+        if (cantVal !== '') cambios.cantidad = cantVal;
+        if (precioVal !== '') cambios.precio = `${precioVal} $`;
+        if (tipoVal !== '') { cambios.tipo_medida = tipo_medida; cambios.sub_medida = sub_medida; }
+        if (clienteVal !== undefined) cambios.cliente = clienteVal;
+        if (metodoVal) cambios.metodo_pago = metodoVal;
+        if (bancoVal !== undefined) cambios.banco = bancoVal;
+
+        const btn = document.querySelector(`#tr-${id_detalle} .btn-guardar-fila`);
+        if (btn) { btn.disabled = true; btn.innerText = '⏳ Guardando...'; }
+
+        try {
+            const result = await ipc.invoke('modificar-linea-carga-cerrada', {
+                id_carga, id_detalle, cambios, motivo: motivoVal || null
+            });
+
+            if (result.success) {
+                // Refrescar la vista con las nuevas líneas
+                const lineasVenta = await ipc.invoke('obtener-ventas-carga', id_carga);
+                const lineasValidas = (lineasVenta || []).filter(l => (parseInt(l.cantidad) > 0) || (l.cliente && l.cliente.trim() !== '') || (l.precio && l.precio.trim() !== ''));
+                lineasValidas.sort((a, b) => a.fila_id.localeCompare(b.fila_id, undefined, {numeric: true}));
+                const tbody = document.getElementById('tabla-planilla-ro-body');
+                renderLineasEditables(tbody, lineasValidas, id_carga);
+
+                // Actualizar totales en cabecera
+                if (result.nuevosTotales) {
+                    const t = result.nuevosTotales;
+                    document.getElementById('lbl-planilla-venta').innerText = `${(t.totalVenta || 0).toFixed(2)} $`;
+                    document.getElementById('lbl-planilla-credito').innerText = `${(t.totalCredito || 0).toFixed(2)} $`;
+                    document.getElementById('lbl-planilla-contado').innerText = `${(t.totalContado || 0).toFixed(2)} $`;
+
+                    // Actualizar promedios si vienen
+                    const contenedorPromedios = document.getElementById('cuerpo-planilla-promedios');
+                    if (contenedorPromedios && t.promediosPorProducto) {
+                        contenedorPromedios.innerHTML = Object.entries(t.promediosPorProducto).map(([producto, promedio]) => {
+                            const partes = producto.split(' ');
+                            const promNum = parseFloat(promedio) || 0;
+                            return `<div class="restante-card" style="border-color:#e9d5ff;background:#faf5ff;">
+                                <span class="restante-valor" style="color:#7e22ce;">$${promNum.toFixed(2)}</span>
+                                <span class="restante-tipo" style="color:#581c87;">${partes[0].toUpperCase()}<br><span style="font-size:0.75rem;color:#9333ea;">${partes.slice(1).join(' ').toUpperCase()}</span></span>
+                                <span class="restante-label" style="margin-top:8px;color:#7e22ce;">PROMEDIO DE CIERRE</span>
+                            </div>`;
+                        }).join('');
+                    }
+                }
+
+                // Recargar historial de ajustes
+                await cargarHistorialAjustes(id_carga);
+
+                delete datosOriginalesFila[id_detalle];
+            } else {
+                alert('Error al guardar: ' + (result.msg || 'Error desconocido'));
+                if (btn) { btn.disabled = false; btn.innerText = 'Guardar'; }
+            }
+        } catch(e) {
+            alert('Error de comunicación: ' + e.message);
+            if (btn) { btn.disabled = false; btn.innerText = 'Guardar'; }
+        }
+    };
+
+    async function cargarHistorialAjustes(id_carga) {
+        if (!ipc) return;
+        const panel = document.getElementById('panel-ajustes-historial');
+        if (!panel) return;
+        const ajustes = await ipc.invoke('obtener-ajustes-carga', id_carga);
+        if (!ajustes || ajustes.length === 0) {
+            panel.innerHTML = '<span style="color:#94a3b8;font-size:0.85rem;font-style:italic;">Sin ajustes registrados.</span>';
+            return;
+        }
+        const etiquetasCampo = {
+            precio: 'Precio', cantidad: 'Cantidad', metodo_pago: 'Método de Pago',
+            cliente: 'Cliente', tipo_medida: 'Tipo de Cesta', sub_medida: 'Sub-Medida', banco: 'Banco', banco_receptor: 'Banco Receptor'
+        };
+        panel.innerHTML = ajustes.map(a => `
+            <div class="ajuste-item">
+                <span class="ajuste-campo">${etiquetasCampo[a.campo] || a.campo}</span>
+                <div style="flex:1;display:flex;flex-direction:column;gap:2px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="ajuste-anterior">${a.valor_anterior || '—'}</span>
+                        <span class="ajuste-flecha">→</span>
+                        <span class="ajuste-nuevo">${a.valor_nuevo || '—'}</span>
+                    </div>
+                    ${a.motivo ? `<span class="ajuste-motivo">📝 ${a.motivo}</span>` : ''}
+                </div>
+                <span class="ajuste-fecha">${new Date(a.fecha_ajuste).toLocaleString()}</span>
+            </div>`).join('');
+    }
 
     window.volverAlHistorial = function() {
         document.getElementById('vista-detalle-planilla').classList.add('hidden');

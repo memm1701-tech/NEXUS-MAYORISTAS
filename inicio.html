@@ -239,6 +239,12 @@
                             </a>
                         </li>
                         <li>
+                            <a href="#" onclick="loadPage('estadisticas.html')">
+                                <i class="material-icons-outlined">insert_chart</i>
+                                <span>Estadísticas</span>
+                            </a>
+                        </li>
+                        <li>
                             <a href="#" onclick="loadPage('cargas.html')">
                                 <i class="material-icons-outlined">local_shipping</i>
                                 <span>Cargas</span>
@@ -310,6 +316,19 @@
     </div>
 
     <script>
+
+        const { ipcRenderer } = require('electron');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            ipcRenderer.send('log-from-renderer', 'log', ...args);
+        };
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            ipcRenderer.send('log-from-renderer', 'error', ...args);
+        };
+
         function limpiarIntervalosModulos() {
             if (window.intervaloTablaVentas) {
                 clearInterval(window.intervaloTablaVentas);
@@ -322,6 +341,19 @@
             if (window.intervaloConfig) {
                 clearInterval(window.intervaloConfig);
                 window.intervaloConfig = null;
+            }
+            // Limpiar listeners IPC residuales de los módulos que se descargan
+            if (typeof ipcRenderer !== 'undefined' && ipcRenderer.removeAllListeners) {
+                try {
+                    ipcRenderer.removeAllListeners('guardar-cliente-resultado');
+                    ipcRenderer.removeAllListeners('resultado-operacion');
+                    ipcRenderer.removeAllListeners('guardar-resultado');
+                    ipcRenderer.removeAllListeners('eliminar-carga-resultado');
+                    ipcRenderer.removeAllListeners('guardar-merma-resultado');
+                    ipcRenderer.removeAllListeners('eliminar-merma-resultado');
+                    ipcRenderer.removeAllListeners('guardar-rendicion-resultado');
+                    ipcRenderer.removeAllListeners('eliminar-rendicion-resultado');
+                } catch (e) {}
             }
         }
 
@@ -418,6 +450,7 @@
             'deudas_proveedores': '/api/maestro/deudas_proveedores',
             'abonos_proveedores': '/api/maestro/abonos_proveedores',
             'movimientos_cestas': '/api/maestro/movimientos_cestas'
+            // 'ajustes_cargas': '/api/maestro/ajustes_cargas' // Se omite temporalmente hasta que el backend (VPS) soporte esta tabla para evitar error 404 continuo
         };
 
         function actualizarUIConexion(estado) {
@@ -462,7 +495,7 @@
             try {
                 // 1. Verificamos internet real
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
                 let ping;
                 
                 try {
@@ -476,28 +509,35 @@
                 if (ping) {
                     actualizarUIConexion('syncing');
                     
-                    // 2. FASE 3: Subida de Datos (Sincronización Silenciosa)
                     if (window.nexusAPI && window.nexusAPI.invoke) {
+                        // 2. FASE 1: Subida de Datos (Sincronización Silenciosa)
                         const tablas = Object.keys(RUTAS_VPS);
-                        console.log("Iniciando escaneo de tablas pendientes...", tablas);
-                        
                         const pendientes = await window.nexusAPI.invoke('obtener-pendientes-sync', tablas);
-                        console.log("Resultados del escaneo local:", pendientes);
 
                         let huboSubidas = false;
 
                         for (const tabla of tablas) {
                             const registros = pendientes[tabla];
                             if (registros && registros.length > 0) {
-                                console.log(`Subiendo ${registros.length} registros de la tabla '${tabla}'...`);
+                                console.log(`%c[SYNC PUSH] 🚀 Subiendo ${registros.length} registros de la tabla '${tabla}'...`, "color: #3b82f6; font-weight: bold;");
                                 
                                 try {
-                                    // Sanitizar payload: Si es ventas_cargas, omitir id_detalle local; si es abonos_deudas, omitir grupo_pago local
-                                    let payloadLote = registros;
+                                    // Sanitizar payload: Omitir updated_at en todas las tablas, y omitir campos locales específicos
+                                    let payloadLote = registros.map(({ updated_at, ...resto }) => resto);
                                     if (tabla === 'ventas_cargas') {
-                                        payloadLote = registros.map(({ id_detalle, ...resto }) => resto);
+                                        payloadLote = payloadLote.map(({ id_detalle, ...resto }) => resto);
                                     } else if (tabla === 'abonos_deudas') {
-                                        payloadLote = registros.map(({ grupo_pago, ...resto }) => resto);
+                                        payloadLote = payloadLote.map(({ grupo_pago, ...resto }) => resto);
+                                    } else if (tabla === 'metodos_pago') {
+                                        const metodosBaseNombres = ['EFECTIVO', 'PAGO MÓVIL', 'TRANSFERENCIA', 'DIVISA'];
+                                        payloadLote = payloadLote.filter(r => !metodosBaseNombres.includes((r.nombre || '').trim().toUpperCase()));
+                                    }
+
+                                    if (payloadLote.length === 0) {
+                                        // Si solo eran métodos base por defecto, se marcan localmente como sincronizados
+                                        const idsSincronizados = registros.map(r => r.id || r.id_detalle || r.id_abono || r.id_reverso || r.id_cierre || r.merma_id || r.rendicion_id || r.id_carga).filter(id => id !== undefined && id !== null);
+                                        await window.nexusAPI.invoke('marcar-como-sincronizado-lote', { tabla: tabla, ids: idsSincronizados });
+                                        continue;
                                     }
 
                                     const res = await fetch(SERVER_URL + RUTAS_VPS[tabla], {
@@ -506,39 +546,39 @@
                                         body: JSON.stringify(payloadLote) // Mandamos el lote sanitizado
                                     });
 
-                                    if (res.ok) {
+                                    const resJson = await res.json().catch(() => null);
+
+                                    if (res.ok || (resJson && resJson.error && resJson.error.includes('duplicate key') && (tabla === 'maestro_unidades' || tabla === 'metodos_pago' || tabla === 'maestro_subtipos'))) {
                                         const idsSincronizados = registros.map(r => r.id || r.id_detalle || r.id_abono || r.id_reverso || r.id_cierre || r.merma_id || r.rendicion_id || r.id_carga).filter(id => id !== undefined && id !== null);
-                                        console.log(`Éxito al subir '${tabla}'. Marcando como sincronizados IDs:`, idsSincronizados);
+                                        console.log(`%c[SYNC PUSH] ✅ Subida procesada para '${tabla}'. IDs sincronizados:`, "color: #10b981;", idsSincronizados);
                                         
                                         // Marcamos localmente como sync_status = 1
                                         await window.nexusAPI.invoke('marcar-como-sincronizado-lote', { tabla: tabla, ids: idsSincronizados });
                                         huboSubidas = true;
                                     } else {
-                                        console.error(`Error del servidor al subir tabla '${tabla}':`, res.status, res.statusText);
+                                        console.error(`[SYNC PUSH] ❌ Error del servidor al subir '${tabla}':`, res.status, resJson ? resJson.error : res.statusText);
                                     }
                                 } catch(errPost) {
-                                    console.error(`Error de red al subir tabla '${tabla}':`, errPost);
+                                    console.error(`[SYNC PUSH] ❌ Error de red al subir '${tabla}':`, errPost);
                                 }
                             }
                         }
-                        
-                        if (huboSubidas) {
-                            console.log("Sincronización completada con éxito. Registros nuevos subidos.");
-                        } else {
-                            console.log("No hay nuevos registros pendientes por subir en este ciclo.");
-                        }
 
                         // --- NUEVO: FASE 2: Bajada de Datos (PULL) ---
-                        console.log("Iniciando fase de bajada (PULL)...");
+                        // console.log("Iniciando fase de bajada (PULL)...");
                         for (const tabla of tablas) {
                             try {
-                                const urlBajada = `${SERVER_URL}${RUTAS_VPS[tabla]}?id_empresa=${idEmpresaActual || ''}`;
+                                const urlBajada = `${SERVER_URL}${RUTAS_VPS[tabla]}?id_empresa=${idEmpresaActual || ''}&include_deleted=true`;
                                 const res = await fetch(urlBajada);
                                 if (res.ok) {
                                     const datosRemotos = await res.json();
-                                    if (Array.isArray(datosRemotos)) {
-                                        // console.log(`Descargados ${datosRemotos.length} registros de '${tabla}' desde el VPS.`);
-                                        await window.nexusAPI.invoke('insertar-o-actualizar-lote-remoto', { tabla: tabla, datos: datosRemotos });
+                                    if (Array.isArray(datosRemotos) && datosRemotos.length > 0) {
+                                        const resInsert = await window.nexusAPI.invoke('insertar-o-actualizar-lote-remoto', { tabla: tabla, datos: datosRemotos });
+                                        if (resInsert && resInsert.success) {
+                                            // console.log(`%c[SYNC PULL] ✅ '${tabla}': ${datosRemotos.length} registros sincronizados a la PC.`, "color: #10b981;");
+                                        } else {
+                                            console.error(`%c[SYNC PULL] ❌ Error aplicando lote en '${tabla}':`, "color: #ef4444;", resInsert ? resInsert.message : '');
+                                        }
                                     }
                                 } else {
                                     console.error(`Error al bajar datos de '${tabla}':`, res.status);
@@ -562,7 +602,7 @@
         }
 
         async function iniciarEntorno() {
-            setInterval(iniciarSincronizacionSilenciosa, 1500); // Cada 1.5s
+            setInterval(iniciarSincronizacionSilenciosa, 30000); // Cada 30s
             
             if (window.nexusAPI && window.nexusAPI.obtenerSesion) {
                 try {

@@ -456,7 +456,7 @@
         tbody.innerHTML = listaCargaActual.map(item => `
             <tr>
                 <td class="font-bold">${item.categoria}</td><td>${item.subtipo}</td><td class="font-bold text-blue-600 text-lg">${item.cantidad}</td>
-                <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem(${item.id})"><i class="material-icons">delete</i></button></td>
+                <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem('${item.id}')"><i class="material-icons">delete</i></button></td>
             </tr>
         `).join('');
 
@@ -555,7 +555,7 @@
                 : ``;
 
             return `
-            <div class="vehiculo-card-mini vehiculo-card-gestion" onclick="auditarVehiculo(${v.id}, '${v.nombre}')">
+            <div class="vehiculo-card-mini vehiculo-card-gestion" onclick="auditarVehiculo('${v.id}', '${v.nombre}')">
                 <i class="material-icons text-3xl mb-2">inventory_2</i>
                 <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
                 ${etiquetaEstado}

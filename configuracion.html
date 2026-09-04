@@ -567,7 +567,12 @@
 
         ipc.removeAllListeners('guardar-resultado');
         ipc.on('guardar-resultado', (event, res) => {
-            if(res.success) { document.getElementById('nombreVehiculo').value = ''; cargarVehiculos(); }
+            const inputVehiculo = document.getElementById('nombreVehiculo');
+            if (!inputVehiculo) return;
+            if (res.success) { 
+                inputVehiculo.value = ''; 
+                cargarVehiculos(); 
+            }
         });
 
         window.cargarVehiculos = async function() {

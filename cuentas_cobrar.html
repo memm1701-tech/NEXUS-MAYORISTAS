@@ -377,7 +377,7 @@
                     <td style="font-weight: 900; color: #dc2626; font-size: 1.125rem;">${parseFloat(fila.total_deuda).toFixed(2)} $</td>
                     <td><div class="clientes-fade-container">${chipsClientes}</div></td>
                     <td style="text-align: center;">
-                        <button onclick="abrirDetalleDeuda(${fila.id_carga}, ${fila.vehiculo_id}, '${fila.vehiculo_nombre}', ${fila.total_deuda}, '${fila.fecha_entrada || ''}', '${fila.fecha_cierre || ''}')" class="btn-gestionar-deuda">
+                        <button onclick="abrirDetalleDeuda('${fila.id_carga}', '${fila.vehiculo_id}', '${fila.vehiculo_nombre}', ${fila.total_deuda}, '${fila.fecha_entrada || ''}', '${fila.fecha_cierre || ''}')" class="btn-gestionar-deuda">
                             <i class="material-icons" style="font-size: 16px;">visibility</i> Ver
                         </button>
                     </td>
@@ -583,7 +583,7 @@
                     desgloseFilasHTML = lineasDelCliente.map(v => {
                         const pagadoNum = parseFloat(v.pagado || 0);
                         if (v.estado_zinc === 1) {
-                            return `<span style="display: inline-block; background-color: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; border: 1px solid #bbf7d0; margin: 2px;" title="${v.cantidad} ${v.tipo_medida} de ${v.sub_medida}">ID Fila: ${v.id_detalle} [SINC: 1 - COMPLETO]</span>`;
+                            return `<span style="display: inline-block; background-color: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; border: 1px solid #bbf7d0; margin: 2px;" title="${v.cantidad} ${v.tipo_medida} de ${v.sub_medida}">ID Fila: ${v.id_detalle} [LIQUIDADO - PAGADO]</span>`;
                         } else if (pagadoNum > 0.01) {
                             return `<span style="display: inline-block; background-color: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; border: 1px solid #fde68a; margin: 2px;" title="${v.cantidad} ${v.tipo_medida} de ${v.sub_medida}">ID Fila: ${v.id_detalle} [PAGADO: ${pagadoNum.toFixed(2)} $]</span>`;
                         } else {
@@ -611,7 +611,7 @@
                 // ESCUDO DE AUDITORÍA: El reverso actúa como log, deshabilitando el botón de acción
                 const celdaAccionHTML = esReverso 
                     ? `<span style="color: #94a3b8;" title="Log de auditoría inmutable"><i class="material-icons" style="font-size: 20px; cursor: not-allowed; vertical-align: middle;">lock_outline</i></span>`
-                    : `<button onclick="revertirAbono(${abono.id_registro})" style="color: #f87171; background: none; border: none; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#f87171'" title="Revertir Pago">
+                    : `<button onclick="revertirAbono('${abono.id_registro}')" style="color: #f87171; background: none; border: none; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#f87171'" title="Revertir Pago">
                            <i class="material-icons" style="font-size: 20px;">delete_forever</i>
                        </button>`;
 

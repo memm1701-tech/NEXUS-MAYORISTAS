@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Estadísticas - NEXUS Mayorista</title>
+    <style>
+        .stats-container {
+            padding: 24px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            min-height: 100vh;
+        }
+
+        .stats-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .stats-header h1 {
+            font-size: 24px;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .date-filters {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .date-filters input {
+            padding: 6px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        .date-filters button {
+            background-color: #8cc63f;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .date-filters button:hover {
+            background-color: #7ab32e;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .kpi-title {
+            font-size: 14px;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .kpi-value.green {
+            color: #10b981;
+        }
+
+        .lists-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .list-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .list-card h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: #1e293b;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 8px;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .list-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #334155;
+        }
+
+        .item-value {
+            font-weight: bold;
+            color: #0f172a;
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .tooltip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: #e2e8f0;
+            color: #475569;
+            border-radius: 50%;
+            font-size: 11px;
+            cursor: help;
+            position: relative;
+            margin-left: 8px;
+        }
+
+        .tooltip-icon .tooltip-text {
+            visibility: hidden;
+            width: 280px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px 12px;
+            position: absolute;
+            z-index: 10;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 12px;
+            font-weight: normal;
+            line-height: 1.4;
+            text-transform: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .tooltip-icon .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1e293b transparent transparent transparent;
+        }
+
+        .tooltip-icon:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="stats-container">
+        <div class="stats-header">
+            <div>
+                <h1>Estadísticas Generales</h1>
+                <p style="color: #64748b; margin-top: 5px; font-size: 14px;">Resumen de rendimiento de ventas y ganancias.</p>
+            </div>
+            
+            <div class="date-filters">
+                <div>
+                    <label style="font-size: 12px; font-weight: bold; color: #64748b;">Desde:</label><br>
+                    <input type="date" id="fecha-inicio">
+                </div>
+                <div>
+                    <label style="font-size: 12px; font-weight: bold; color: #64748b;">Hasta:</label><br>
+                    <input type="date" id="fecha-fin">
+                </div>
+                <button onclick="cargarEstadisticas()" style="margin-top: 18px;">Filtrar</button>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card" style="position: relative;">
+                <div class="kpi-title" style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center;">
+                        💰 Ganancia Neta Total
+                        <span class="tooltip-icon">?
+                            <span class="tooltip-text">
+                                <strong>¿Cómo se calcula?</strong><br>
+                                Las ventas de <strong>contado</strong> o transferencia se suman inmediatamente a la ganancia.<br><br>
+                                Si la venta fue a <strong>crédito</strong>, la ganancia <u>NO</u> aparecerá aquí hasta que el cliente haya <strong>cancelado el total del asiento</strong> (deuda completa de esa carga).
+                            </span>
+                        </span>
+                    </div>
+                </div>
+                <div class="kpi-value green" id="ganancia-total">$0.00</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">🛒 Volumen de Ventas Total</div>
+                <div class="kpi-value" id="venta-total">$0.00</div>
+            </div>
+        </div>
+
+        <div class="lists-grid">
+            <div class="list-card">
+                <h3>👥 Top 5 Mejores Clientes</h3>
+                <div id="lista-clientes">
+                    <p style="color: #94a3b8; text-align: center;">Cargando...</p>
+                </div>
+            </div>
+            <div class="list-card">
+                <h3>📦 Top 5 Productos Más Vendidos</h3>
+                <div id="lista-productos">
+                    <p style="color: #94a3b8; text-align: center;">Cargando...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Formateador de moneda aislado
+            const _formatMoney = (amount) => {
+                return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount || 0);
+            };
+
+            const _formatNumber = (num) => {
+                return new Intl.NumberFormat('en-US').format(num || 0);
+            };
+
+            // Inicializar fechas (Mes actual por defecto)
+            const hoy = new Date();
+            const primerDiaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            
+            document.getElementById('fecha-inicio').value = primerDiaMes.toISOString().split('T')[0];
+            document.getElementById('fecha-fin').value = hoy.toISOString().split('T')[0];
+
+            window.cargarEstadisticas = async function() {
+                const fechaInicio = document.getElementById('fecha-inicio').value;
+                const fechaFin = document.getElementById('fecha-fin').value;
+
+                try {
+                    document.getElementById('ganancia-total').textContent = 'Calculando...';
+                    document.getElementById('venta-total').textContent = 'Calculando...';
+                    document.getElementById('lista-clientes').innerHTML = '<p style="color: #94a3b8; text-align: center;">Calculando...</p>';
+                    document.getElementById('lista-productos').innerHTML = '<p style="color: #94a3b8; text-align: center;">Calculando...</p>';
+
+                    // Llamar al handler IPC usando window.api o let ipc
+                    let res;
+                    if (window.api && window.api.invoke) {
+                        res = await window.api.invoke('obtener-estadisticas-dashboard', { fechaInicio, fechaFin });
+                    } else {
+                        const ipc = require('electron').ipcRenderer;
+                        res = await ipc.invoke('obtener-estadisticas-dashboard', { fechaInicio, fechaFin });
+                    }
+
+                    if (res.success) {
+                        document.getElementById('ganancia-total').textContent = _formatMoney(res.totales.ganancia_total);
+                        document.getElementById('venta-total').textContent = _formatMoney(res.totales.venta_total);
+
+                        const listaClientes = document.getElementById('lista-clientes');
+                        listaClientes.innerHTML = '';
+                        if (res.topClientes.length === 0) {
+                            listaClientes.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px 0;">No hay ventas registradas en este periodo.</p>';
+                        } else {
+                            res.topClientes.forEach((c, index) => {
+                                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '👤';
+                                listaClientes.innerHTML += `
+                                    <div class="list-item">
+                                        <div class="item-name">${medal} ${c.cliente}</div>
+                                        <div class="item-value" style="color: #10b981;">${_formatMoney(c.total_comprado)}</div>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        const listaProductos = document.getElementById('lista-productos');
+                        listaProductos.innerHTML = '';
+                        if (res.topProductos.length === 0) {
+                            listaProductos.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px 0;">No hay ventas registradas en este periodo.</p>';
+                        } else {
+                            res.topProductos.forEach((p, index) => {
+                                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '📦';
+                                listaProductos.innerHTML += `
+                                    <div class="list-item">
+                                        <div class="item-name">${medal} ${p.tipo_medida}</div>
+                                        <div class="item-value" style="background: #e0f2fe; color: #0284c7;">${_formatNumber(p.total_vendido)} UND</div>
+                                    </div>
+                                `;
+                            });
+                        }
+                    } else {
+                        console.error("Error al obtener estadísticas:", res.error);
+                        alert("Hubo un error cargando las estadísticas: " + res.error);
+                    }
+                } catch (error) {
+                    console.error("IPC Error:", error);
+                    alert("Error de conexión con la base de datos local.");
+                }
+            };
+
+            // Cargar automáticamente al abrir la vista
+            setTimeout(window.cargarEstadisticas, 300);
+        })();
+    </script>
+</body>
+</html>

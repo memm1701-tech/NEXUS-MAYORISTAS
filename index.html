@@ -616,7 +616,7 @@
                         rol: 'admin',
                         idEmpresa: idEmpresa,
                         email: email,
-                        fecha_login: new Date().toISOString()
+                        fecha_login:(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000)).toISOString()
                     };
                     
                     console.log('%c ✅ [SESIÓN A GUARDAR] Objeto guardado localmente:', 'color: #10b981; font-weight: bold; font-size: 13px;', sesionData);

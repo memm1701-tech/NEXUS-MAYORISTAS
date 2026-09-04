@@ -428,17 +428,16 @@
         vista2.classList.remove('hidden');
     };
 
-    async function cargarVehiculosFlujoA() {
+    async function cargarVehiculosFlujoA(silencioso = false) {
         if (!ipc) return;
         const vehiculosCrudos = await ipc.invoke('obtener-vehiculos');
         
-        // MODIFICADO: Ahora consultamos si hay una carga ACTIVA (Cabecera)
         vehiculosCache = await Promise.all(vehiculosCrudos.map(async (v) => {
             const cargaActiva = await ipc.invoke('obtener-carga-activa', v.id);
-            return { ...v, tieneCarga: cargaActiva !== null }; // Si no es null, está ocupado
+            return { ...v, tieneCarga: cargaActiva !== null };
         }));
         
-        renderizarGaleriaA(vehiculosCache);
+        filtrarVehiculos(); // Renderiza respetando la búsqueda actual
     }
 
     window.filtrarVehiculos = function() {
@@ -454,11 +453,10 @@
             return;
         }
         
-        // Utilizamos la clase CSS forzada '.texto-estado-verde' para el mensaje de Ocupado
         grid.innerHTML = lista.map(v => {
-            const accionClick = v.tieneCarga 
+            const accionClick = v.tieneCarga  
                 ? `mostrarModal('error', 'Vehículo Ocupado', 'No puede añadirle una nueva carga a un vehículo que aún tiene una carga.')` 
-                : `seleccionarEsteVehiculo(${v.id}, '${v.nombre}')`;
+                : `seleccionarEsteVehiculo('${v.id}', '${v.nombre}')`;
                 
             const etiquetaEstado = v.tieneCarga 
                 ? `<span class="texto-estado-verde">Este vehículo ya tiene una carga asignada</span>` 
@@ -514,6 +512,39 @@
         }
     };
 
+    window.mostrarToastError = function(mensaje) {
+        const toast = document.createElement('div');
+        toast.innerHTML = `<i class="material-icons" style="vertical-align: middle; margin-right: 8px;">error_outline</i> ${mensaje}`;
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.backgroundColor = '#ef4444';
+        toast.style.color = 'white';
+        toast.style.padding = '12px 24px';
+        toast.style.borderRadius = '8px';
+        toast.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+        toast.style.fontWeight = 'bold';
+        toast.style.zIndex = '99999';
+        toast.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+        toast.style.transform = 'translateY(-20px)';
+        toast.style.opacity = '0';
+        toast.style.display = 'flex';
+        toast.style.alignItems = 'center';
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.transform = 'translateY(0)';
+            toast.style.opacity = '1';
+        }, 10);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3500);
+    };
+
     window.agregarItemAlaCarga = function() {
         const cat = document.getElementById('nc-categoria');
         const sub = document.getElementById('nc-subtipo');
@@ -522,8 +553,10 @@
         const toggleFrontera = document.getElementById('toggle-precio-frontera');
         const esFrontera = toggleFrontera ? toggleFrontera.checked : false;
 
-        if(!cat.value || !sub.value || !cant.value || parseInt(cant.value) <= 0) return;
-        if (!esFrontera && (pcompra.value === '' || parseFloat(pcompra.value) < 0)) return;
+        if(!cat.value) { mostrarToastError('Por favor, seleccione la categoría'); return; }
+        if(!sub.value) { mostrarToastError('Por favor, seleccione la variación'); return; }
+        if(!cant.value || parseInt(cant.value) <= 0) { mostrarToastError('Por favor, coloque la cantidad'); return; }
+        if(!esFrontera && (pcompra.value === '' || parseFloat(pcompra.value) < 0)) { mostrarToastError('Por favor, coloque el precio de compra o marque Fijar Precio en Facturación'); return; }
 
         listaCargaActual.push({
             id: Date.now(),
@@ -566,7 +599,7 @@
                 <td>${item.subtipo}</td>
                 <td class="font-bold text-blue-600 text-lg">${item.cantidad}</td>
                 <td>${pCompraDisplay}</td>
-                <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem(${item.id})"><i class="material-icons">delete</i></button></td>
+                <td style="text-align: right;"><button class="cargas-btn-del" onclick="eliminarItem('${item.id}')"><i class="material-icons">delete</i></button></td>
             </tr>`;
         }).join('');
 
@@ -577,7 +610,7 @@
     };
 
     window.eliminarItem = function(id) { 
-        listaCargaActual = listaCargaActual.filter(i => i.id !== id); 
+        listaCargaActual = listaCargaActual.filter(i => String(i.id) !== String(id)); 
         renderizarTablaCarga(); 
     };
 
@@ -610,22 +643,23 @@
         volverAlMenuPrincipal();
     };
 
-    window.abrirGestionCargas = async function() {
-        vista1.classList.add('hidden');
-        vistaGestion2.classList.remove('hidden');
-        contenedor.classList.remove('items-center', 'justify-center');
-        contenedor.classList.add('items-start');
+    window.abrirGestionCargas = async function(silencioso = false) {
+        if (!silencioso) {
+            vista1.classList.add('hidden');
+            vistaGestion2.classList.remove('hidden');
+            contenedor.classList.remove('items-center', 'justify-center');
+            contenedor.classList.add('items-start');
+        }
         
         if (!ipc) return;
         const vehiculosCrudos = await ipc.invoke('obtener-vehiculos');
         
-        // MODIFICADO: Ahora consultamos si hay una carga ACTIVA para la Auditoría
         vehiculosCache = await Promise.all(vehiculosCrudos.map(async (v) => {
             const cargaActiva = await ipc.invoke('obtener-carga-activa', v.id);
             return { ...v, tieneCarga: cargaActiva !== null };
         }));
 
-        renderizarGaleriaGestion(vehiculosCache);
+        filtrarVehiculosGestion(); // Renderiza usando el filtro actual
     };
 
     window.volverAlMenuPrincipalDesdeGestion = function() {
@@ -665,7 +699,7 @@
                 : ``;
 
             return `
-            <div class="vehiculo-card-mini vehiculo-card-gestion" onclick="auditarVehiculo(${v.id}, '${v.nombre}')">
+            <div class="vehiculo-card-mini vehiculo-card-gestion" onclick="auditarVehiculo('${v.id}', '${v.nombre}')">
                 <i class="material-icons text-3xl mb-2">inventory_2</i>
                 <span class="text-xs font-black text-slate-700 uppercase break-words px-1 text-center">${v.nombre}</span>
                 ${etiquetaEstado}
@@ -738,10 +772,10 @@
         if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) return;
 
         if (typeof vistaSeleccionVehiculo !== 'undefined' && !vistaSeleccionVehiculo.classList.contains('hidden')) {
-            await cargarVehiculosNuevos();
+            await cargarVehiculosFlujoA();
         }
         if (typeof vistaGestion2 !== 'undefined' && !vistaGestion2.classList.contains('hidden')) {
-            await cargarVehiculosGestion();
+            await abrirGestionCargas(true);
         }
         if (typeof vistaGestion3 !== 'undefined' && !vistaGestion3.classList.contains('hidden') && vehiculoAuditoriaId) {
             await cargarTablaBaseDatos();
