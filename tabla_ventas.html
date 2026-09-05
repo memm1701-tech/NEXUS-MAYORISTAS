@@ -1012,7 +1012,13 @@
         
         const metodosExtra = await ipc.invoke('obtener-metodos-pago');
         if (metodosExtra) {
-            metodosPagoGlobal = ["CRÉDITO", ...metodosExtra.map(m => m.nombre)];
+            const extraLimpios = metodosExtra
+                .map(m => m.nombre)
+                .filter(nombre => {
+                    const norm = (nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                    return !norm.startsWith('CREDIT');
+                });
+            metodosPagoGlobal = ["CRÉDITO", ...extraLimpios];
         }
 
         try {
@@ -1308,10 +1314,12 @@
 
         // 2. DISPARO INMEDIATO AL VPS (Tiempo Real Instantáneo)
         if (navigator.onLine && data.id_carga) {
+            const normMetodo = (data.metodo_pago || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+            const esCreditoVenta = normMetodo.startsWith('CREDIT');
             const payloadDirecto = {
                 ...data,
                 id_empresa: idEmpresaLocal || '',
-                pago_divisa: (data.metodo_pago === 'CRÉDITO' || data.metodo_pago === 'CREDITO') ? 0 : ((parseFloat(data.cantidad) || 0) * (parseFloat(data.precio) || 0)),
+                pago_divisa: esCreditoVenta ? 0 : ((parseFloat(data.cantidad) || 0) * (parseFloat(data.precio) || 0)),
                 pago_movil: 0
             };
             fetch(`${SERVER_URL}/api/maestro/ventas_cargas`, {
@@ -1343,7 +1351,8 @@
             const subtotal = cant * precio;
             totalVenta += subtotal;
 
-            if (metodo === "CRÉDITO") {
+            const normMetodo = (metodo || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+            if (normMetodo.startsWith("CREDIT")) {
                 totalCredito += subtotal;
             } else if (metodo !== "") {
                 totalContado += subtotal;
@@ -1660,7 +1669,8 @@
                 if (precio <= 0) erroresFila.push("Falta precio de venta");
                 if (!tipo) erroresFila.push("Falta seleccionar producto");
                 if (!metodo) erroresFila.push("Falta método de pago");
-                if ((metodo === 'CRÉDITO' || metodo === 'CREDITO') && !cliente) {
+                const normMetodo = (metodo || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                if (normMetodo.startsWith('CREDIT') && !cliente) {
                     erroresFila.push("Falta cliente (obligatorio en Crédito)");
                 }
                 const requiereBanco = ['PAGO MÓVIL', 'PAGO MOVIL', 'TRANSFERENCIA', 'PUNTO', 'DEBITO', 'TARJETA'].includes(metodo);

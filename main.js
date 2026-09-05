@@ -13,6 +13,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
     else console.log('Conectado a SQLite en:', dbPath);
 });
 
+// Helper universal de Zona Horaria Venezuela (UTC-4 / America/Caracas)
+function fechaVenezuelaAhora() {
+    return new Intl.DateTimeFormat('sv-SE', {
+        timeZone: 'America/Caracas',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    }).format(new Date()); // Produce "YYYY-MM-DD HH:mm:ss"
+}
+
 const QUERIES_TABLAS = [
     `CREATE TABLE IF NOT EXISTS vehiculos (
         id TEXT PRIMARY KEY,
@@ -175,7 +184,7 @@ const QUERIES_TABLAS = [
     )`,
     `CREATE TABLE IF NOT EXISTS metodos_pago (
         id TEXT PRIMARY KEY,
-        nombre TEXT UNIQUE NOT NULL,
+        nombre TEXT NOT NULL,
         estado INTEGER DEFAULT 1,
         id_empresa TEXT,
         sync_status INTEGER DEFAULT 0,
@@ -448,10 +457,10 @@ ipcMain.on('guardar-abono-deuda', async (event, data) => {
         
         let fechaAbono = data.fecha || data.fecha_abono;
         if (!fechaAbono) {
-            fechaAbono = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            fechaAbono = fechaVenezuelaAhora();
         } else if (!fechaAbono.includes('T') && !fechaAbono.includes(' ')) {
-            const ahora = new Date();
-            fechaAbono = `${fechaAbono} ${ahora.toISOString().split('T')[1].substring(0, 8)}`;
+            const horaActual = fechaVenezuelaAhora().split(' ')[1];
+            fechaAbono = `${fechaAbono} ${horaActual}`;
         }
 
         let grupoPago = data.grupo_pago || null;
@@ -523,16 +532,24 @@ const SERVER_URL_API = 'http://68.168.218.147:4020';
 async function eliminarRemoto(tabla, id) {
     if (!id) return;
     try {
-        const res = await fetch(`${SERVER_URL_API}/api/maestro/${tabla}/${id}`, {
-            method: 'DELETE'
+        db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], async (err, row) => {
+            const idEmpresa = row ? row.valor : '';
+            const url = idEmpresa 
+                ? `${SERVER_URL_API}/api/maestro/${tabla}/${id}?id_empresa=${idEmpresa}`
+                : `${SERVER_URL_API}/api/maestro/${tabla}/${id}`;
+            try {
+                const res = await fetch(url, { method: 'DELETE' });
+                if (res.ok) {
+                    console.log(`[Sync DELETE Éxito] Eliminado ID ${id} de '${tabla}' en el VPS.`);
+                } else {
+                    console.warn(`[Sync DELETE Respuesta Error] '${tabla}' ID ${id}: ${res.status}`);
+                }
+            } catch (fetchErr) {
+                console.error(`[Sync DELETE Error Red] No se pudo conectar al VPS para eliminar '${tabla}' ID ${id}:`, fetchErr.message);
+            }
         });
-        if (res.ok) {
-            console.log(`[Sync DELETE Éxito] Eliminado ID ${id} de '${tabla}' en el VPS.`);
-        } else {
-            console.warn(`[Sync DELETE Respuesta Error] '${tabla}' ID ${id}: ${res.status}`);
-        }
     } catch (e) {
-        console.error(`[Sync DELETE Error Red] No se pudo conectar al VPS para eliminar '${tabla}' ID ${id}:`, e.message);
+        console.error(`[Sync DELETE Error] Error en eliminarRemoto para '${tabla}' ID ${id}:`, e.message);
     }
 }
 
@@ -605,24 +622,67 @@ ipcMain.on('eliminar-subtipo-maestro', (event, id) => {
 // --- IPC para Métodos de Pago ---
 ipcMain.handle('obtener-metodos-pago', async () => {
     return new Promise((res) => {
-        db.all(`SELECT * FROM metodos_pago WHERE estado = 1 AND COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
+        db.all(`SELECT * FROM metodos_pago WHERE estado = 1 AND COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => {
+            if (err || !rows) return res([]);
+            // Filtrar para que la tabla de ventas nunca reciba ningún crédito extra de la base de datos
+            const filtrados = rows.filter(r => {
+                const norm = (r.nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                return !norm.startsWith('CREDIT');
+            });
+            res(filtrados);
+        });
     });
 });
 
 ipcMain.handle('obtener-metodos-pago-config', async () => {
     return new Promise((res) => {
-        db.all(`SELECT * FROM metodos_pago WHERE COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => res(rows || []));
+        db.all(`SELECT * FROM metodos_pago WHERE COALESCE(estado_logico, 1) != -1 ORDER BY nombre ASC`, [], (err, rows) => {
+            if (err || !rows) return res([]);
+            // Asegurar que solo aparezca un único registro de crédito en la lista de configuración
+            let primerCreditoVisto = false;
+            const depurados = [];
+            for (const r of rows) {
+                const norm = (r.nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                if (norm.startsWith('CREDIT')) {
+                    if (!primerCreditoVisto) {
+                        primerCreditoVisto = true;
+                        depurados.push({ ...r, nombre: 'CRÉDITO' });
+                    }
+                } else {
+                    depurados.push(r);
+                }
+            }
+            res(depurados);
+        });
     });
 });
 
 ipcMain.on('guardar-metodo-pago', (event, nombre) => {
+    const nombreLimpio = (nombre || '').trim().toUpperCase();
+    if (!nombreLimpio) return;
+
+    // Normalizar para detectar cualquier variante de crédito (con o sin tilde)
+    const norm = nombreLimpio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+    if (norm.startsWith('CREDIT')) {
+        event.reply('resultado-operacion', { 
+            success: false, 
+            msg: 'El método CRÉDITO es un método reservado del sistema y ya se encuentra activo.' 
+        });
+        return;
+    }
+
     db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (err, row) => {
         const idEmpresa = row ? row.valor : null;
         const newId = crypto.randomUUID();
-        db.run(`INSERT INTO metodos_pago (id, id_empresa, sync_status, nombre) VALUES (?, ?, 0, ?)`, [newId, idEmpresa, nombre], function(err) {
-            if (err) event.reply('resultado-operacion', { success: false, msg: err.message });
-            else event.reply('resultado-operacion', { success: true });
-        });
+        
+        db.run(
+            `INSERT INTO metodos_pago (id, id_empresa, sync_status, nombre, estado, estado_logico) VALUES (?, ?, 0, ?, 1, 1)`,
+            [newId, idEmpresa, nombreLimpio],
+            function(errIns) {
+                if (errIns) event.reply('resultado-operacion', { success: false, msg: errIns.message });
+                else event.reply('resultado-operacion', { success: true });
+            }
+        );
     });
 });
 
@@ -633,8 +693,20 @@ ipcMain.on('cambiar-estado-metodo-pago', (event, { id, estado }) => {
 });
 
 ipcMain.on('eliminar-metodo-pago', (event, id) => {
-    eliminarRemoto('metodos_pago', id);
-    db.run(`UPDATE metodos_pago SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.get(`SELECT nombre FROM metodos_pago WHERE id = ?`, [id], (err, row) => {
+        if (row) {
+            const norm = (row.nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+            if (norm.startsWith('CREDIT')) {
+                event.reply('resultado-operacion', { 
+                    success: false, 
+                    msg: 'El método CRÉDITO es indispensable para el sistema y no puede ser eliminado.' 
+                });
+                return;
+            }
+        }
+        eliminarRemoto('metodos_pago', id);
+        db.run(`UPDATE metodos_pago SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    });
 });
 
 // --- IPC para Vehículos e Inventario ---
@@ -649,9 +721,23 @@ ipcMain.on('guardar-vehiculo', (event, nombre) => {
     });
 });
 
+ipcMain.handle('verificar-carga-activa-vehiculo', async (event, vehiculo_id) => {
+    return new Promise((resolve) => {
+        db.get(`SELECT COUNT(*) as total FROM vehiculo_cargas WHERE vehiculo_id = ? AND estado = 'ACTIVA' AND COALESCE(estado_logico, 1) != -1`, [vehiculo_id], (err, row) => {
+            resolve(row ? (row.total > 0) : false);
+        });
+    });
+});
+
 ipcMain.on('eliminar-vehiculo', (event, id) => {
-    eliminarRemoto('vehiculos', id);
-    db.run(`UPDATE vehiculos SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    db.get(`SELECT COUNT(*) as total FROM vehiculo_cargas WHERE vehiculo_id = ? AND estado = 'ACTIVA' AND COALESCE(estado_logico, 1) != -1`, [id], (err, row) => {
+        if (row && row.total > 0) {
+            event.reply('resultado-operacion', { success: false, msg: 'No se puede eliminar: el vehículo tiene una carga activa.' });
+            return;
+        }
+        eliminarRemoto('vehiculos', id);
+        db.run(`UPDATE vehiculos SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], () => event.reply('resultado-operacion', { success: true }));
+    });
 });
 
 ipcMain.handle('obtener-vehiculos', async () => {
@@ -695,9 +781,15 @@ ipcMain.on('eliminar-fila-venta', (event, data) => {
 });
 
 ipcMain.on('eliminar-carga-vehiculo', (event, carga_id) => {
-    eliminarRemoto('vehiculo_cargas', carga_id);
-    db.run(`UPDATE vehiculo_cargas SET estado_logico = -1, sync_status = 0 WHERE id = ? OR id_carga = ?`, [carga_id, carga_id], function(err) {
-        event.reply('eliminar-carga-resultado', { success: !err });
+    db.get(`SELECT estado FROM vehiculo_cargas WHERE (id = ? OR id_carga = ?) AND COALESCE(estado_logico, 1) != -1`, [carga_id, carga_id], (err, row) => {
+        if (row && (row.estado || '').toUpperCase() === 'ACTIVA') {
+            event.reply('eliminar-carga-resultado', { success: false, msg: 'No se puede eliminar: la carga está ACTIVA. Primero cierre la carga y después podrá eliminarla.' });
+            return;
+        }
+        eliminarRemoto('vehiculo_cargas', carga_id);
+        db.run(`UPDATE vehiculo_cargas SET estado_logico = -1, sync_status = 0 WHERE id = ? OR id_carga = ?`, [carga_id, carga_id], function(err2) {
+            event.reply('eliminar-carga-resultado', { success: !err2 });
+        });
     });
 });
 
@@ -1650,6 +1742,9 @@ ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos
             'configuracion_sistema': 'id',
             'metodos_pago': 'id',
             'proveedores': 'id',
+            'deudas_proveedores': 'id',
+            'abonos_proveedores': 'id',
+            'movimientos_cestas': 'id',
             'cuentas_bancarias': 'id_cuenta',
             'movimientos_bancarios': 'id_movimiento'
         };
@@ -1691,6 +1786,18 @@ ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos
                     }
                 }
 
+                // Si la tabla es ventas_cargas, reconciliar id_detalle local con el remoto si ya existe el par (id_carga, fila_id)
+                if (tabla === 'ventas_cargas') {
+                    datos.forEach(r => {
+                        if (r.id_carga && r.fila_id && r.id_detalle) {
+                            db.run(
+                                `UPDATE ventas_cargas SET id_detalle = ? WHERE id_carga = ? AND fila_id = ? AND (id_detalle IS NULL OR id_detalle != ?)`,
+                                [r.id_detalle, r.id_carga, r.fila_id, r.id_detalle]
+                            );
+                        }
+                    });
+                }
+
                 let completed = 0;
                 let hasError = false;
 
@@ -1702,7 +1809,14 @@ ipcMain.handle('insertar-o-actualizar-lote-remoto', async (event, { tabla, datos
                     const valores = Object.values(registro);
                     const placeholders = columnas.map(() => '?').join(',');
 
-                    const query = `INSERT OR REPLACE INTO ${tabla} (${columnas.join(',')}) VALUES (${placeholders})`;
+                    let query;
+                    if (pk && columnas.includes(pk)) {
+                        const updateCols = columnas.filter(c => c !== pk);
+                        const setClause = updateCols.map(c => `${c} = excluded.${c}`).join(', ');
+                        query = `INSERT INTO ${tabla} (${columnas.join(',')}) VALUES (${placeholders}) ON CONFLICT(${pk}) DO UPDATE SET ${setClause}`;
+                    } else {
+                        query = `INSERT OR REPLACE INTO ${tabla} (${columnas.join(',')}) VALUES (${placeholders})`;
+                    }
 
                     db.run(query, valores, (err) => {
                         if (err) {
@@ -1938,23 +2052,23 @@ ipcMain.on('auto-guardar-venta-carga', (event, data) => {
     db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConfig, rowConfig) => {
         let idEmpresa = rowConfig ? rowConfig.valor : null;
         
-        // El INSERT OR REPLACE usa el UNIQUE(id_carga, fila_id) para actualizar si ya existe
-        db.run(`INSERT OR REPLACE INTO ventas_cargas 
-            (id_empresa, sync_status, id_detalle, fila_id, id_carga, vehiculo_id, fecha_entrada, cliente, tipo_medida, sub_medida, precio, cantidad, metodo_pago, banco)
-            VALUES (
-                ?, 0,
-                (SELECT id_detalle FROM ventas_cargas WHERE id_carga = ? AND fila_id = ?),
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            )`,
-        [idEmpresa, id_carga, fila_id, fila_id, id_carga, vehiculo_id, fecha_entrada, cliente, tipo_medida, sub_medida, precio, cantidad, metodo_pago, banco], 
-        async (err) => {
-            if (err) {
-                console.error("Error en autoguardado de venta:", err.message);
-            } else if (cliente) {
-                // EL GATILLO: Si editas la celda de un cliente que ya tiene abonos,
-                // el sistema re-calcula la cascada para que su dinero arrope la nueva modificación.
-                await recalcularPagosCliente(id_carga, cliente);
-            }
+        // Buscar si ya existe id_detalle para esta fila
+        db.get(`SELECT id_detalle FROM ventas_cargas WHERE id_carga = ? AND fila_id = ?`, [id_carga, fila_id], (errDet, rowDet) => {
+            const idDetalle = (rowDet && rowDet.id_detalle) ? rowDet.id_detalle : crypto.randomUUID();
+            
+            db.run(`INSERT OR REPLACE INTO ventas_cargas 
+                (id_empresa, sync_status, id_detalle, fila_id, id_carga, vehiculo_id, fecha_entrada, cliente, tipo_medida, sub_medida, precio, cantidad, metodo_pago, banco)
+                VALUES (?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [idEmpresa, idDetalle, fila_id, id_carga, vehiculo_id, fecha_entrada, cliente, tipo_medida, sub_medida, precio, cantidad, metodo_pago, banco], 
+            async (err) => {
+                if (err) {
+                    console.error("Error en autoguardado de venta:", err.message);
+                } else if (cliente) {
+                    // EL GATILLO: Si editas la celda de un cliente que ya tiene abonos,
+                    // el sistema re-calcula la cascada para que su dinero arrope la nueva modificación.
+                    await recalcularPagosCliente(id_carga, cliente);
+                }
+            });
         });
     });
 });
@@ -2069,7 +2183,7 @@ ipcMain.handle('agregar-deuda-proveedor', async (event, data) => {
         db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
             let idEmpresa = rowConfig ? rowConfig.valor : null;
             db.run(`INSERT OR IGNORE INTO proveedores (id_empresa, sync_status, nombre) VALUES (?, 0, ?)`, [idEmpresa, provNombre], () => {
-                const fechaFinal = fecha || new Date().toISOString();
+                const fechaFinal = fecha || fechaVenezuelaAhora();
                 const cant = parseFloat(cantidad) || 1;
                 const prec = parseFloat(precio) || 0;
                 const total = parseFloat(monto) || (cant * prec);
@@ -2099,7 +2213,7 @@ ipcMain.handle('registrar-abono-proveedor', async (event, data) => {
         }
 
         const provNombre = proveedor.trim().toUpperCase();
-        const fechaFinal = fecha || new Date().toISOString();
+        const fechaFinal = fecha || fechaVenezuelaAhora();
 
         db.get("SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'", [], (errConfig, rowConfig) => {
             let idEmpresa = rowConfig ? rowConfig.valor : null;
@@ -2224,16 +2338,18 @@ ipcMain.handle('obtener-factura-global-proveedor', async (event, nombreProveedor
 });
 
 ipcMain.handle('eliminar-deuda-proveedor', async (event, id) => {
+    eliminarRemoto('deudas_proveedores', id);
     return new Promise((resolve) => {
-        db.run(`UPDATE deudas_proveedores SET estado_logico = 0 WHERE id = ?`, [id], (err) => {
+        db.run(`UPDATE deudas_proveedores SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], (err) => {
             resolve({ success: !err });
         });
     });
 });
 
 ipcMain.handle('eliminar-abono-proveedor', async (event, id) => {
+    eliminarRemoto('abonos_proveedores', id);
     return new Promise((resolve) => {
-        db.run(`UPDATE abonos_proveedores SET estado_logico = 0 WHERE id = ?`, [id], (err) => {
+        db.run(`UPDATE abonos_proveedores SET estado_logico = -1, sync_status = 0 WHERE id = ?`, [id], (err) => {
             resolve({ success: !err });
         });
     });
@@ -2416,4 +2532,97 @@ ipcMain.handle('descargar-update', async (event, urlDescarga) => {
     } catch (err) {
         return { success: false, error: err.message };
     }
+});
+
+// GESTIÓN DE AJUSTES EN CARGAS CERRADAS
+ipcMain.handle('obtener-ajustes-carga', async (event, id_carga) => {
+    return new Promise((resolve) => {
+        db.all(
+            `SELECT * FROM ajustes_cargas_cerradas WHERE id_carga = ? AND COALESCE(estado_logico, 1) != -1 ORDER BY fecha_ajuste DESC`,
+            [id_carga],
+            (err, rows) => {
+                if (err) {
+                    console.error("Error obteniendo ajustes de carga:", err);
+                    resolve([]);
+                } else {
+                    resolve(rows || []);
+                }
+            }
+        );
+    });
+});
+
+ipcMain.handle('modificar-linea-carga-cerrada', async (event, { id_carga, id_detalle, cambios, motivo }) => {
+    return new Promise((resolve) => {
+        db.get(`SELECT * FROM ventas_cargas WHERE id_detalle = ? OR (id_carga = ? AND fila_id = ?)`, [id_detalle, id_carga, id_detalle], (errVenta, ventaActual) => {
+            if (errVenta || !ventaActual) {
+                return resolve({ success: false, msg: 'No se encontró la fila de venta a modificar.' });
+            }
+
+            db.get(`SELECT valor FROM configuracion_sistema WHERE clave = 'owner_id_empresa'`, [], (errConf, rowConf) => {
+                const idEmpresa = rowConf ? rowConf.valor : null;
+                const detalleIdReal = ventaActual.id_detalle;
+
+                db.serialize(() => {
+                    // 1. Registrar el historial de ajustes por cada campo modificado
+                    for (const [campo, valorNuevo] of Object.entries(cambios)) {
+                        const valorAntiguo = ventaActual[campo];
+                        if (String(valorAntiguo) !== String(valorNuevo)) {
+                            const ajusteId = crypto.randomUUID();
+                            db.run(
+                                `INSERT INTO ajustes_cargas_cerradas (id_ajuste, id_carga, id_detalle, campo, valor_anterior, valor_nuevo, motivo, id_empresa, sync_status) 
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+                                [ajusteId, id_carga, detalleIdReal, campo, String(valorAntiguo || ''), String(valorNuevo || ''), motivo, idEmpresa]
+                            );
+                        }
+                    }
+
+                    // 2. Actualizar los campos en ventas_cargas
+                    const setCols = [];
+                    const setVals = [];
+                    for (const [campo, valorNuevo] of Object.entries(cambios)) {
+                        setCols.push(`${campo} = ?`);
+                        setVals.push(valorNuevo);
+                    }
+                    setCols.push(`sync_status = 0`);
+                    setCols.push(`updated_at = datetime('now', 'localtime')`);
+                    setVals.push(detalleIdReal);
+
+                    db.run(`UPDATE ventas_cargas SET ${setCols.join(', ')} WHERE id_detalle = ?`, setVals, (errUpd) => {
+                        if (errUpd) {
+                            return resolve({ success: false, msg: errUpd.message });
+                        }
+
+                        // 3. Recalcular totales de la carga cerrada
+                        db.all(`SELECT precio, cantidad, metodo_pago FROM ventas_cargas WHERE id_carga = ? AND COALESCE(estado_logico, 1) != -1`, [id_carga], (errCalc, filas) => {
+                            let totalVenta = 0;
+                            let totalCredito = 0;
+                            let totalContado = 0;
+
+                            (filas || []).forEach(f => {
+                                const cant = parseFloat(f.cantidad) || 0;
+                                const prec = parseFloat(String(f.precio || '0').replace('$', '').trim()) || 0;
+                                const sub = cant * prec;
+                                totalVenta += sub;
+                                const mNorm = (f.metodo_pago || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                                if (mNorm.startsWith('CREDIT')) totalCredito += sub;
+                                else totalContado += sub;
+                            });
+
+                            db.run(
+                                `UPDATE cargas_cerradas SET total_venta = ?, total_credito = ?, total_contado = ?, sync_status = 0, updated_at = datetime('now', 'localtime') WHERE id_carga = ?`,
+                                [totalVenta, totalCredito, totalContado, id_carga],
+                                () => {
+                                    resolve({
+                                        success: true,
+                                        nuevosTotales: { totalVenta, totalCredito, totalContado }
+                                    });
+                                }
+                            );
+                        });
+                    });
+                });
+            });
+        });
+    });
 });

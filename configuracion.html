@@ -118,6 +118,35 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- GESTIÓN DE CARGAS DE UN VEHÍCULO -->
+            <div id="panelCargasVehiculo" class="panel mb-8 hidden" style="border: 2px solid #0284c7; background: #f0f9ff;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0; color: #0369a1; font-size: 1.1em; font-weight: 800;">
+                        <i class="material-icons" style="vertical-align: middle;">local_shipping</i> 
+                        Cargas Asignadas al Vehículo: <span id="nombreVehiculoSeleccionado" style="text-decoration: underline;"></span>
+                    </h3>
+                    <button onclick="cerrarConfiguracionVehiculo()" class="btn-secondary" style="background: #e0f2fe; color: #0369a1;">Cerrar</button>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Carga</th>
+                                <th>Fecha Entrada</th>
+                                <th>Mercancía / Resumen</th>
+                                <th>Estado</th>
+                                <th style="text-align: right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaCargasVehiculo">
+                            <tr><td colspan="5" class="empty-message">Cargando cargas...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <h2 class="section-title"><i class="material-icons">payments</i> 2. Métodos de Pago</h2>
             <div class="panel mb-8">
                 <div class="grid-2" style="align-items: end; margin-bottom: 15px;">
@@ -306,13 +335,13 @@
 <!-- MODAL PERSONALIZADO DE CONFIRMACIÓN EN ESCRITORIO -->
 <div id="modalConfirmacionCustom" class="modal-overlay hidden">
     <div class="modal-box">
-        <div class="modal-icon">
+        <div id="modalIconoCustom" class="modal-icon">
             <i class="material-icons">delete_forever</i>
         </div>
-        <h3 class="modal-title">¿Confirmar Eliminación?</h3>
+        <h3 id="modalTituloCustom" class="modal-title">¿Confirmar Eliminación?</h3>
         <p id="modalMensajeCustom" class="modal-msg">¿Estás seguro de realizar esta acción?</p>
         <div class="modal-actions">
-            <button onclick="cerrarModalConfirmacion()" class="btn-modal-cancel">Cancelar</button>
+            <button id="btnCancelarCustom" onclick="cerrarModalConfirmacion()" class="btn-modal-cancel">Cancelar</button>
             <button id="btnConfirmarCustom" class="btn-modal-danger">Aceptar</button>
         </div>
     </div>
@@ -575,20 +604,36 @@
             }
         });
 
+        ipc.removeAllListeners('resultado-operacion');
+        ipc.on('resultado-operacion', (event, res) => {
+            if (res && !res.success && res.msg) {
+                confirmarAccionCustom(res.msg, null, true);
+            } else {
+                const inputMetodo = document.getElementById('nombreMetodoPago');
+                if (inputMetodo) inputMetodo.value = '';
+                cargarVehiculos();
+                cargarUnidadesMaestras();
+                cargarMetodosPago();
+            }
+        });
+
         window.cargarVehiculos = async function() {
             const tbody = document.getElementById('listaVehiculos');
             if (!tbody) return;
             const vehiculos = await ipc.invoke('obtener-vehiculos');
             if (!vehiculos || vehiculos.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="empty-message">Sin vehículos.</td></tr>'; return; }
-            tbody.innerHTML = vehiculos.map(v => `
+            tbody.innerHTML = vehiculos.map(v => {
+                const nombreEscapado = (v.nombre || '').replace(/'/g, "\\'");
+                return `
                 <tr>
                     <td class="font-bold text-gray-800"><i class="material-icons align-middle text-gray-400 mr-2">local_shipping</i>${v.nombre}</td>
                     <td class="text-gray-500 font-mono">${new Date(v.fecha_creacion).toLocaleDateString()}</td>
                     <td style="text-align: right; display: flex; justify-content: flex-end; gap: 8px; align-items: center;">
-                        <button onclick="abrirConfiguracionVehiculo(${v.id}, '${v.nombre}')" class="btn-secondary">Configurar Cargas</button>
-                        <button onclick="eliminarVehiculo(${v.id})" class="btn-del" title="Eliminar"><i class="material-icons">delete</i></button>
+                        <button onclick="abrirConfiguracionVehiculo('${v.id}', '${nombreEscapado}')" class="btn-secondary">Configurar Cargas</button>
+                        <button onclick="eliminarVehiculo('${v.id}', '${nombreEscapado}')" class="btn-del" title="Eliminar"><i class="material-icons">delete</i></button>
                     </td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
         };
 
         // MAESTROS
@@ -619,7 +664,7 @@
                 return;
             }
 
-            tbody.innerHTML = lista.map(u => `<tr><td class="font-bold">${u.nombre}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarUnidad(${u.id})"><i class="material-icons">delete</i></button></td></tr>`).join('');
+            tbody.innerHTML = lista.map(u => `<tr><td class="font-bold">${u.nombre}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarUnidad('${u.id}')"><i class="material-icons">delete</i></button></td></tr>`).join('');
             
             const opcionesPadreHtml = lista.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
             const opcionesCargaHtml = '<option value="">Seleccione...</option>' + lista.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
@@ -648,13 +693,32 @@
         };
 
         // SISTEMA DE MODAL PERSONALIZADO
-        window.confirmarAccionCustom = function(mensaje, onConfirm) {
-            document.getElementById('modalMensajeCustom').innerText = mensaje;
-            const modal = document.getElementById('modalConfirmacionCustom');
+        window.confirmarAccionCustom = function(mensaje, onConfirm, esAlerta = false, titulo = "¿Confirmar Eliminación?") {
+            const tituloEl = document.getElementById('modalTituloCustom');
+            const mensajeEl = document.getElementById('modalMensajeCustom');
+            const iconoEl = document.getElementById('modalIconoCustom');
             const btnConfirm = document.getElementById('btnConfirmarCustom');
-            
+            const btnCancel = document.getElementById('btnCancelarCustom');
+            const modal = document.getElementById('modalConfirmacionCustom');
+
+            if (tituloEl) tituloEl.innerHTML = esAlerta ? `<span style="color: #ef4444;">¡ALERTA!</span>` : titulo;
+            if (mensajeEl) mensajeEl.innerHTML = mensaje;
+            if (iconoEl) {
+                iconoEl.innerHTML = esAlerta ? `<i class="material-icons" style="color: #ef4444;">error</i>` : `<i class="material-icons">delete_forever</i>`;
+            }
+
+            if (esAlerta) {
+                btnConfirm.classList.add('hidden');
+                btnCancel.innerText = "Entendido";
+                btnCancel.className = "btn-modal-cancel bg-gray-800 text-white hover:bg-black";
+            } else {
+                btnConfirm.classList.remove('hidden');
+                btnCancel.innerText = "Cancelar";
+                btnCancel.className = "btn-modal-cancel";
+            }
+
             modal.classList.remove('hidden');
-            
+
             btnConfirm.onclick = function() {
                 modal.classList.add('hidden');
                 if (onConfirm) onConfirm();
@@ -665,8 +729,18 @@
             document.getElementById('modalConfirmacionCustom').classList.add('hidden');
         };
 
-        window.eliminarVehiculo = function(id) {
-            confirmarAccionCustom("¿Seguro que deseas eliminar este vehículo?", () => {
+        window.eliminarVehiculo = async function(id, nombre) {
+            const tieneActiva = await ipc.invoke('verificar-carga-activa-vehiculo', id);
+            if (tieneActiva) {
+                confirmarAccionCustom(
+                    `El vehículo <strong>${nombre || 'seleccionado'}</strong> tiene una <strong>carga activa</strong> actualmente.<br><br>Por favor, <strong>cierre la carga primero</strong> y después podrá eliminar el vehículo.`,
+                    null,
+                    true
+                );
+                return;
+            }
+
+            confirmarAccionCustom(`¿Seguro que deseas eliminar el vehículo <strong>${nombre || ''}</strong>?`, () => {
                 ipc.send('eliminar-vehiculo', id);
             });
         };
@@ -689,8 +763,17 @@
             });
         };
 
-        window.eliminarCargaVehiculo = function(id) { 
-            confirmarAccionCustom("¿Seguro que deseas eliminar esta carga?", () => {
+        window.eliminarCargaVehiculo = function(id, estado) { 
+            if ((estado || '').toUpperCase() === 'ACTIVA') {
+                confirmarAccionCustom(
+                    `Esta carga (<strong>#${id}</strong>) se encuentra en estado <strong>ACTIVA</strong>.<br><br>Por favor, <strong>cierre la carga primero</strong> desde el módulo de ventas y después podrá eliminarla.`,
+                    null,
+                    true
+                );
+                return;
+            }
+
+            confirmarAccionCustom(`¿Seguro que deseas eliminar la carga <strong>#${id}</strong>?`, () => {
                 ipc.send('eliminar-carga-vehiculo', id);
             });
         };
@@ -722,7 +805,7 @@
                         <div class="font-bold">${s.nombre}</div>
                         <div style="font-size: 0.75em; color: #00ced1; font-weight: 700; margin-top: 2px; text-transform: uppercase;">${nombreCategoria}</div>
                     </td>
-                    <td style="text-align: right;"><button class="btn-del" onclick="eliminarSubtipo(${s.id})"><i class="material-icons">delete</i></button></td>
+                    <td style="text-align: right;"><button class="btn-del" onclick="eliminarSubtipo('${s.id}')"><i class="material-icons">delete</i></button></td>
                 </tr>`).join('');
         };
 
@@ -749,28 +832,77 @@
                 const colorEstado = m.estado === 1 ? '#10b981' : '#94a3b8';
                 const opacidadTexto = m.estado === 1 ? '1' : '0.5';
                 const textoTachado = m.estado === 1 ? 'none' : 'line-through';
+                const norm = (m.nombre || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toUpperCase();
+                const esCredito = norm.startsWith('CREDIT');
                 
                 return `
                 <tr style="opacity: ${opacidadTexto}">
-                    <td class="font-bold text-gray-800" style="text-decoration: ${textoTachado};"><i class="material-icons align-middle text-gray-400 mr-2">payments</i>${m.nombre}</td>
+                    <td class="font-bold text-gray-800" style="text-decoration: ${textoTachado};">
+                        <i class="material-icons align-middle text-gray-400 mr-2">payments</i>${m.nombre}
+                        ${esCredito ? '<span class="ml-2 text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Sistema</span>' : ''}
+                    </td>
                     <td style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
-                        <button class="btn-del" style="color: ${colorEstado};" onclick="toggleEstadoMetodoPago(${m.id}, ${m.estado})" title="${m.estado === 1 ? 'Deshabilitar' : 'Habilitar'}"><i class="material-icons">${iconoEstado}</i></button>
-                        <button class="btn-del" onclick="eliminarMetodoPago(${m.id})" title="Eliminar"><i class="material-icons">delete</i></button>
+                        ${esCredito 
+                            ? `<button class="btn-del opacity-30 cursor-not-allowed" disabled title="Método permanente del sistema"><i class="material-icons text-gray-400">lock</i></button>`
+                            : `
+                            <button class="btn-del" style="color: ${colorEstado};" onclick="toggleEstadoMetodoPago('${m.id}', ${m.estado})" title="${m.estado === 1 ? 'Deshabilitar' : 'Habilitar'}"><i class="material-icons">${iconoEstado}</i></button>
+                            <button class="btn-del" onclick="eliminarMetodoPago('${m.id}')" title="Eliminar"><i class="material-icons">delete</i></button>
+                            `
+                        }
                     </td>
                 </tr>`;
             }).join('');
+        };
+
+        window.abrirConfiguracionVehiculo = function(id, nombre) {
+            vehiculoActualId = id;
+            const nomElem = document.getElementById('nombreVehiculoSeleccionado');
+            if (nomElem) nomElem.innerText = nombre;
+            const panel = document.getElementById('panelCargasVehiculo');
+            if (panel) panel.classList.remove('hidden');
+            cargarTablaCargasVehiculo();
+        };
+
+        window.cerrarConfiguracionVehiculo = function() {
+            vehiculoActualId = null;
+            const panel = document.getElementById('panelCargasVehiculo');
+            if (panel) panel.classList.add('hidden');
         };
 
         window.cargarTablaCargasVehiculo = async function() {
             const tbody = document.getElementById('listaCargasVehiculo');
             if (!tbody || !vehiculoActualId) return;
             const cargas = await ipc.invoke('obtener-cargas-vehiculo', vehiculoActualId);
-            if (!cargas || cargas.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="empty-message">Sin cargas.</td></tr>'; return; }
-            tbody.innerHTML = cargas.map(c => `<tr><td class="font-bold">${c.tipo_medida}</td><td>${c.subtipo_medida}</td><td class="font-bold text-blue-600">${c.cantidad}</td><td style="text-align: right;"><button class="btn-del" onclick="eliminarCargaVehiculo(${c.id})"><i class="material-icons">delete</i></button></td></tr>`).join('');
+            if (!cargas || cargas.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="empty-message">Sin cargas asignadas a este vehículo.</td></tr>'; return; }
+            tbody.innerHTML = cargas.map(c => {
+                const idCargaVal = c.id_carga || c.id;
+                let resumen = 'Carga General';
+                try {
+                    const items = typeof c.datos_json === 'string' ? JSON.parse(c.datos_json) : (c.datos_json || []);
+                    if (Array.isArray(items) && items.length > 0) {
+                        resumen = items.map(i => `${i.categoria || ''} ${i.subtipo || i.variacion || ''} (${i.cantidad || 0})`).filter(Boolean).join(', ');
+                    }
+                } catch(e) {}
+                const fecha = c.fecha_entrada ? new Date(c.fecha_entrada).toLocaleString() : '---';
+                const esActiva = (c.estado || '').toUpperCase() === 'ACTIVA';
+                return `<tr>
+                    <td class="font-bold text-gray-800">#${idCargaVal}</td>
+                    <td class="text-gray-500 font-mono text-xs">${fecha}</td>
+                    <td class="text-sm font-medium text-slate-700">${resumen}</td>
+                    <td><span class="${esActiva ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'} text-xs font-black px-2 py-1 rounded-full uppercase">${c.estado || 'ACTIVA'}</span></td>
+                    <td style="text-align: right;"><button class="btn-del" onclick="eliminarCargaVehiculo('${idCargaVal}', '${c.estado || 'ACTIVA'}')" title="Eliminar carga"><i class="material-icons">delete</i></button></td>
+                </tr>`;
+            }).join('');
         };
 
         ipc.removeAllListeners('eliminar-carga-resultado');
-        ipc.on('eliminar-carga-resultado', (event, res) => { if(res.success) cargarTablaCargasVehiculo(); });
+        ipc.on('eliminar-carga-resultado', (event, res) => { 
+            if(res.success) {
+                cargarTablaCargasVehiculo(); 
+            } else if (res.msg) {
+                confirmarAccionCustom(res.msg, null, true);
+            }
+        });
 
         // Inicializar
         cargarVehiculos();
